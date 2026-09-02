@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useLocation,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -80,13 +81,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Elegance Rent — Alquiler de Trajes" },
-      { name: "description", content: "Alquila trajes de novio, quinceañero y smoking para tu evento. Reserva online y recibe atención personalizada." },
-      { name: "author", content: "Elegance Rent" },
-      { property: "og:title", content: "Elegance Rent — Alquiler de Trajes" },
-      { property: "og:description", content: "Alquila trajes de novio, quinceañero y smoking para tu evento." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: "La Casa Del Disfraz — Punto de Venta Alquiler" },
+      { name: "description", content: "Sistema de Punto de Venta y Alquiler de Trajes y Disfraces." },
     ],
     links: [
       {
@@ -104,11 +100,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className="h-full">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="h-full overflow-hidden bg-[#EDEDED]">
         {children}
         <Scripts />
       </body>
@@ -118,87 +114,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      checkAdmin(data.session?.user?.id);
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      checkAdmin(session?.user?.id);
-      router.invalidate();
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [router]);
-
-  async function checkAdmin(userId?: string) {
-    if (!userId) {
-      setIsAdmin(false);
-      return;
-    }
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    setIsAdmin(!!data);
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen flex-col bg-background">
-        <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link to="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                E
-              </span>
-              Elegance Rent
-            </Link>
-            <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
-              <Link to="/" activeProps={{ className: "text-foreground" }} className="hover:text-foreground">
-                Catálogo
-              </Link>
-              {isAdmin && (
-                <Link to="/admin" activeProps={{ className: "text-foreground" }} className="hover:text-foreground">
-                  Admin
-                </Link>
-              )}
-              {user ? (
-                <button
-                  onClick={() => supabase.auth.signOut()}
-                  className="rounded-md px-3 py-1.5 text-foreground hover:bg-accent"
-                >
-                  Cerrar sesión
-                </button>
-              ) : (
-                <Link
-                  to="/auth"
-                  className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Ingresar
-                </Link>
-              )}
-            </nav>
-          </div>
-        </header>
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <footer className="border-t border-border bg-muted/30 py-8">
-          <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground sm:px-6 lg:px-8">
-            © {new Date().getFullYear()} Elegance Rent. Alquiler de trajes para eventos.
-          </div>
-        </footer>
+      <div className="h-screen w-screen overflow-hidden bg-[#EDEDED]">
+        <Outlet />
       </div>
       <Toaster position="bottom-right" />
     </QueryClientProvider>

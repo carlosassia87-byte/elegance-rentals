@@ -3,8 +3,6 @@ import {
   Trash2,
   X,
   Printer,
-  ChevronRight,
-  Play,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -31,10 +29,7 @@ const ARTICULOS_INICIALES: Articulo[] = [
 ];
 
 export function PuntoDeVenta() {
-  // Pestaña Activa estilo WINDEV
-  const [pestanaActiva, setPestanaActiva] = useState<string>("ALQUILAR");
-
-  // Formulario Superior (Exacto al diseño WINDEV)
+  // Formulario Superior
   const [estadoCli, setEstadoCli] = useState("ACTIVO");
   const [fechaHoy, setFechaHoy] = useState(() => new Date().toISOString().split("T")[0]);
   const [numeroRecibo, setNumeroRecibo] = useState("000124");
@@ -127,7 +122,7 @@ export function PuntoDeVenta() {
   function handleAgregarItem() {
     const art = articulos.find((a) => String(a.IDARTICULO) === articuloSeleccionadoId);
     if (!art) {
-      toast.error("Selecciona un artículo de la lista desplegable");
+      toast.error("Selecciona un artículo de la lista");
       return;
     }
     const cant = Math.max(1, cantidad || 1);
@@ -158,7 +153,7 @@ export function PuntoDeVenta() {
     }
     setGridItems((prev) => prev.filter((_, i) => i !== filaSeleccionada));
     setFilaSeleccionada(null);
-    toast.info("Artículo eliminado de la lista");
+    toast.info("Artículo eliminado");
   }
 
   // Limpiar / Nuevo Alquiler
@@ -241,54 +236,54 @@ export function PuntoDeVenta() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden">
+    <div className="flex h-screen w-screen flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-1.5">
       {/* =========================================================================
           1. ENCABEZADO SUPERIOR: TÍTULO "PUNTO DE VENTA" Y LOGO "La Casa Del Disfraz"
       ========================================================================= */}
-      <div className="relative flex items-center justify-between border-b border-slate-300 bg-[#EDEDED] px-4 py-1">
+      <div className="flex items-center justify-between px-2 pb-1 border-b border-slate-300">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-600">ALQUILER</span>
+          <span className="text-[11px] font-bold text-slate-600">ALQUILER</span>
         </div>
 
         {/* TÍTULO ROJO CENTRADO */}
-        <div className="absolute left-1/2 -translate-x-1/2 text-center">
-          <h1 className="text-3xl font-black tracking-wider text-[#E60000] uppercase font-sans">
+        <div className="text-center">
+          <h1 className="text-2xl font-black tracking-wider text-[#E60000] uppercase font-sans leading-none">
             PUNTO DE VENTA
           </h1>
         </div>
 
         {/* LOGO DE "La Casa Del Disfraz" (ORIGINAL) */}
         <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-1">
-            <span className="text-lg font-black tracking-tight text-[#1A2B49]">La</span>
-            <span className="rounded bg-red-600 px-1.5 py-0.5 text-base font-black text-yellow-300 uppercase shadow-sm">
+          <div className="flex items-center gap-1 leading-none">
+            <span className="text-sm font-black tracking-tight text-[#1A2B49]">La</span>
+            <span className="rounded bg-red-600 px-1 py-0.5 text-xs font-black text-yellow-300 uppercase shadow-sm">
               Casa
             </span>
-            <span className="text-base font-black italic text-[#8B008B]">Del</span>
-            <span className="text-lg font-black text-amber-500 uppercase">Disfraz</span>
+            <span className="text-xs font-black italic text-[#8B008B]">Del</span>
+            <span className="text-sm font-black text-amber-500 uppercase">Disfraz</span>
           </div>
-          <span className="text-[10px] font-semibold text-slate-500 italic leading-none mt-0.5">
+          <span className="text-[9px] font-semibold text-slate-500 italic leading-none mt-0.5">
             Para toda ocasión sin importar tu edad
           </span>
         </div>
       </div>
 
       {/* =========================================================================
-          2. CUERPO PRINCIPAL: FORMULARIO SUPERIOR + TABLA + PANEL LATERAL CYAN
+          2. CUERPO PRINCIPAL: FORMULARIO + BOTONES + TABLA + PANEL CYAN
       ========================================================================= */}
-      <div className="flex flex-1 p-2 gap-2 overflow-hidden">
+      <div className="flex flex-1 pt-1.5 gap-2 overflow-hidden min-h-0">
         {/* LADO IZQUIERDO: FORMULARIO + BOTONES DE ACCIÓN + GRID */}
-        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden">
-          {/* BLOQUE DE CAMPOS DE CABECERA (3 COLUMNAS EXACTAS A WINDEV) */}
-          <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1.5">
+        <div className="flex flex-1 flex-col gap-1 overflow-hidden min-h-0">
+          {/* BLOQUE DE CAMPOS DE CABECERA (COMPACTO Y AJUSTADO A PANTALLA) */}
+          <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1 shadow-inner">
             <div className="grid grid-cols-12 gap-x-2 gap-y-1 text-xs">
               {/* FILA 1 */}
               <div className="col-span-3 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">ESTADO</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">ESTADO</span>
                 <select
                   value={estadoCli}
                   onChange={(e) => setEstadoCli(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-medium focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
                 >
                   <option value="ACTIVO">ACTIVO</option>
                   <option value="PENDIENTE">PENDIENTE</option>
@@ -297,87 +292,87 @@ export function PuntoDeVenta() {
               </div>
 
               <div className="col-span-5 flex items-center gap-1">
-                <span className="w-16 font-bold text-slate-800 text-[11px] uppercase">CEDULA</span>
+                <span className="w-14 font-bold text-slate-800 text-[10px] uppercase">CEDULA</span>
                 <input
                   type="text"
                   placeholder="Entrada obligatoria"
                   value={cedula}
                   onChange={(e) => setCedula(e.target.value)}
                   onKeyDown={handleBuscarCedula}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[11px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1">
-                <span className="w-24 font-bold text-slate-800 text-[11px] uppercase">FECHA SALIDA</span>
+                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">FECHA SALIDA</span>
                 <input
                   type="date"
                   value={fechaSalida}
                   onChange={(e) => setFechaSalida(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-medium focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
                 />
               </div>
 
               {/* FILA 2 */}
               <div className="col-span-3 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">FECHA</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">FECHA</span>
                 <input
                   type="date"
                   value={fechaHoy}
                   onChange={(e) => setFechaHoy(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-medium focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1">
-                <span className="w-16 font-bold text-slate-800 text-[11px] uppercase">NOMBRE</span>
+                <span className="w-14 font-bold text-slate-800 text-[10px] uppercase">NOMBRE</span>
                 <input
                   type="text"
                   placeholder="Nombre"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[11px] font-medium placeholder:text-slate-400 focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-medium placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1">
-                <span className="w-24 font-bold text-slate-800 text-[11px] uppercase">FECHA ENTRADA</span>
+                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">FECHA ENTRADA</span>
                 <input
                   type="date"
                   value={fechaEntrada}
                   onChange={(e) => setFechaEntrada(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-medium focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
                 />
               </div>
 
               {/* FILA 3 */}
               <div className="col-span-3 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">N.RECIBO</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">N.RECIBO</span>
                 <input
                   type="text"
                   value={numeroRecibo}
                   onChange={(e) => setNumeroRecibo(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-bold text-red-700 focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-bold text-red-700 focus:outline-none"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">DIRECCION</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">DIRECCION</span>
                 <input
                   type="text"
                   placeholder="Direccion"
                   value={direccion}
                   onChange={(e) => setDireccion(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[11px] placeholder:text-slate-400 focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1">
-                <span className="w-24 font-bold text-slate-800 text-[11px] uppercase">ESTADO TRAJE</span>
+                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">ESTADO TRAJE</span>
                 <select
                   value={estadoTraje}
                   onChange={(e) => setEstadoTraje(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[11px] font-medium focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
                 >
                   <option value="DISPONIBLE">DISPONIBLE</option>
                   <option value="ALQUILADO">ALQUILADO</option>
@@ -388,29 +383,29 @@ export function PuntoDeVenta() {
 
               {/* FILA 4 */}
               <div className="col-span-3 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">CAJERO</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">CAJERO</span>
                 <input
                   type="text"
                   value={cajero}
                   onChange={(e) => setCajero(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[9px] font-bold uppercase text-slate-700 focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[8.5px] font-bold uppercase text-slate-700 focus:outline-none"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1">
-                <span className="w-16 font-semibold text-slate-700 text-[11px] uppercase">TELEFONO</span>
+                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">TELEFONO</span>
                 <input
                   type="text"
                   placeholder="Teléfono"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[11px] placeholder:text-slate-400 focus:outline-none"
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
                 {/* BOTÓN "Mod" ROJO EXACTO AL ORIGINAL */}
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
-                  className="h-5 rounded-full bg-[#B82E1F] px-2 text-[10px] font-bold text-white shadow-sm hover:bg-red-800 active:scale-95"
+                  className="h-5 rounded-full bg-[#B82E1F] px-2 text-[9px] font-bold text-white shadow-sm hover:bg-red-800 active:scale-95"
                 >
                   Mod
                 </button>
@@ -422,74 +417,65 @@ export function PuntoDeVenta() {
               BARRA DE LOS 9 BOTONES PRINCIPALES EN ROJO/MAGENTA (EXACTO A WINDEV)
           ========================================================================= */}
           <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-            {/* BOTON 1: NUEVO CLIENTE */}
             <button
               onClick={() => setModalCliente(true)}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               NUEVO CLIENTE
             </button>
 
-            {/* BOTON 2: MODIFICAR */}
             <button
               onClick={() => setModalCliente(true)}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               MODIFICAR
             </button>
 
-            {/* BOTON 3: BUSCAR CLIENTE */}
             <button
               onClick={() => setModalBuscarCli(true)}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               BUSCAR CLIENTE
             </button>
 
-            {/* BOTON 4: NUEVO */}
             <button
               onClick={handleLimpiar}
-              className="h-6 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2.5 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               NUEVO
             </button>
 
-            {/* BOTON 5: NUEVO ALQUILER */}
             <button
               onClick={handleLimpiar}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               NUEVO ALQUILER
             </button>
 
-            {/* BOTON 6: GASTO(SALIDA) */}
             <button
               onClick={() => setModalGasto(true)}
-              className="flex items-center gap-1 h-6 rounded bg-[#B80036] px-2 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="flex items-center gap-1 h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
-              <span className="text-[9px] text-white">▶</span> GASTO(SALIDA)
+              <span className="text-[8px] text-white">▶</span> GASTO(SALIDA)
             </button>
 
-            {/* BOTON 7: REIMPRIMIR */}
             <button
               onClick={() => setModalImprimir(true)}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               REIMPRIMIR
             </button>
 
-            {/* BOTON 8: APARTADOS */}
             <button
               onClick={() => setModalApartados(true)}
-              className="h-6 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2.5 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               APARTADOS
             </button>
 
-            {/* BOTON 9: ENTRADA VESTIDO */}
             <button
               onClick={() => setModalDevolucion(true)}
-              className="h-6 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
             >
               ENTRADA VESTIDO
             </button>
@@ -498,12 +484,12 @@ export function PuntoDeVenta() {
           {/* =========================================================================
               LÍNEA DE ARTÍCULO: SELECTOR + CANTIDAD + BOTONES [ELIMINAR] [PAGAR] [SALIR X]
           ========================================================================= */}
-          <div className="flex items-center gap-1.5 py-1">
-            <span className="text-xs font-bold text-slate-800 uppercase">ARTICULO</span>
+          <div className="flex items-center gap-1 py-0.5">
+            <span className="text-[10px] font-bold text-slate-800 uppercase">ARTICULO</span>
             <select
               value={articuloSeleccionadoId}
               onChange={(e) => setArticuloSeleccionadoId(e.target.value)}
-              className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none"
+              className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-semibold text-slate-800 focus:outline-none"
             >
               <option value="">-- SELECCIONAR ARTÍCULO --</option>
               {articulos.map((art) => (
@@ -514,74 +500,74 @@ export function PuntoDeVenta() {
             </select>
 
             {/* CANTIDAD CON FLECHA ROJA COMO EN EL ORIGINAL */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-red-700 uppercase">▸CANTIDAD</span>
+            <div className="flex items-center gap-0.5">
+              <span className="text-[10px] font-bold text-red-700 uppercase">▸CANTIDAD</span>
               <input
                 type="number"
                 min={1}
                 value={cantidad}
                 onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
                 onKeyDown={(e) => e.key === "Enter" && handleAgregarItem()}
-                className="h-6 w-12 rounded border border-slate-400 bg-white text-center text-xs font-bold text-slate-900 focus:outline-none"
+                className="h-5 w-10 rounded border border-slate-400 bg-white text-center text-[10px] font-bold text-slate-900 focus:outline-none"
               />
-              <span className="text-xs font-bold text-red-700">▸</span>
+              <span className="text-[10px] font-bold text-red-700">▸</span>
             </div>
 
             {/* BOTÓN + AGREGAR */}
             <button
               onClick={handleAgregarItem}
-              className="h-6 rounded bg-slate-700 px-2 text-xs font-bold text-white hover:bg-slate-800"
+              className="h-5 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white hover:bg-slate-800"
             >
               +
             </button>
 
-            {/* BOTÓN ELIMINAR (MAGENTA CON ICONO DE PAPELERA COMO EN EL ORIGINAL) */}
+            {/* BOTÓN ELIMINAR (MAGENTA CON ICONO DE PAPELERA) */}
             <button
               onClick={handleEliminarFila}
-              className="flex items-center gap-1 h-6 rounded bg-[#B80036] px-2.5 text-xs font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95"
+              className="flex items-center gap-0.5 h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95"
             >
-              ELIMINAR <Trash2 className="h-3.5 w-3.5" />
+              ELIMINAR <Trash2 className="h-3 w-3" />
             </button>
 
-            {/* BOTÓN PAGAR (NEGRO CON TEXTO BLANCO COMO EN EL ORIGINAL) */}
+            {/* BOTÓN PAGAR (NEGRO CON TEXTO BLANCO) */}
             <button
               onClick={handlePagar}
-              className="h-6 rounded bg-[#111111] px-4 text-xs font-black text-white shadow-sm hover:bg-black active:scale-95"
+              className="h-5 rounded bg-[#111111] px-3 text-[10px] font-black text-white shadow-sm hover:bg-black active:scale-95"
             >
               PAGAR
             </button>
 
-            {/* BOTÓN SALIR X (ROJO OSCURO / MARRÓN COMO EN EL ORIGINAL) */}
+            {/* BOTÓN SALIR X (ROJO OSCURO / MARRÓN) */}
             <button
               onClick={handleLimpiar}
-              className="flex items-center gap-1 h-6 rounded bg-[#992222] px-2.5 text-xs font-black text-white shadow-sm hover:bg-[#771111] active:scale-95"
+              className="flex items-center gap-0.5 h-5 rounded bg-[#992222] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#771111] active:scale-95"
             >
-              SALIR <X className="h-3.5 w-3.5" />
+              SALIR <X className="h-3 w-3" />
             </button>
           </div>
 
           {/* =========================================================================
-              TABLA PRINCIPAL DE ALQUILER (COLUMNAS IDÉNTICAS A WINDEV)
+              TABLA PRINCIPAL DE ALQUILER (AJUSTADA Y FLEXIBLE A LA PANTALLA)
           ========================================================================= */}
-          <div className="flex-1 rounded border-2 border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col">
+          <div className="flex-1 rounded border border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col min-h-0">
             <div className="overflow-auto flex-1">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
-                  <tr className="bg-[#000000] text-white font-bold uppercase text-[11px] tracking-wider sticky top-0">
-                    <th className="border-r border-slate-700 px-3 py-1.5">DESCRIPCION</th>
-                    <th className="border-r border-slate-700 px-2 py-1.5 text-center w-16">CANTIDAD</th>
-                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">VALOR ALQUILER</th>
-                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">TOTAL ALQUILER</th>
-                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-24">DEPOSITO</th>
-                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">TOTAL DEPOSITO</th>
-                    <th className="px-3 py-1.5 text-right w-28">TOT ALQUILER</th>
+                  <tr className="bg-[#000000] text-white font-bold uppercase text-[10px] tracking-wider sticky top-0">
+                    <th className="border-r border-slate-700 px-2 py-1">DESCRIPCION</th>
+                    <th className="border-r border-slate-700 px-1 py-1 text-center w-14">CANTIDAD</th>
+                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">VALOR ALQUILER</th>
+                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">TOTAL ALQUILER</th>
+                    <th className="border-r border-slate-700 px-2 py-1 text-right w-20">DEPOSITO</th>
+                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">TOTAL DEPOSITO</th>
+                    <th className="px-2 py-1 text-right w-24">TOT ALQUILER</th>
                   </tr>
                 </thead>
                 <tbody>
                   {gridItems.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-24 text-center text-slate-400 text-sm font-semibold">
-                        (Tabla vacía. Selecciona un artículo y agrégalo para registrar el alquiler)
+                      <td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-semibold">
+                        (Tabla vacía. Selecciona un artículo arriba y agrégalo para registrar el alquiler)
                       </td>
                     </tr>
                   ) : (
@@ -592,7 +578,7 @@ export function PuntoDeVenta() {
                         <tr
                           key={item.idTemp}
                           onClick={() => setFilaSeleccionada(index)}
-                          className={`cursor-pointer border-b border-slate-200 transition-colors ${
+                          className={`cursor-pointer border-b border-slate-200 text-[11px] ${
                             isSelected
                               ? "bg-[#FFE066] font-bold text-slate-900"
                               : isEven
@@ -600,26 +586,26 @@ export function PuntoDeVenta() {
                               : "bg-[#D6E6F2]"
                           }`}
                         >
-                          <td className="px-3 py-1 font-semibold text-slate-800 border-r border-slate-200">
-                            {item.descripcion} <span className="text-[10px] text-slate-500">(TALLA: {item.talla})</span>
+                          <td className="px-2 py-0.5 font-semibold text-slate-800 border-r border-slate-200">
+                            {item.descripcion} <span className="text-[9px] text-slate-500">(TALLA: {item.talla})</span>
                           </td>
-                          <td className="px-2 py-1 text-center font-bold border-r border-slate-200">
+                          <td className="px-1 py-0.5 text-center font-bold border-r border-slate-200">
                             {item.cantidad}
                           </td>
-                          <td className="px-3 py-1 text-right font-mono border-r border-slate-200">
+                          <td className="px-2 py-0.5 text-right font-mono border-r border-slate-200">
                             {item.valorAlquiler.toLocaleString()}
                           </td>
-                          <td className="px-3 py-1 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
-                            {item.totalAlquiler.toLocaleString()}
+                          <td className="px-2 py-0.5 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                            ${item.totalAlquiler.toLocaleString()}
                           </td>
-                          <td className="px-3 py-1 text-right font-mono border-r border-slate-200">
+                          <td className="px-2 py-0.5 text-right font-mono border-r border-slate-200">
                             {item.valorDeposito.toLocaleString()}
                           </td>
-                          <td className="px-3 py-1 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
-                            {item.totalDeposito.toLocaleString()}
+                          <td className="px-2 py-0.5 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
+                            ${item.totalDeposito.toLocaleString()}
                           </td>
-                          <td className="px-3 py-1 text-right font-mono font-black text-emerald-800">
-                            {item.totalGeneral.toLocaleString()}
+                          <td className="px-2 py-0.5 text-right font-mono font-black text-emerald-800">
+                            ${item.totalGeneral.toLocaleString()}
                           </td>
                         </tr>
                       );
@@ -632,13 +618,13 @@ export function PuntoDeVenta() {
         </div>
 
         {/* =========================================================================
-            3. PANEL DERECHO CYAN / AZUL (PANEL DE COBRO IDÉNTICO A WINDEV)
+            3. PANEL DERECHO CYAN / AZUL (PANEL DE COBRO COMPACTO 100% VISIBLE)
         ========================================================================= */}
-        <div className="w-[280px] rounded-sm border-2 border-slate-400 bg-[#00A8FF] p-2 text-slate-900 flex flex-col justify-between shadow-sm">
-          <div className="space-y-1.5">
+        <div className="w-[240px] rounded border border-slate-400 bg-[#00A8FF] p-2 text-slate-900 flex flex-col justify-between shadow-sm overflow-hidden">
+          <div className="space-y-1">
             {/* 1. PAGA CON EFECTIVO: */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 PAGA CON EFECTIVO:
               </label>
               <input
@@ -647,13 +633,13 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={pagaEfectivo}
                 onChange={(e) => setPagaEfectivo(e.target.value)}
-                className="h-8 w-full rounded-sm border border-slate-300 bg-white px-2 text-right font-mono text-xl font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-base font-bold text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 2. PAGA CON TRANSFERENCIA: */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 PAGA CON TRANSFERENCIA:
               </label>
               <input
@@ -662,33 +648,33 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={pagaTransferencia}
                 onChange={(e) => setPagaTransferencia(e.target.value)}
-                className="h-8 w-full rounded-sm border border-slate-300 bg-white px-2 text-right font-mono text-xl font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-base font-bold text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 3. TOTAL DEPOSITO */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 TOTAL DEPOSITO
               </label>
-              <div className="flex h-8 w-full items-center justify-end rounded-sm border border-slate-300 bg-white px-2 font-mono text-xl font-bold text-slate-900 shadow-inner">
+              <div className="mt-0.5 flex h-7 w-full items-center justify-end rounded border border-slate-300 bg-white px-2 font-mono text-base font-bold text-slate-900 shadow-inner">
                 {totalDeposito.toLocaleString()}
               </div>
             </div>
 
             {/* 4. TOTAL ALQUILER */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 TOTAL ALQUILER
               </label>
-              <div className="flex h-8 w-full items-center justify-end rounded-sm border border-slate-300 bg-white px-2 font-mono text-xl font-bold text-slate-900 shadow-inner">
+              <div className="mt-0.5 flex h-7 w-full items-center justify-end rounded border border-slate-300 bg-white px-2 font-mono text-base font-bold text-slate-900 shadow-inner">
                 {totalAlquiler.toLocaleString()}
               </div>
             </div>
 
             {/* 5. DESCUENTO_ALQUILER */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 DESCUENTO_ALQUILER
               </label>
               <input
@@ -697,26 +683,26 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={descuentoAlquiler}
                 onChange={(e) => setDescuentoAlquiler(e.target.value)}
-                className="h-6 w-full rounded-sm border border-slate-300 bg-white px-2 text-right font-mono text-sm font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-0.5 h-5 w-full rounded border border-slate-300 bg-white px-1.5 text-right font-mono text-xs font-bold text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 6. TOTAL DEPOSITO + ALQUILER */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 TOTAL DEPOSITO + ALQUILER
               </label>
-              <div className="flex h-9 w-full items-center justify-end rounded-sm border border-slate-400 bg-white px-2 font-mono text-2xl font-bold text-slate-900 shadow-inner">
+              <div className="mt-0.5 flex h-8 w-full items-center justify-end rounded border border-slate-400 bg-white px-2 font-mono text-lg font-black text-slate-900 shadow-inner">
                 {totalDepositoMasAlquiler.toLocaleString()}
               </div>
             </div>
 
             {/* 7. SU CAMBIO ES */}
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-900 block leading-tight">
+              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
                 SU CAMBIO ES
               </label>
-              <div className="flex h-9 w-full items-center justify-center rounded-sm border border-slate-400 bg-white px-2 font-mono text-xl font-bold text-slate-900 shadow-inner">
+              <div className="mt-0.5 flex h-8 w-full items-center justify-center rounded border border-slate-400 bg-white px-2 font-mono text-base font-black text-emerald-700 shadow-inner">
                 {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "+++++"}
               </div>
             </div>
@@ -725,89 +711,11 @@ export function PuntoDeVenta() {
           <button
             onClick={handlePagar}
             disabled={gridItems.length === 0}
-            className="mt-2 w-full rounded bg-[#002D62] py-2 text-center text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
+            className="mt-1.5 w-full rounded bg-[#002D62] py-2 text-center text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
           >
             CONFIRMAR ALQUILER
           </button>
         </div>
-      </div>
-
-      {/* =========================================================================
-          4. BARRA INFERIOR DE PESTAÑAS (IDÉNTICO A WINDEV 25)
-      ========================================================================= */}
-      <div className="flex items-center border-t border-slate-400 bg-[#E0E0E0] px-1 text-[11px] font-semibold text-slate-800 overflow-x-auto">
-        <span className="px-1 text-slate-500 font-bold">&lt;</span>
-        <span className="px-1 text-slate-500 font-bold">&gt;</span>
-        <div className="bg-yellow-400 px-1.5 py-0.5 font-bold text-[10px] border border-slate-400 mr-1">
-          P
-        </div>
-
-        <button
-          onClick={() => setModalBuscarCli(true)}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          CLIENTES ✖
-        </button>
-        <button
-          onClick={() => setPestanaActiva("ALQUILAR")}
-          className="bg-[#FFD700] border-r border-slate-400 px-3 py-0.5 font-bold text-slate-950 shadow-sm"
-        >
-          ALQUILAR ✖
-        </button>
-        <button
-          onClick={handlePagar}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          PAGAR ✖
-        </button>
-        <button
-          onClick={() => toast.info("Módulo Estado Clientes")}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          Fiche_ESTADOCLIENTES ✖
-        </button>
-        <button
-          onClick={() => setModalBuscarCli(true)}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          Fiche_CLIENTES ✖
-        </button>
-        <button
-          onClick={() => toast.info("Ingreso de Vestido a Local")}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          INGRESO_VESTIDO_A_LOCAL ✖
-        </button>
-        <button
-          onClick={() => setModalCliente(true)}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          ALTA_DE_CLIENTES ✖
-        </button>
-        <button
-          onClick={() => toast.info("Menú Principal")}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          MENU_PRINCIPAL ✖
-        </button>
-        <button
-          onClick={() => toast.info("Módulo Días de Mora")}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          DIAS_DE_MORA ✖
-        </button>
-        <button
-          onClick={() => setModalDevolucion(true)}
-          className="border-r border-slate-400 px-2 py-0.5 hover:bg-slate-300"
-        >
-          ENTREGA_VESTIDO ✖
-        </button>
-        <button
-          onClick={() => toast.info("Código Fuente")}
-          className="px-2 py-0.5 text-slate-500 hover:bg-slate-300"
-        >
-          qry_campofactura - Código S... ✖
-        </button>
       </div>
 
       {/* =========================================================
