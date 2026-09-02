@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
 
 function getPublicClient() {
@@ -28,13 +29,12 @@ export const listCategories = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const createCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({ name: z.string().min(1), description: z.string().optional() }).parse(input)
   )
-  .handler(async ({ data }) => {
-    const { requireSupabaseAuth } = await import("@/integrations/supabase/auth-middleware");
-    const ctx = await requireSupabaseAuth.middleware({} as never);
-    const { data: inserted, error } = await ctx.supabase
+  .handler(async ({ data, context }) => {
+    const { data: inserted, error } = await context.supabase
       .from("categories")
       .insert({ name: data.name, description: data.description })
       .select()
@@ -44,11 +44,10 @@ export const createCategory = createServerFn({ method: "POST" })
   });
 
 export const deleteCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
-    const { requireSupabaseAuth } = await import("@/integrations/supabase/auth-middleware");
-    const ctx = await requireSupabaseAuth.middleware({} as never);
-    const { error } = await ctx.supabase.from("categories").delete().eq("id", data.id);
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("categories").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
