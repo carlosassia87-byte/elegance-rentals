@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { format, addDays, parseISO } from "date-fns";
@@ -14,7 +14,6 @@ import { getSuit } from "@/lib/suits.functions";
 import { createRental } from "@/lib/rentals.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/suits/$id/rent")({
   head: () => ({
@@ -29,9 +28,10 @@ export const Route = createFileRoute("/suits/$id/rent")({
 function RentPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const fetchSuit = useServerFn(getSuit);
   const { data: suit, isLoading } = useQuery({
     queryKey: ["suit", id],
-    queryFn: () => useServerFn(getSuit)({ data: { id } }),
+    queryFn: () => fetchSuit({ data: { id } }),
   });
   const createRentalFn = useServerFn(createRental);
 
