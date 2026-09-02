@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as SuitsIdRouteImport } from './routes/suits.$id'
 import { Route as AuthenticatedAdminRentalsRouteImport } from './routes/_authenticated/admin.rentals'
 import { Route as AuthenticatedAdminSuitsRouteImport } from './routes/_authenticated/admin.suits'
+import { Route as SuitsIdRentRouteImport } from './routes/suits.$id.rent'
 import { Route as AuthenticatedAdminSuitsIdEditRouteImport } from './routes/_authenticated/admin.suits.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,6 +38,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const SuitsIdRoute = SuitsIdRouteImport.update({
+  id: '/suits/$id',
+  path: '/suits/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRentalsRoute =
   AuthenticatedAdminRentalsRouteImport.update({
     id: '/rentals',
@@ -46,6 +53,11 @@ const AuthenticatedAdminSuitsRoute = AuthenticatedAdminSuitsRouteImport.update({
   id: '/suits',
   path: '/suits',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const SuitsIdRentRoute = SuitsIdRentRouteImport.update({
+  id: '/rent',
+  path: '/rent',
+  getParentRoute: () => SuitsIdRoute,
 } as any)
 const AuthenticatedAdminSuitsIdEditRoute =
   AuthenticatedAdminSuitsIdEditRouteImport.update({
@@ -58,16 +70,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/suits/$id': typeof SuitsIdRouteWithChildren
   '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
   '/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/suits/$id/rent': typeof SuitsIdRentRoute
   '/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/suits/$id': typeof SuitsIdRouteWithChildren
   '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
   '/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/suits/$id/rent': typeof SuitsIdRentRoute
   '/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRoutesById {
@@ -76,8 +92,10 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/suits/$id': typeof SuitsIdRouteWithChildren
   '/_authenticated/admin/rentals': typeof AuthenticatedAdminRentalsRoute
   '/_authenticated/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/suits/$id/rent': typeof SuitsIdRentRoute
   '/_authenticated/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -86,16 +104,20 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/admin'
+    | '/suits/$id'
     | '/admin/rentals'
     | '/admin/suits'
+    | '/suits/$id/rent'
     | '/admin/suits/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/admin'
+    | '/suits/$id'
     | '/admin/rentals'
     | '/admin/suits'
+    | '/suits/$id/rent'
     | '/admin/suits/$id/edit'
   id:
     | '__root__'
@@ -103,8 +125,10 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/admin'
+    | '/suits/$id'
     | '/_authenticated/admin/rentals'
     | '/_authenticated/admin/suits'
+    | '/suits/$id/rent'
     | '/_authenticated/admin/suits/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -112,6 +136,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  SuitsIdRoute: typeof SuitsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -144,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/suits/$id': {
+      id: '/suits/$id'
+      path: '/suits/$id'
+      fullPath: '/suits/$id'
+      preLoaderRoute: typeof SuitsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/rentals': {
       id: '/_authenticated/admin/rentals'
       path: '/rentals'
@@ -157,6 +189,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/suits'
       preLoaderRoute: typeof AuthenticatedAdminSuitsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/suits/$id/rent': {
+      id: '/suits/$id/rent'
+      path: '/rent'
+      fullPath: '/suits/$id/rent'
+      preLoaderRoute: typeof SuitsIdRentRouteImport
+      parentRoute: typeof SuitsIdRoute
     }
     '/_authenticated/admin/suits/$id/edit': {
       id: '/_authenticated/admin/suits/$id/edit'
@@ -206,10 +245,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface SuitsIdRouteChildren {
+  SuitsIdRentRoute: typeof SuitsIdRentRoute
+}
+
+const SuitsIdRouteChildren: SuitsIdRouteChildren = {
+  SuitsIdRentRoute: SuitsIdRentRoute,
+}
+
+const SuitsIdRouteWithChildren =
+  SuitsIdRoute._addFileChildren(SuitsIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  SuitsIdRoute: SuitsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
