@@ -21,9 +21,10 @@ export const Route = createFileRoute("/suits/$id")({
 
 function SuitDetailPage() {
   const { id } = Route.useParams();
+  const fetchSuit = useServerFn(getSuit);
   const { data: suit, isLoading } = useQuery({
     queryKey: ["suit", id],
-    queryFn: () => useServerFn(getSuit)({ data: { id } }),
+    queryFn: () => fetchSuit({ data: { id } }),
   });
 
   if (isLoading) return <div className="p-12 text-center">Cargando...</div>;
