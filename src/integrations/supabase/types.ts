@@ -14,16 +14,237 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rentals: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          end_date: string
+          id: string
+          notes: string | null
+          size_id: string | null
+          start_date: string
+          status: string
+          suit_id: string
+          suit_size_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          end_date: string
+          id?: string
+          notes?: string | null
+          size_id?: string | null
+          start_date: string
+          status?: string
+          suit_id: string
+          suit_size_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          end_date?: string
+          id?: string
+          notes?: string | null
+          size_id?: string | null
+          start_date?: string
+          status?: string
+          suit_id?: string
+          suit_size_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_size_id_fkey"
+            columns: ["size_id"]
+            isOneToOne: false
+            referencedRelation: "sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_suit_id_fkey"
+            columns: ["suit_id"]
+            isOneToOne: false
+            referencedRelation: "suits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_suit_size_id_fkey"
+            columns: ["suit_size_id"]
+            isOneToOne: false
+            referencedRelation: "suit_sizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sizes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      suit_sizes: {
+        Row: {
+          created_at: string
+          id: string
+          size_id: string
+          stock: number
+          suit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          size_id: string
+          stock?: number
+          suit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          size_id?: string
+          stock?: number
+          suit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suit_sizes_size_id_fkey"
+            columns: ["size_id"]
+            isOneToOne: false
+            referencedRelation: "sizes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suit_sizes_suit_id_fkey"
+            columns: ["suit_id"]
+            isOneToOne: false
+            referencedRelation: "suits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suits: {
+        Row: {
+          category_id: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          name: string
+          price_per_day: number
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          name: string
+          price_per_day?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          name?: string
+          price_per_day?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suits_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +371,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff"],
+    },
   },
 } as const
