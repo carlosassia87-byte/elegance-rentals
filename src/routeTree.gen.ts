@@ -10,11 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminRentalsRouteImport } from './routes/_authenticated/admin.rentals'
+import { Route as AuthenticatedAdminSuitsRouteImport } from './routes/_authenticated/admin.suits'
+import { Route as AuthenticatedAdminSuitsIdEditRouteImport } from './routes/_authenticated/admin.suits.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -22,30 +31,86 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRentalsRoute =
+  AuthenticatedAdminRentalsRouteImport.update({
+    id: '/rentals',
+    path: '/rentals',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSuitsRoute = AuthenticatedAdminSuitsRouteImport.update({
+  id: '/suits',
+  path: '/suits',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminSuitsIdEditRoute =
+  AuthenticatedAdminSuitsIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => AuthenticatedAdminSuitsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
+  '/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
+  '/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/admin/rentals': typeof AuthenticatedAdminRentalsRoute
+  '/_authenticated/admin/suits': typeof AuthenticatedAdminSuitsRouteWithChildren
+  '/_authenticated/admin/suits/$id/edit': typeof AuthenticatedAdminSuitsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/admin/rentals'
+    | '/admin/suits'
+    | '/admin/suits/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth'
-  id: '__root__' | '/' | '/auth'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/admin/rentals'
+    | '/admin/suits'
+    | '/admin/suits/$id/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/admin'
+    | '/_authenticated/admin/rentals'
+    | '/_authenticated/admin/suits'
+    | '/_authenticated/admin/suits/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
 }
 
@@ -58,6 +123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -65,11 +137,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/rentals': {
+      id: '/_authenticated/admin/rentals'
+      path: '/rentals'
+      fullPath: '/admin/rentals'
+      preLoaderRoute: typeof AuthenticatedAdminRentalsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/suits': {
+      id: '/_authenticated/admin/suits'
+      path: '/suits'
+      fullPath: '/admin/suits'
+      preLoaderRoute: typeof AuthenticatedAdminSuitsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/suits/$id/edit': {
+      id: '/_authenticated/admin/suits/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/admin/suits/$id/edit'
+      preLoaderRoute: typeof AuthenticatedAdminSuitsIdEditRouteImport
+      parentRoute: typeof AuthenticatedAdminSuitsRoute
+    }
   }
 }
 
+interface AuthenticatedAdminSuitsRouteChildren {
+  AuthenticatedAdminSuitsIdEditRoute: typeof AuthenticatedAdminSuitsIdEditRoute
+}
+
+const AuthenticatedAdminSuitsRouteChildren: AuthenticatedAdminSuitsRouteChildren =
+  {
+    AuthenticatedAdminSuitsIdEditRoute: AuthenticatedAdminSuitsIdEditRoute,
+  }
+
+const AuthenticatedAdminSuitsRouteWithChildren =
+  AuthenticatedAdminSuitsRoute._addFileChildren(
+    AuthenticatedAdminSuitsRouteChildren,
+  )
+
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminRentalsRoute: typeof AuthenticatedAdminRentalsRoute
+  AuthenticatedAdminSuitsRoute: typeof AuthenticatedAdminSuitsRouteWithChildren
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminRentalsRoute: AuthenticatedAdminRentalsRoute,
+  AuthenticatedAdminSuitsRoute: AuthenticatedAdminSuitsRouteWithChildren,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
