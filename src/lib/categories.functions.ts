@@ -36,7 +36,7 @@ export const createCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: inserted, error } = await context.supabase
       .from("categories")
-      .insert({ name: data.name, description: data.description })
+      .insert({ name: data.name, description: data.description ?? null })
       .select()
       .single();
     if (error) throw new Error(error.message);
