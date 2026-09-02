@@ -23,8 +23,10 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { data: suits = [], isLoading } = useQuery({ queryKey: ["suits"], queryFn: useServerFn(listSuits) });
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: useServerFn(listCategories) });
+  const fetchSuits = useServerFn(listSuits);
+  const fetchCategories = useServerFn(listCategories);
+  const { data: suits = [], isLoading } = useQuery({ queryKey: ["suits"], queryFn: fetchSuits });
+  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
