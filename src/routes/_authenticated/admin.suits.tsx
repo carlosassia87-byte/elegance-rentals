@@ -26,9 +26,12 @@ export const Route = createFileRoute("/_authenticated/admin/suits")({
 
 function AdminSuitsPage() {
   const queryClient = useQueryClient();
-  const { data: suits = [], isLoading } = useQuery({ queryKey: ["admin-suits"], queryFn: useServerFn(listSuits) });
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: useServerFn(listCategories) });
-  const { data: sizes = [] } = useQuery({ queryKey: ["sizes"], queryFn: useServerFn(listSizes) });
+  const fetchSuits = useServerFn(listSuits);
+  const fetchCategories = useServerFn(listCategories);
+  const fetchSizes = useServerFn(listSizes);
+  const { data: suits = [], isLoading } = useQuery({ queryKey: ["admin-suits"], queryFn: fetchSuits });
+  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+  const { data: sizes = [] } = useQuery({ queryKey: ["sizes"], queryFn: fetchSizes });
   const createSuitFn = useServerFn(createSuit);
   const deleteSuitFn = useServerFn(deleteSuit);
 

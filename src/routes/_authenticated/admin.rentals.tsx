@@ -39,9 +39,10 @@ const statusColors: Record<string, string> = {
 
 function AdminRentalsPage() {
   const queryClient = useQueryClient();
+  const fetchRentals = useServerFn(listRentals);
   const { data: rentals = [], isLoading } = useQuery({
     queryKey: ["admin-rentals"],
-    queryFn: useServerFn(listRentals),
+    queryFn: fetchRentals,
   });
   const updateStatusFn = useServerFn(updateRentalStatus);
   const deleteRentalFn = useServerFn(deleteRental);

@@ -1,17 +1,17 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSuit, updateSuit } from "@/lib/suits.functions";
 import { listCategories } from "@/lib/categories.functions";
 import { listSizes } from "@/lib/sizes.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/suits/$id/edit")({
   head: () => ({
@@ -27,12 +27,15 @@ function EditSuitPage() {
   const { id } = useParams({ from: "/_authenticated/admin/suits/$id/edit" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fetchSuit = useServerFn(getSuit);
+  const fetchCategories = useServerFn(listCategories);
+  const fetchSizes = useServerFn(listSizes);
   const { data: suit, isLoading } = useQuery({
     queryKey: ["suit", id],
-    queryFn: () => useServerFn(getSuit)({ data: { id } }),
+    queryFn: () => fetchSuit({ data: { id } }),
   });
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: useServerFn(listCategories) });
-  const { data: sizes = [] } = useQuery({ queryKey: ["sizes"], queryFn: useServerFn(listSizes) });
+  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+  const { data: sizes = [] } = useQuery({ queryKey: ["sizes"], queryFn: fetchSizes });
   const updateSuitFn = useServerFn(updateSuit);
 
   const [form, setForm] = useState({
