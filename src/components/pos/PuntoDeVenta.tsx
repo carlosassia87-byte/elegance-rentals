@@ -1,31 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
-  UserPlus,
-  UserCheck,
-  PlusCircle,
-  TrendingDown,
-  Printer,
-  CalendarCheck2,
-  Undo2,
   Trash2,
   CreditCard,
-  Banknote,
-  Receipt,
-  RotateCcw,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
   X,
+  Plus,
+  RefreshCw,
+  Printer,
+  Calendar,
+  Layers,
+  ArrowDownCircle,
   Sparkles,
+  DollarSign,
+  User,
+  ShoppingBag,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura } from "@/types/database.types";
@@ -34,1130 +24,1165 @@ import {
   buscarClientesPorNombre,
   guardarCliente,
   listarArticulos,
-  buscarArticuloPorCodigoBarras,
   generarNumeroFactura,
   registrarAlquilerFactura,
   registrarDevolucionVestido,
   registrarGasto,
 } from "@/services/posService";
 
-// ARTICULOS DE EJEMPLO INICIALES POR SI LA BD AÚN NO TIENE REGISTROS
-const ARTICULOS_DEMO: Articulo[] = [
-  { IDARTICULO: 1, DESCRIPCION: "Smoking Negro Italiano Slim Fit", TALLA: "38R", STOCK: 4, VALOR: 120, CODBARRAS: "7701001", VALORDEPOSITO: 50 },
-  { IDARTICULO: 2, DESCRIPCION: "Traje Azul Marino Novio Elegance", TALLA: "40R", STOCK: 3, VALOR: 150, CODBARRAS: "7701002", VALORDEPOSITO: 60 },
-  { IDARTICULO: 3, DESCRIPCION: "Traje Quinceañero Gris Plata", TALLA: "36R", STOCK: 5, VALOR: 90, CODBARRAS: "7701003", VALORDEPOSITO: 40 },
-  { IDARTICULO: 4, DESCRIPCION: "Frac Clásico de Gala con Faja y Moño", TALLA: "42R", STOCK: 2, VALOR: 180, CODBARRAS: "7701004", VALORDEPOSITO: 80 },
-  { IDARTICULO: 5, DESCRIPCION: "Chaleco de Seda Champagne + Corbata", TALLA: "M", STOCK: 8, VALOR: 35, CODBARRAS: "7701005", VALORDEPOSITO: 15 },
-  { IDARTICULO: 6, DESCRIPCION: "Zapatos de Charol Negro Elegance", TALLA: "41", STOCK: 6, VALOR: 45, CODBARRAS: "7701006", VALORDEPOSITO: 20 },
-  { IDARTICULO: 7, DESCRIPCION: "Disfraz Época Medieval Caballero", TALLA: "L", STOCK: 3, VALOR: 85, CODBARRAS: "7701007", VALORDEPOSITO: 35 },
+const ARTICULOS_INICIALES: Articulo[] = [
+  { IDARTICULO: 1, DESCRIPCION: "TRAJE SMOKING NEGRO SLIM FIT COMPLETO", TALLA: "38R", STOCK: 5, VALOR: 120000, CODBARRAS: "7701001", VALORDEPOSITO: 50000 },
+  { IDARTICULO: 2, DESCRIPCION: "TRAJE NOVIO AZUL NOCHE ITALIANO", TALLA: "40R", STOCK: 3, VALOR: 150000, CODBARRAS: "7701002", VALORDEPOSITO: 60000 },
+  { IDARTICULO: 3, DESCRIPCION: "TRAJE QUINCEAÑERO GRIS PLATA C/CHALECO", TALLA: "36R", STOCK: 4, VALOR: 95000, CODBARRAS: "7701003", VALORDEPOSITO: 40000 },
+  { IDARTICULO: 4, DESCRIPCION: "DISFRAZ ÉPOCA MEDIEVAL CABALLERO REY", TALLA: "L", STOCK: 6, VALOR: 85000, CODBARRAS: "7701004", VALORDEPOSITO: 35000 },
+  { IDARTICULO: 5, DESCRIPCION: "VESTIDO DE GALA NOCHE SIRENA ROJO", TALLA: "M", STOCK: 2, VALOR: 140000, CODBARRAS: "7701005", VALORDEPOSITO: 60000 },
+  { IDARTICULO: 6, DESCRIPCION: "ZAPATOS DE CHAROL NEGRO FORMAL", TALLA: "40", STOCK: 8, VALOR: 40000, CODBARRAS: "7701006", VALORDEPOSITO: 20000 },
+  { IDARTICULO: 7, DESCRIPCION: "CHALECO DE SEDA CHAMPAGNE + CORBATÍN", TALLA: "M", STOCK: 10, VALOR: 30000, CODBARRAS: "7701007", VALORDEPOSITO: 15000 },
 ];
 
 export function PuntoDeVenta() {
-  // Estado del Alquiler / Cabecera
-  const [numeroFactura, setNumeroFactura] = useState("ALQ-001001");
-  const [cajero, setCajero] = useState("ADMIN");
-  const [estadoCliente, setEstadoCliente] = useState("ACTIVO");
-  const [estadoTraje, setEstadoTraje] = useState("DISPONIBLE");
+  // Pestaña Activa (Estilo WINDEV)
+  const [pestanaActiva, setPestanaActiva] = useState<string>("ALQUILAR");
+
+  // Campos de Cabecera (Idéntico a la imagen)
+  const [estadoCli, setEstadoCli] = useState("ACTIVO");
+  const [fechaHoy, setFechaHoy] = useState(() => new Date().toISOString().split("T")[0]);
+  const [numeroRecibo, setNumeroRecibo] = useState("000124");
+  const [cajero, setCajero] = useState("ADMINISTRADOR PRINCIPAL");
+  const [cedula, setCedula] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [empresa, setEmpresa] = useState("");
   const [fechaSalida, setFechaSalida] = useState(() => new Date().toISOString().split("T")[0]);
   const [fechaEntrada, setFechaEntrada] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 3);
     return d.toISOString().split("T")[0];
   });
+  const [estadoTraje, setEstadoTraje] = useState("DISPONIBLE");
 
-  // Datos del Cliente Activo
-  const [cliente, setCliente] = useState<Partial<Cliente>>({
-    CEDULA: 0,
-    NOMBRE: "",
-    DIRECCION: "",
-    TELEFONO: "",
-    EMPRESA: "",
-  });
-  const [cedulaInput, setCedulaInput] = useState("");
-
-  // Artículos y Carrito
-  const [articulosDisponibles, setArticulosDisponibles] = useState<Articulo[]>(ARTICULOS_DEMO);
+  // Línea de Artículo
+  const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
   const [articuloSeleccionadoId, setArticuloSeleccionadoId] = useState<string>("");
-  const [busquedaArticulo, setBusquedaArticulo] = useState("");
-  const [cantidadInput, setCantidadInput] = useState<number>(1);
-  const [carrito, setCarrito] = useState<ItemAlquilerCarrito[]>([]);
-  const [itemSeleccionadoIndex, setItemSeleccionadoIndex] = useState<number | null>(null);
+  const [cantidad, setCantidad] = useState<number>(1);
 
-  // Panel de Cobros / Totales
+  // Tabla / Grid de Alquiler
+  const [gridItems, setGridItems] = useState<ItemAlquilerCarrito[]>([]);
+  const [filaSeleccionada, setFilaSeleccionada] = useState<number | null>(null);
+
+  // Panel de Cobro Lateral Derecho (Cyan)
   const [pagaEfectivo, setPagaEfectivo] = useState<string>("");
   const [pagaTransferencia, setPagaTransferencia] = useState<string>("");
   const [descuentoAlquiler, setDescuentoAlquiler] = useState<string>("");
 
   // Modales
-  const [modalClienteAbierto, setModalClienteAbierto] = useState(false);
-  const [modalBuscarCliente, setModalBuscarCliente] = useState(false);
-  const [modalGastoAbierto, setModalGastoAbierto] = useState(false);
-  const [modalDevolucionAbierto, setModalDevolucionAbierto] = useState(false);
-  const [modalTicketAbierto, setModalTicketAbierto] = useState(false);
-  const [modalApartadosAbierto, setModalApartadosAbierto] = useState(false);
-  const [facturaGenerada, setFacturaGenerada] = useState<Factura | null>(null);
+  const [modalCliente, setModalCliente] = useState(false);
+  const [modalBuscarCli, setModalBuscarCli] = useState(false);
+  const [modalGasto, setModalGasto] = useState(false);
+  const [modalDevolucion, setModalDevolucion] = useState(false);
+  const [modalApartados, setModalApartados] = useState(false);
+  const [modalImprimir, setModalImprimir] = useState(false);
 
-  // Formulario de Gasto
-  const [gastoForm, setGastoForm] = useState({ descripcion: "", valor: "" });
-
-  // Formulario de Devolución
-  const [devolucionForm, setDevolucionForm] = useState({ numeroFactura: "", valorDeposito: 0 });
-
-  // Búsqueda de Clientes Modal
-  const [busquedaClienteQuery, setBusquedaClienteQuery] = useState("");
+  // Estados de formularios modales
+  const [busqClienteInput, setBusqClienteInput] = useState("");
   const [clientesEncontrados, setClientesEncontrados] = useState<Cliente[]>([]);
+  const [gastoDesc, setGastoDesc] = useState("");
+  const [gastoMonto, setGastoMonto] = useState("");
+  const [devFactura, setDevFactura] = useState("");
+  const [devMonto, setDevMonto] = useState<number>(0);
 
-  // Cargar número de factura inicial y catálogo
+  // Cargar número y catálogo
   useEffect(() => {
-    generarNumeroFactura().then(setNumeroFactura);
-    listarArticulos().then((arts) => {
-      if (arts && arts.length > 0) {
-        setArticulosDisponibles(arts);
-      }
+    generarNumeroFactura().then((num) => setNumeroRecibo(num));
+    listarArticulos().then((res) => {
+      if (res && res.length > 0) setArticulos(res);
     });
   }, []);
 
   // Cálculos de Totales en Tiempo Real
-  const totalAlquiler = useMemo(() => {
-    return carrito.reduce((sum, item) => sum + item.totalAlquiler, 0);
-  }, [carrito]);
-
   const totalDeposito = useMemo(() => {
-    return carrito.reduce((sum, item) => sum + item.totalDeposito, 0);
-  }, [carrito]);
+    return gridItems.reduce((acc, it) => acc + it.totalDeposito, 0);
+  }, [gridItems]);
+
+  const totalAlquiler = useMemo(() => {
+    return gridItems.reduce((acc, it) => acc + it.totalAlquiler, 0);
+  }, [gridItems]);
 
   const descuentoNum = parseFloat(descuentoAlquiler) || 0;
-  const totalAlquilerConDescuento = Math.max(0, totalAlquiler - descuentoNum);
-  const totalDepositoMasAlquiler = totalDeposito + totalAlquilerConDescuento;
+  const totalAlquilerConDesc = Math.max(0, totalAlquiler - descuentoNum);
+  const totalDepositoMasAlquiler = totalDeposito + totalAlquilerConDesc;
 
-  const pagoEfectivoNum = parseFloat(pagaEfectivo) || 0;
-  const pagoTransfNum = parseFloat(pagaTransferencia) || 0;
-  const totalPagado = pagoEfectivoNum + pagoTransfNum;
-  const cambioVuelto = totalPagado - totalDepositoMasAlquiler;
+  const efecNum = parseFloat(pagaEfectivo) || 0;
+  const transNum = parseFloat(pagaTransferencia) || 0;
+  const totalPagado = efecNum + transNum;
+  const cambioVuelto = totalPagado > 0 ? totalPagado - totalDepositoMasAlquiler : 0;
 
-  // Búsqueda Rápida de Cliente por Cédula (Enter o blur)
-  async function handleBuscarCedula(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    if (!cedulaInput.trim()) {
-      toast.error("Ingresa el número de cédula");
-      return;
-    }
-    const cli = await buscarClientePorCedula(cedulaInput);
+  // Buscar Cédula con Enter
+  async function handleBuscarCedula(e?: React.KeyboardEvent) {
+    if (e && e.key !== "Enter") return;
+    if (!cedula.trim()) return;
+
+    const cli = await buscarClientePorCedula(cedula);
     if (cli) {
-      setCliente(cli);
-      toast.success(`Cliente cargado: ${cli.NOMBRE}`);
+      setNombre(cli.NOMBRE || "");
+      setDireccion(cli.DIRECCION || "");
+      setTelefono(cli.TELEFONO || "");
+      setEmpresa(cli.EMPRESA || "");
+      toast.success(`Cliente: ${cli.NOMBRE}`);
     } else {
-      toast.info("Cédula no encontrada. Puedes registrarla ahora.");
-      setCliente((prev) => ({ ...prev, CEDULA: Number(cedulaInput), NOMBRE: "" }));
-      setModalClienteAbierto(true);
+      toast.info("Cédula no registrada. Puedes registrar los datos.");
+      setModalCliente(true);
     }
   }
 
-  // Agregar Artículo al Carrito
-  function handleAgregarArticulo() {
-    let art: Articulo | undefined;
-    if (articuloSeleccionadoId) {
-      art = articulosDisponibles.find((a) => String(a.IDARTICULO) === articuloSeleccionadoId);
-    } else if (busquedaArticulo.trim()) {
-      art = articulosDisponibles.find(
-        (a) =>
-          a.CODBARRAS === busquedaArticulo.trim() ||
-          a.DESCRIPCION.toLowerCase().includes(busquedaArticulo.toLowerCase())
-      );
-    }
-
+  // Agregar Artículo a la Tabla
+  function handleAgregarItem() {
+    const art = articulos.find((a) => String(a.IDARTICULO) === articuloSeleccionadoId);
     if (!art) {
-      toast.error("Selecciona o ingresa un artículo válido");
+      toast.error("Selecciona un artículo de la lista");
       return;
     }
-
-    const cantidad = Math.max(1, cantidadInput || 1);
+    const cant = Math.max(1, cantidad || 1);
     const item: ItemAlquilerCarrito = {
       idTemp: `${Date.now()}-${Math.random()}`,
       articulo: art,
       descripcion: art.DESCRIPCION,
       talla: art.TALLA,
       codigoBarras: art.CODBARRAS,
-      cantidad: cantidad,
+      cantidad: cant,
       valorAlquiler: Number(art.VALOR),
-      totalAlquiler: Number(art.VALOR) * cantidad,
+      totalAlquiler: Number(art.VALOR) * cant,
       valorDeposito: Number(art.VALORDEPOSITO),
-      totalDeposito: Number(art.VALORDEPOSITO) * cantidad,
-      totalGeneral: (Number(art.VALOR) + Number(art.VALORDEPOSITO)) * cantidad,
+      totalDeposito: Number(art.VALORDEPOSITO) * cant,
+      totalGeneral: (Number(art.VALOR) + Number(art.VALORDEPOSITO)) * cant,
     };
-
-    setCarrito((prev) => [...prev, item]);
+    setGridItems((prev) => [...prev, item]);
     setArticuloSeleccionadoId("");
-    setBusquedaArticulo("");
-    setCantidadInput(1);
-    toast.success(`Agregado: ${art.DESCRIPCION} (${cantidad} und)`);
+    setCantidad(1);
+    toast.success(`Agregado: ${art.DESCRIPCION}`);
   }
 
-  // Eliminar Artículo del Carrito
-  function handleEliminarItem() {
-    if (itemSeleccionadoIndex === null || itemSeleccionadoIndex < 0) {
+  // Eliminar Fila
+  function handleEliminarFila() {
+    if (filaSeleccionada === null || filaSeleccionada < 0) {
       toast.error("Selecciona una fila de la tabla para eliminar");
       return;
     }
-    setCarrito((prev) => prev.filter((_, idx) => idx !== itemSeleccionadoIndex));
-    setItemSeleccionadoIndex(null);
-    toast.info("Ítem eliminado del alquiler");
+    setGridItems((prev) => prev.filter((_, i) => i !== filaSeleccionada));
+    setFilaSeleccionada(null);
+    toast.info("Artículo eliminado de la lista");
   }
 
-  // Limpiar para Nuevo Alquiler
-  function handleNuevoAlquiler() {
-    generarNumeroFactura().then(setNumeroFactura);
-    setCliente({ CEDULA: 0, NOMBRE: "", DIRECCION: "", TELEFONO: "", EMPRESA: "" });
-    setCedulaInput("");
-    setCarrito([]);
+  // Nuevo Alquiler
+  function handleLimpiar() {
+    generarNumeroFactura().then(setNumeroRecibo);
+    setCedula("");
+    setNombre("");
+    setDireccion("");
+    setTelefono("");
+    setEmpresa("");
+    setGridItems([]);
     setPagaEfectivo("");
     setPagaTransferencia("");
     setDescuentoAlquiler("");
-    setItemSeleccionadoIndex(null);
-    toast.info("Formulario reiniciado para nuevo alquiler");
+    setFilaSeleccionada(null);
+    toast.info("Nuevo alquiler iniciado");
   }
 
-  // Procesar y Guardar Alquiler (PAGAR)
-  async function handleProcesarPago() {
-    if (!cliente.NOMBRE || !cliente.CEDULA) {
-      toast.error("Debes ingresar y registrar los datos del cliente");
+  // Pagar / Confirmar Alquiler
+  async function handlePagar() {
+    if (!nombre.trim() || !cedula.trim()) {
+      toast.error("Ingresa la CÉDULA y el NOMBRE del cliente");
       return;
     }
-    if (carrito.length === 0) {
-      toast.error("Debes agregar al menos un artículo o traje al alquiler");
+    if (gridItems.length === 0) {
+      toast.error("Debes agregar artículos al alquiler");
       return;
     }
 
     try {
-      const facturaData: Omit<Factura, "IDFACTURA"> = {
-        NUMEROFACT: numeroFactura,
+      const factura: Omit<Factura, "IDFACTURA"> = {
+        NUMEROFACT: numeroRecibo,
         FECHASALIDA: fechaSalida,
         FECHAENTRADA: fechaEntrada,
         FTOTALDEPOSITO: totalDeposito,
         FTOTALVENTADEPOSITO: totalDepositoMasAlquiler,
-        FTOTALALQUILER: totalAlquilerConDescuento,
-        FORMAPAGO: pagoTransfNum > 0 && pagoEfectivoNum > 0 ? "MIXTO" : pagoTransfNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
+        FTOTALALQUILER: totalAlquilerConDesc,
+        FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
         MODO: "ALQUILER",
         VENDEDOR: cajero,
-        CCLIENTE: cliente.NOMBRE,
-        CCEDULA: String(cliente.CEDULA),
-        CDIRECCION: cliente.DIRECCION,
-        CTELEFONO: cliente.TELEFONO,
-        CEMPRESA: cliente.EMPRESA,
+        CCLIENTE: nombre,
+        CCEDULA: cedula,
+        CDIRECCION: direccion,
+        CTELEFONO: telefono,
+        CEMPRESA: empresa,
         PAGACON: totalPagado,
-        PAGOCONEFECTIVO: pagoEfectivoNum,
-        PAGOCONTRANFERENCIA: pagoTransfNum,
+        PAGOCONEFECTIVO: efecNum,
+        PAGOCONTRANFERENCIA: transNum,
         CAMBIOS: Math.max(0, cambioVuelto),
         DESCUENTO: descuentoNum,
         ESTADOCLIENTE: "ALQUILADO",
         TOTAL_SALDO: cambioVuelto < 0 ? Math.abs(cambioVuelto) : 0,
-        FECHA_RECIBO: new Date().toISOString().split("T")[0],
+        FECHA_RECIBO: fechaHoy,
       };
 
-      const itemsData: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[] = carrito.map((item) => ({
-        DESCRIPCION: `${item.descripcion} (Talla: ${item.talla})`,
-        CANTIDAD: item.cantidad,
-        VALOR: item.valorAlquiler,
-        TOTAL: item.totalGeneral,
-        BARRAS: item.codigoBarras || "0",
-        NUMEROFACT: numeroFactura,
-        VALORDEPOSITO: item.valorDeposito,
-        TOTALALQUILER: item.totalAlquiler,
-        TOTALDEPOSITO: item.totalDeposito,
+      const campos: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[] = gridItems.map((g) => ({
+        DESCRIPCION: `${g.descripcion} (TALLA: ${g.talla})`,
+        CANTIDAD: g.cantidad,
+        VALOR: g.valorAlquiler,
+        TOTAL: g.totalGeneral,
+        BARRAS: g.codigoBarras || "0",
+        NUMEROFACT: numeroRecibo,
+        VALORDEPOSITO: g.valorDeposito,
+        TOTALALQUILER: g.totalAlquiler,
+        TOTALDEPOSITO: g.totalDeposito,
       }));
 
-      // Guardar también cliente si no tenía id
-      await guardarCliente(cliente);
-
-      // Registrar Factura
-      const result = await registrarAlquilerFactura(facturaData, itemsData);
-      setFacturaGenerada(result.factura);
-      setModalTicketAbierto(true);
-      toast.success("¡Alquiler registrado con éxito!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Alquiler procesado en modo local / offline");
-      // Permitir emitir ticket aunque supabase falle
-      setFacturaGenerada({
-        IDFACTURA: Date.now(),
-        NUMEROFACT: numeroFactura,
-        FECHASALIDA: fechaSalida,
-        FECHAENTRADA: fechaEntrada,
-        FTOTALDEPOSITO: totalDeposito,
-        FTOTALVENTADEPOSITO: totalDepositoMasAlquiler,
-        FTOTALALQUILER: totalAlquilerConDescuento,
-        FORMAPAGO: "EFECTIVO",
-        CCLIENTE: cliente.NOMBRE || "CLIENTE",
-        PAGOCONEFECTIVO: pagoEfectivoNum,
-        PAGOCONTRANFERENCIA: pagoTransfNum,
-        DESCUENTO: descuentoNum,
+      await guardarCliente({
+        CEDULA: Number(cedula) || 0,
+        NOMBRE: nombre,
+        DIRECCION: direccion,
+        TELEFONO: telefono,
+        EMPRESA: empresa,
       });
-      setModalTicketAbierto(true);
-    }
-  }
 
-  // Guardar Cliente desde Modal
-  async function handleGuardarClienteModal(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const guardado = await guardarCliente(cliente);
-      if (guardado) setCliente(guardado);
-      setModalClienteAbierto(false);
-      toast.success("Cliente guardado correctamente");
+      await registrarAlquilerFactura(factura, campos);
+      setModalImprimir(true);
+      toast.success("¡Alquiler procesado exitosamente!");
     } catch {
-      setModalClienteAbierto(false);
-      toast.success("Cliente asignado localmente");
-    }
-  }
-
-  // Registrar Gasto
-  async function handleGuardarGasto() {
-    if (!gastoForm.descripcion || !gastoForm.valor) {
-      toast.error("Completa descripción y valor");
-      return;
-    }
-    try {
-      await registrarGasto({
-        DESCRIPCIONSALIDA: gastoForm.descripcion,
-        VALORSALIDA: gastoForm.valor,
-        FECHA: new Date().toISOString().split("T")[0],
-        NUMEROGASTO: `G-${Date.now()}`,
-      });
-      toast.success("Gasto registrado");
-      setModalGastoAbierto(false);
-      setGastoForm({ descripcion: "", valor: "" });
-    } catch {
-      toast.success("Gasto registrado");
-      setModalGastoAbierto(false);
-    }
-  }
-
-  // Registrar Devolución / Entrada Vestido
-  async function handleGuardarDevolucion() {
-    if (!devolucionForm.numeroFactura) {
-      toast.error("Ingresa el número de factura");
-      return;
-    }
-    try {
-      await registrarDevolucionVestido({
-        numeroFactura: devolucionForm.numeroFactura,
-        valorDepositoDevuelto: Number(devolucionForm.valorDeposito),
-      });
-      toast.success("Vestido devuelto y depósito liquidado");
-      setModalDevolucionAbierto(false);
-    } catch {
-      toast.success("Devolución registrada");
-      setModalDevolucionAbierto(false);
+      setModalImprimir(true);
+      toast.success("Alquiler procesado (Modo local)");
     }
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col bg-slate-100 font-sans text-slate-800">
-      {/* =========================================================
-          ENCABEZADO / HEADER DEL PUNTO DE VENTA
-      ========================================================= */}
-      <header className="border-b bg-gradient-to-r from-red-700 via-red-600 to-rose-700 px-6 py-3 text-white shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 shadow-inner backdrop-blur-sm">
-              <Sparkles className="h-6 w-6 text-yellow-300" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-wider uppercase text-white drop-shadow-sm">
-                PUNTO DE VENTA — ALQUILER
-              </h1>
-              <p className="text-xs text-red-100">La Casa Del Disfraz & Elegance Rentals · Sistema de Gestión</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="bg-white/90 px-3 py-1 text-xs font-bold text-red-700">
-              CAJERO: {cajero}
-            </Badge>
-            <Badge variant="outline" className="border-white/40 px-3 py-1 text-xs font-bold text-white">
-              FACTURA: {numeroFactura}
-            </Badge>
+    <div className="flex min-h-screen flex-col bg-[#EDEDED] font-sans text-slate-900 select-none">
+      {/* =========================================================================
+          1. ENCABEZADO / HEADER: TÍTULO "PUNTO DE VENTA" Y LOGO "LA CASA DEL DISFRAZ"
+      ========================================================================= */}
+      <div className="relative flex items-center justify-between border-b-2 border-slate-300 bg-[#F5F5F5] px-6 py-2 shadow-sm">
+        <div className="w-48">
+          <div className="inline-block rounded border border-slate-300 bg-white px-3 py-1 shadow-inner">
+            <span className="text-xs font-bold text-slate-500 uppercase">ALQUILER</span>
           </div>
         </div>
-      </header>
 
-      {/* =========================================================
-          BARRA DE ACCIONES PRINCIPALES (BOTONES SUPERIORES)
-      ========================================================= */}
-      <div className="border-b bg-white px-6 py-2.5 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => setModalClienteAbierto(true)}
-            className="bg-red-600 font-semibold text-white hover:bg-red-700"
-          >
-            <UserPlus className="mr-1.5 h-4 w-4" /> NUEVO CLIENTE
-          </Button>
+        {/* TÍTULO PRINCIPAL ROJO WINDEV */}
+        <div className="text-center">
+          <h1 className="text-3xl font-black tracking-widest text-[#D60000] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
+            PUNTO DE VENTA
+          </h1>
+        </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setModalClienteAbierto(true)}
-            className="border-red-300 font-semibold text-red-700 hover:bg-red-50"
-          >
-            <UserCheck className="mr-1.5 h-4 w-4" /> MODIFICAR
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setModalBuscarCliente(true)}
-            className="border-slate-300 font-semibold hover:bg-slate-50"
-          >
-            <Search className="mr-1.5 h-4 w-4" /> BUSCAR CLIENTE
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleNuevoAlquiler}
-            className="bg-slate-800 font-semibold text-white hover:bg-slate-900"
-          >
-            <PlusCircle className="mr-1.5 h-4 w-4" /> NUEVO ALQUILER
-          </Button>
-
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setModalGastoAbierto(true)}
-            className="font-semibold"
-          >
-            <TrendingDown className="mr-1.5 h-4 w-4" /> GASTO (SALIDA)
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setModalTicketAbierto(true)}
-            className="border-slate-300 font-semibold hover:bg-slate-50"
-          >
-            <Printer className="mr-1.5 h-4 w-4" /> REIMPRIMIR
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => setModalApartadosAbierto(true)}
-            className="bg-amber-600 font-semibold text-white hover:bg-amber-700"
-          >
-            <CalendarCheck2 className="mr-1.5 h-4 w-4" /> APARTADOS
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => setModalDevolucionAbierto(true)}
-            className="bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
-          >
-            <Undo2 className="mr-1.5 h-4 w-4" /> ENTRADA VESTIDO
-          </Button>
+        {/* LOGO LA CASA DEL DISFRAZ (IDÉNTICO A LA IMAGEN) */}
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <div className="inline-block rounded-xl border-2 border-amber-400 bg-gradient-to-r from-amber-500 via-red-500 to-purple-600 px-3 py-1 text-white shadow-md">
+              <span className="text-base font-black italic tracking-wide">La Casa Del Disfraz</span>
+            </div>
+            <p className="mt-0.5 text-[10px] font-semibold text-slate-500">
+              Para toda ocasión sin importar tu edad
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* =========================================================
-          CUERPO PRINCIPAL DEL POS (FORMULARIO + TABLA + TOTALES)
-      ========================================================= */}
-      <div className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-12">
-        {/* COLUMNA IZQUIERDA (8 COLUMNAS): DATOS + ARTÍCULOS + TABLA */}
-        <div className="flex flex-col gap-4 lg:col-span-8 xl:col-span-9">
-          {/* TARJETA 1: DATOS DE CABECERA Y CLIENTE */}
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-                {/* ESTADO CLIENTE */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-600 uppercase">Estado</Label>
-                  <Select value={estadoCliente} onValueChange={setEstadoCliente}>
-                    <SelectTrigger className="mt-1 h-8 bg-slate-50 text-xs font-semibold">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ACTIVO">ACTIVO</SelectItem>
-                      <SelectItem value="PENDIENTE">PENDIENTE</SelectItem>
-                      <SelectItem value="BLOQUEADO">BLOQUEADO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* FECHA SALIDA */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-600 uppercase">Fecha Salida</Label>
-                  <Input
-                    type="date"
-                    value={fechaSalida}
-                    onChange={(e) => setFechaSalida(e.target.value)}
-                    className="mt-1 h-8 bg-slate-50 text-xs font-semibold"
-                  />
-                </div>
-
-                {/* FECHA ENTRADA */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-600 uppercase">Fecha Entrada</Label>
-                  <Input
-                    type="date"
-                    value={fechaEntrada}
-                    onChange={(e) => setFechaEntrada(e.target.value)}
-                    className="mt-1 h-8 bg-slate-50 text-xs font-semibold"
-                  />
-                </div>
-
-                {/* ESTADO TRAJE */}
-                <div>
-                  <Label className="text-xs font-bold text-slate-600 uppercase">Estado Traje</Label>
-                  <Select value={estadoTraje} onValueChange={setEstadoTraje}>
-                    <SelectTrigger className="mt-1 h-8 bg-slate-50 text-xs font-semibold">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DISPONIBLE">DISPONIBLE</SelectItem>
-                      <SelectItem value="ALQUILADO">ALQUILADO</SelectItem>
-                      <SelectItem value="LAVANDERIA">LAVANDERÍA</SelectItem>
-                      <SelectItem value="MANTENIMIENTO">MANTENIMIENTO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* =========================================================================
+          2. CUERPO PRINCIPAL: FORMULARIO SUPERIOR + TABLA + PANEL CYAN DERECHO
+      ========================================================================= */}
+      <div className="flex flex-1 p-3 gap-3 overflow-hidden">
+        {/* LADO IZQUIERDO: FORMULARIO CABECERA + BOTONES DE ACCIÓN + TABLA */}
+        <div className="flex flex-1 flex-col gap-2">
+          {/* BLOQUE SUPERIOR: CAMPOS DE CABECERA (3 COLUMNAS IDÉNTICAS A WINDEV) */}
+          <div className="rounded border-2 border-slate-300 bg-[#E8E8E8] p-3 shadow-inner">
+            <div className="grid grid-cols-12 gap-x-3 gap-y-1.5 text-xs font-bold">
+              {/* FILA 1 */}
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">ESTADO</span>
+                <select
+                  value={estadoCli}
+                  onChange={(e) => setEstadoCli(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-semibold focus:outline-none"
+                >
+                  <option value="ACTIVO">ACTIVO</option>
+                  <option value="PENDIENTE">PENDIENTE</option>
+                  <option value="BLOQUEADO">BLOQUEADO</option>
+                </select>
               </div>
 
-              <div className="mt-3 border-t pt-3">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                  {/* CÉDULA (BÚSQUEDA RÁPIDA) */}
-                  <div>
-                    <Label className="text-xs font-bold text-red-600 uppercase">
-                      Cédula <span className="text-[10px] text-slate-500">(Obligatoria)</span>
-                    </Label>
-                    <div className="mt-1 flex gap-1">
-                      <Input
-                        placeholder="Cédula / DNI"
-                        value={cedulaInput}
-                        onChange={(e) => {
-                          setCedulaInput(e.target.value);
-                          setCliente((prev) => ({ ...prev, CEDULA: Number(e.target.value) || 0 }));
-                        }}
-                        onKeyDown={(e) => e.key === "Enter" && handleBuscarCedula()}
-                        className="h-8 text-xs font-bold text-slate-900"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => handleBuscarCedula()}
-                        className="h-8 bg-red-600 px-2 text-white hover:bg-red-700"
-                      >
-                        <Search className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* NOMBRE */}
-                  <div>
-                    <Label className="text-xs font-bold text-slate-600 uppercase">Nombre</Label>
-                    <Input
-                      placeholder="Nombre del cliente"
-                      value={cliente.NOMBRE || ""}
-                      onChange={(e) => setCliente((prev) => ({ ...prev, NOMBRE: e.target.value }))}
-                      className="mt-1 h-8 bg-slate-50 text-xs font-semibold"
-                    />
-                  </div>
-
-                  {/* DIRECCIÓN */}
-                  <div>
-                    <Label className="text-xs font-bold text-slate-600 uppercase">Dirección</Label>
-                    <Input
-                      placeholder="Dirección del cliente"
-                      value={cliente.DIRECCION || ""}
-                      onChange={(e) => setCliente((prev) => ({ ...prev, DIRECCION: e.target.value }))}
-                      className="mt-1 h-8 bg-slate-50 text-xs"
-                    />
-                  </div>
-
-                  {/* TELÉFONO */}
-                  <div>
-                    <Label className="text-xs font-bold text-slate-600 uppercase">Teléfono</Label>
-                    <div className="mt-1 flex gap-1">
-                      <Input
-                        placeholder="Teléfono / Celular"
-                        value={cliente.TELEFONO || ""}
-                        onChange={(e) => setCliente((prev) => ({ ...prev, TELEFONO: e.target.value }))}
-                        className="h-8 bg-slate-50 text-xs"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setModalClienteAbierto(true)}
-                        className="h-8 px-2 text-xs font-bold"
-                      >
-                        Mod
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+              <div className="col-span-5 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">CÉDULA</span>
+                <input
+                  type="text"
+                  placeholder="Entrada obligatoria"
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  onKeyDown={handleBuscarCedula}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-red-500"
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* TARJETA 2: SELECTOR DE ARTÍCULOS Y CONTROLES */}
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-end gap-3">
-                {/* SELECTOR / BUSCADOR DE ARTÍCULO */}
-                <div className="min-w-[280px] flex-1">
-                  <Label className="text-xs font-bold text-slate-700 uppercase">
-                    Artículo / Traje / Disfraz
-                  </Label>
-                  <Select
-                    value={articuloSeleccionadoId}
-                    onValueChange={(val) => {
-                      setArticuloSeleccionadoId(val);
-                      const a = articulosDisponibles.find((x) => String(x.IDARTICULO) === val);
-                      if (a) setBusquedaArticulo(a.DESCRIPCION);
-                    }}
-                  >
-                    <SelectTrigger className="mt-1 h-9 bg-white text-xs font-medium">
-                      <SelectValue placeholder="Seleccionar artículo del catálogo..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {articulosDisponibles.map((art) => (
-                        <SelectItem key={art.IDARTICULO} value={String(art.IDARTICULO)}>
-                          <span className="font-bold text-slate-800">{art.DESCRIPCION}</span>
-                          <span className="ml-2 text-xs text-slate-500">
-                            (Talla: {art.TALLA} | Alq: ${art.VALOR} | Dep: ${art.VALORDEPOSITO} | Stock: {art.STOCK})
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* CANTIDAD */}
-                <div className="w-24">
-                  <Label className="text-xs font-bold text-slate-700 uppercase">Cantidad</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={cantidadInput}
-                    onChange={(e) => setCantidadInput(Math.max(1, parseInt(e.target.value) || 1))}
-                    onKeyDown={(e) => e.key === "Enter" && handleAgregarArticulo()}
-                    className="mt-1 h-9 text-center font-bold"
-                  />
-                </div>
-
-                {/* BOTÓN AGREGAR */}
-                <Button
-                  onClick={handleAgregarArticulo}
-                  className="h-9 bg-slate-900 px-4 font-semibold text-white hover:bg-slate-800"
-                >
-                  <PlusCircle className="mr-1.5 h-4 w-4" /> Agregar
-                </Button>
-
-                {/* BOTÓN ELIMINAR */}
-                <Button
-                  variant="destructive"
-                  onClick={handleEliminarItem}
-                  disabled={itemSeleccionadoIndex === null}
-                  className="h-9 font-semibold"
-                >
-                  <Trash2 className="mr-1.5 h-4 w-4" /> ELIMINAR
-                </Button>
-
-                {/* BOTÓN PAGAR */}
-                <Button
-                  onClick={handleProcesarPago}
-                  disabled={carrito.length === 0}
-                  className="h-9 bg-emerald-600 px-5 font-black tracking-wide text-white hover:bg-emerald-700"
-                >
-                  <CreditCard className="mr-1.5 h-4 w-4" /> PAGAR
-                </Button>
-
-                {/* BOTÓN SALIR / LIMPIAR */}
-                <Button
-                  variant="outline"
-                  onClick={handleNuevoAlquiler}
-                  className="h-9 font-semibold hover:bg-red-50 hover:text-red-700"
-                >
-                  <X className="mr-1.5 h-4 w-4" /> SALIR
-                </Button>
+              <div className="col-span-4 flex items-center gap-2">
+                <span className="w-28 text-slate-700 uppercase">FECHA SALIDA</span>
+                <input
+                  type="date"
+                  value={fechaSalida}
+                  onChange={(e) => setFechaSalida(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-semibold focus:outline-none"
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* TARJETA 3: TABLA / GRID DE ALQUILER (CAMPOFACTURA) */}
-          <Card className="flex-1 border-slate-200 shadow-sm">
-            <CardHeader className="border-b bg-slate-800 px-4 py-2 text-white">
-              <CardTitle className="text-xs font-bold tracking-wider uppercase">
-                Detalle de Prendas Alquiladas ({carrito.length} ítems)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[340px] overflow-auto">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-slate-100 text-xs font-black text-slate-700">
-                    <TableRow className="border-b">
-                      <TableHead className="w-12 text-center">#</TableHead>
-                      <TableHead className="min-w-[220px]">DESCRIPCIÓN</TableHead>
-                      <TableHead className="text-center">TALLA</TableHead>
-                      <TableHead className="text-center">CANTIDAD</TableHead>
-                      <TableHead className="text-right">VALOR ALQUILER</TableHead>
-                      <TableHead className="text-right">TOTAL ALQUILER</TableHead>
-                      <TableHead className="text-right">DEPÓSITO (UND)</TableHead>
-                      <TableHead className="text-right font-bold text-slate-900">TOTAL DEPÓSITO</TableHead>
-                      <TableHead className="text-right font-black text-red-600">TOTAL GRAL</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {carrito.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="py-12 text-center text-sm text-slate-400">
-                          No hay prendas agregadas a este alquiler. Selecciona un artículo arriba para comenzar.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      carrito.map((item, idx) => {
-                        const isSelected = itemSeleccionadoIndex === idx;
-                        return (
-                          <TableRow
-                            key={item.idTemp}
-                            onClick={() => setItemSeleccionadoIndex(idx)}
-                            className={`cursor-pointer transition-colors ${
-                              isSelected ? "bg-red-50 font-medium text-red-900" : "hover:bg-slate-50"
-                            }`}
-                          >
-                            <TableCell className="text-center text-xs text-slate-500">{idx + 1}</TableCell>
-                            <TableCell className="font-semibold text-slate-800">{item.descripcion}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="text-xs">
-                                {item.talla || "U"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center font-bold">{item.cantidad}</TableCell>
-                            <TableCell className="text-right text-slate-700">
-                              ${item.valorAlquiler.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-slate-900">
-                              ${item.totalAlquiler.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right text-slate-600">
-                              ${item.valorDeposito.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-blue-700">
-                              ${item.totalDeposito.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right font-black text-emerald-700">
-                              ${item.totalGeneral.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+              {/* FILA 2 */}
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">FECHA</span>
+                <input
+                  type="date"
+                  value={fechaHoy}
+                  onChange={(e) => setFechaHoy(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-semibold focus:outline-none"
+                />
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="col-span-5 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">NOMBRE</span>
+                <input
+                  type="text"
+                  placeholder="Nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-2">
+                <span className="w-28 text-slate-700 uppercase">FECHA ENTRADA</span>
+                <input
+                  type="date"
+                  value={fechaEntrada}
+                  onChange={(e) => setFechaEntrada(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              {/* FILA 3 */}
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">N.RECIBO</span>
+                <input
+                  type="text"
+                  value={numeroRecibo}
+                  onChange={(e) => setNumeroRecibo(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-red-700 focus:outline-none"
+                />
+              </div>
+
+              <div className="col-span-5 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">DIRECCIÓN</span>
+                <input
+                  type="text"
+                  placeholder="Direccion"
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-2">
+                <span className="w-28 text-slate-700 uppercase">ESTADO TRAJE</span>
+                <select
+                  value={estadoTraje}
+                  onChange={(e) => setEstadoTraje(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-semibold focus:outline-none"
+                >
+                  <option value="DISPONIBLE">DISPONIBLE</option>
+                  <option value="ALQUILADO">ALQUILADO</option>
+                  <option value="LAVANDERIA">LAVANDERÍA</option>
+                  <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                </select>
+              </div>
+
+              {/* FILA 4 */}
+              <div className="col-span-3 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">CAJERO</span>
+                <input
+                  type="text"
+                  value={cajero}
+                  onChange={(e) => setCajero(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-[10px] font-bold uppercase focus:outline-none"
+                />
+              </div>
+
+              <div className="col-span-5 flex items-center gap-2">
+                <span className="w-20 text-slate-700 uppercase">TELÉFONO</span>
+                <input
+                  type="text"
+                  placeholder="Teléfono"
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs placeholder:text-slate-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setModalCliente(true)}
+                  className="h-6 rounded bg-[#B30000] px-2.5 text-[11px] font-black text-white hover:bg-red-800"
+                >
+                  Mod
+                </button>
+              </div>
+
+              <div className="col-span-4 flex items-center gap-2">
+                <span className="w-28 text-slate-700 uppercase">EMPRESA</span>
+                <input
+                  type="text"
+                  placeholder="Empresa / Institución"
+                  value={empresa}
+                  onChange={(e) => setEmpresa(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* BARRA DE BOTONES MAGENTA / ROJOS (IDÉNTICOS A WINDEV) */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-[#E0E0E0] p-1.5 rounded border border-slate-300">
+            <button
+              onClick={() => setModalCliente(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              NUEVO CLIENTE
+            </button>
+            <button
+              onClick={() => setModalCliente(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              MODIFICAR
+            </button>
+            <button
+              onClick={() => setModalBuscarCli(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              BUSCAR CLIENTE
+            </button>
+            <button
+              onClick={handleLimpiar}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              NUEVO
+            </button>
+            <button
+              onClick={handleLimpiar}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              NUEVO ALQUILER
+            </button>
+            <button
+              onClick={() => setModalGasto(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              GASTO(SALIDA)
+            </button>
+            <button
+              onClick={() => setModalImprimir(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              REIMPRIMIR
+            </button>
+            <button
+              onClick={() => setModalApartados(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              APARTADOS
+            </button>
+            <button
+              onClick={() => setModalDevolucion(true)}
+              className="h-7 rounded bg-[#C71585] px-3 text-xs font-black text-white shadow hover:bg-[#A0106A]"
+            >
+              ENTRADA VESTIDO
+            </button>
+          </div>
+
+          {/* SELECTOR DE ARTÍCULO Y CONTROLES */}
+          <div className="flex items-center gap-2 rounded border border-slate-300 bg-[#E8E8E8] p-2">
+            <span className="text-xs font-black text-slate-800 uppercase">ARTICULO</span>
+            <select
+              value={articuloSeleccionadoId}
+              onChange={(e) => setArticuloSeleccionadoId(e.target.value)}
+              className="h-8 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none"
+            >
+              <option value="">-- SELECCIONAR ARTÍCULO / TRAJE / DISFRAZ --</option>
+              {articulos.map((art) => (
+                <option key={art.IDARTICULO} value={String(art.IDARTICULO)}>
+                  {art.DESCRIPCION} (TALLA: {art.TALLA} | VALOR: ${art.VALOR.toLocaleString()} | DEP: ${art.VALORDEPOSITO.toLocaleString()} | STOCK: {art.STOCK})
+                </option>
+              ))}
+            </select>
+
+            <span className="text-xs font-black text-slate-800 uppercase ml-2">CANTIDAD</span>
+            <input
+              type="number"
+              min={1}
+              value={cantidad}
+              onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+              onKeyDown={(e) => e.key === "Enter" && handleAgregarItem()}
+              className="h-8 w-16 rounded border border-slate-400 bg-white text-center font-bold text-xs focus:outline-none"
+            />
+
+            <button
+              onClick={handleAgregarItem}
+              className="h-8 rounded bg-blue-700 px-3 text-xs font-bold text-white shadow hover:bg-blue-800"
+            >
+              + Agregar
+            </button>
+
+            <button
+              onClick={handleEliminarFila}
+              className="h-8 rounded bg-[#B30000] px-3 text-xs font-bold text-white shadow hover:bg-red-800 flex items-center gap-1"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> ELIMINAR
+            </button>
+
+            <button
+              onClick={handlePagar}
+              className="h-8 rounded bg-[#111827] px-4 text-xs font-black text-white shadow hover:bg-black"
+            >
+              PAGAR
+            </button>
+
+            <button
+              onClick={handleLimpiar}
+              className="h-8 rounded bg-[#8B0000] px-3 text-xs font-bold text-white shadow hover:bg-red-950 flex items-center gap-1"
+            >
+              SALIR <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* TABLA PRINCIPAL DE ÍTEMS ALQUILADOS (WINDEV GRID STYLE) */}
+          <div className="flex-1 rounded border-2 border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col">
+            <div className="overflow-auto flex-1">
+              <table className="w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className="bg-[#001F3F] text-white font-black uppercase text-[11px] tracking-wider sticky top-0">
+                    <th className="border-r border-slate-700 px-3 py-2">DESCRIPCION</th>
+                    <th className="border-r border-slate-700 px-2 py-2 text-center w-20">CANTIDAD</th>
+                    <th className="border-r border-slate-700 px-3 py-2 text-right">VALOR ALQUILER</th>
+                    <th className="border-r border-slate-700 px-3 py-2 text-right">TOTAL ALQUILER</th>
+                    <th className="border-r border-slate-700 px-3 py-2 text-right">DEPOSITO</th>
+                    <th className="border-r border-slate-700 px-3 py-2 text-right">TOTAL DEPOSITO</th>
+                    <th className="px-3 py-2 text-right">TOTAL ALQUILER</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gridItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-20 text-center text-slate-400 text-sm font-semibold">
+                        Selecciona un artículo y haz clic en "+ Agregar" para cargarlo en este alquiler.
+                      </td>
+                    </tr>
+                  ) : (
+                    gridItems.map((item, index) => {
+                      const isSelected = filaSeleccionada === index;
+                      const isEven = index % 2 === 0;
+                      return (
+                        <tr
+                          key={item.idTemp}
+                          onClick={() => setFilaSeleccionada(index)}
+                          className={`cursor-pointer border-b border-slate-200 transition-colors ${
+                            isSelected
+                              ? "bg-amber-200 font-bold text-slate-900"
+                              : isEven
+                              ? "bg-white"
+                              : "bg-[#EBF3FB]"
+                          }`}
+                        >
+                          <td className="px-3 py-1.5 font-semibold text-slate-800 border-r border-slate-200">
+                            {item.descripcion} <span className="text-[10px] text-slate-500">(TALLA: {item.talla})</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-center font-bold border-r border-slate-200">
+                            {item.cantidad}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-mono border-r border-slate-200">
+                            ${item.valorAlquiler.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                            ${item.totalAlquiler.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-mono border-r border-slate-200">
+                            ${item.valorDeposito.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
+                            ${item.totalDeposito.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-1.5 text-right font-mono font-black text-emerald-700">
+                            ${item.totalGeneral.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        {/* =========================================================
-            COLUMNA DERECHA (4 COLUMNAS): PANEL DE COBRO Y TOTALES (WINDEV STYLE)
-        ========================================================= */}
-        <div className="flex flex-col gap-4 lg:col-span-4 xl:col-span-3">
-          <Card className="border-2 border-slate-300 bg-white shadow-md">
-            <CardHeader className="border-b bg-gradient-to-r from-slate-900 to-slate-800 p-3 text-white">
-              <CardTitle className="text-center text-sm font-black tracking-wider uppercase">
-                Panel de Cobro & Caja
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 p-4">
-              {/* PAGA CON EFECTIVO */}
-              <div>
-                <Label className="text-xs font-bold text-slate-700 uppercase">Paga con Efectivo</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="0.00"
-                    value={pagaEfectivo}
-                    onChange={(e) => setPagaEfectivo(e.target.value)}
-                    className="h-10 pl-8 text-right font-mono text-lg font-black text-slate-900"
-                  />
-                </div>
+        {/* =========================================================================
+            LADO DERECHO: PANEL DE COBRO Y TOTALES CYAN (EXACTO A LA IMAGEN)
+        ========================================================================= */}
+        <div className="w-80 rounded-lg border-2 border-slate-400 bg-[#00A8E8] p-3 text-slate-900 shadow-md flex flex-col justify-between">
+          <div className="space-y-2">
+            {/* 1. PAGA CON EFECTIVO */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                PAGA CON EFECTIVO:
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={pagaEfectivo}
+                onChange={(e) => setPagaEfectivo(e.target.value)}
+                className="mt-0.5 h-10 w-full rounded border-2 border-slate-300 bg-white px-2 text-right font-mono text-2xl font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-800"
+              />
+            </div>
+
+            {/* 2. PAGA CON TRANSFERENCIA */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                PAGA CON TRANSFERENCIA:
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={pagaTransferencia}
+                onChange={(e) => setPagaTransferencia(e.target.value)}
+                className="mt-0.5 h-10 w-full rounded border-2 border-slate-300 bg-white px-2 text-right font-mono text-2xl font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-slate-800"
+              />
+            </div>
+
+            {/* 3. TOTAL DEPOSITO */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                TOTAL DEPOSITO
+              </label>
+              <div className="mt-0.5 flex h-10 w-full items-center justify-end rounded border-2 border-slate-300 bg-white px-3 font-mono text-2xl font-black text-slate-900 shadow-inner">
+                {totalDeposito.toLocaleString()}
               </div>
+            </div>
 
-              {/* PAGA CON TRANSFERENCIA */}
-              <div>
-                <Label className="text-xs font-bold text-slate-700 uppercase">Paga con Transferencia / QR</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">$</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="0.00"
-                    value={pagaTransferencia}
-                    onChange={(e) => setPagaTransferencia(e.target.value)}
-                    className="h-10 pl-8 text-right font-mono text-lg font-black text-slate-900"
-                  />
-                </div>
+            {/* 4. TOTAL ALQUILER */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                TOTAL ALQUILER
+              </label>
+              <div className="mt-0.5 flex h-10 w-full items-center justify-end rounded border-2 border-slate-300 bg-white px-3 font-mono text-2xl font-black text-slate-900 shadow-inner">
+                {totalAlquiler.toLocaleString()}
               </div>
+            </div>
 
-              <div className="border-t border-slate-200 pt-2 space-y-2">
-                {/* TOTAL DEPÓSITO */}
-                <div className="flex items-center justify-between rounded-lg bg-blue-50 p-2.5">
-                  <span className="text-xs font-bold text-blue-900 uppercase">Total Depósito (Fianza)</span>
-                  <span className="font-mono text-base font-black text-blue-800">
-                    ${totalDeposito.toLocaleString()}
-                  </span>
-                </div>
+            {/* 5. DESCUENTO ALQUILER */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                DESCUENTO_ALQUILER
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={descuentoAlquiler}
+                onChange={(e) => setDescuentoAlquiler(e.target.value)}
+                className="mt-0.5 h-8 w-full rounded border-2 border-slate-300 bg-white px-2 text-right font-mono text-lg font-bold text-red-600 shadow-inner focus:outline-none"
+              />
+            </div>
 
-                {/* TOTAL ALQUILER */}
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 p-2.5">
-                  <span className="text-xs font-bold text-slate-700 uppercase">Total Alquiler</span>
-                  <span className="font-mono text-base font-black text-slate-800">
-                    ${totalAlquiler.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* DESCUENTO ALQUILER */}
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-slate-600 uppercase">Descuento Alquiler</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="0"
-                    value={descuentoAlquiler}
-                    onChange={(e) => setDescuentoAlquiler(e.target.value)}
-                    className="h-7 w-24 text-right font-mono text-xs font-bold text-red-600"
-                  />
-                </div>
-
-                {/* TOTAL DEPÓSITO + ALQUILER (CAJA GRANDE WINDEV) */}
-                <div className="rounded-xl border-2 border-red-500 bg-red-50 p-3 text-center shadow-inner">
-                  <p className="text-xs font-black tracking-wider text-red-800 uppercase">
-                    TOTAL DEPÓSITO + ALQUILER
-                  </p>
-                  <p className="mt-1 font-mono text-3xl font-black text-red-700">
-                    ${totalDepositoMasAlquiler.toLocaleString()}
-                  </p>
-                </div>
-
-                {/* SU CAMBIO ES (VUELTO) */}
-                <div
-                  className={`rounded-xl border-2 p-3 text-center transition-colors ${
-                    cambioVuelto >= 0
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                      : "border-amber-400 bg-amber-50 text-amber-900"
-                  }`}
-                >
-                  <p className="text-xs font-black tracking-wider uppercase">
-                    {cambioVuelto >= 0 ? "SU CAMBIO ES:" : "SALDO PENDIENTE POR COBRAR:"}
-                  </p>
-                  <p className="mt-1 font-mono text-2xl font-black">
-                    {cambioVuelto >= 0 ? `$${cambioVuelto.toLocaleString()}` : `-$${Math.abs(cambioVuelto).toLocaleString()}`}
-                  </p>
-                </div>
+            {/* 6. TOTAL DEPOSITO + ALQUILER */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                TOTAL DEPOSITO + ALQUILER
+              </label>
+              <div className="mt-0.5 flex h-11 w-full items-center justify-end rounded border-2 border-slate-400 bg-white px-3 font-mono text-3xl font-black text-slate-900 shadow-inner">
+                {totalDepositoMasAlquiler.toLocaleString()}
               </div>
+            </div>
 
-              {/* BOTÓN GRANDE PRINCIPAL PAGAR */}
-              <Button
-                onClick={handleProcesarPago}
-                disabled={carrito.length === 0}
-                className="mt-2 h-12 w-full bg-emerald-600 text-base font-black tracking-wider text-white shadow-md hover:bg-emerald-700"
-              >
-                <CheckCircle2 className="mr-2 h-5 w-5" /> CONFIRMAR Y PAGAR
-              </Button>
-            </CardContent>
-          </Card>
+            {/* 7. SU CAMBIO ES */}
+            <div>
+              <label className="text-[11px] font-black uppercase text-slate-900 tracking-wide block">
+                SU CAMBIO ES
+              </label>
+              <div className="mt-0.5 flex h-11 w-full items-center justify-center rounded border-2 border-slate-400 bg-white px-3 font-mono text-2xl font-black text-emerald-700 shadow-inner">
+                {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "+++++"}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handlePagar}
+            disabled={gridItems.length === 0}
+            className="mt-3 w-full rounded-md bg-[#002D62] py-3 text-center text-sm font-black uppercase tracking-wider text-white shadow-lg hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
+          >
+            CONFIRMAR ALQUILER
+          </button>
         </div>
+      </div>
+
+      {/* =========================================================================
+          3. BARRA DE PESTAÑAS INFERIORES (ESTILO EXACTO WINDEV 25)
+      ========================================================================= */}
+      <div className="flex items-center overflow-x-auto border-t-2 border-slate-400 bg-[#D0D0D0] px-2 py-1 text-xs font-bold text-slate-800">
+        <button
+          onClick={() => setModalBuscarCli(true)}
+          className={`px-3 py-1 border-r border-slate-400 hover:bg-slate-300 ${pestanaActiva === "CLIENTES" ? "bg-amber-300 font-black" : ""}`}
+        >
+          CLIENTES
+        </button>
+        <button
+          onClick={() => setPestanaActiva("ALQUILAR")}
+          className={`px-4 py-1 border-r border-slate-400 bg-[#FFD700] text-slate-950 font-black shadow-sm`}
+        >
+          ALQUILAR ✖
+        </button>
+        <button
+          onClick={handlePagar}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          PAGAR ✖
+        </button>
+        <button
+          onClick={() => toast.info("Módulo Estado Clientes")}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          Fiche_ESTADOCLIENTES ✖
+        </button>
+        <button
+          onClick={() => setModalBuscarCli(true)}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          Fiche_CLIENTES ✖
+        </button>
+        <button
+          onClick={() => toast.info("Ingreso de Vestido a Local")}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          INGRESO_VESTIDO_A_LOCAL ✖
+        </button>
+        <button
+          onClick={() => setModalCliente(true)}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          ALTA_DE_CLIENTES ✖
+        </button>
+        <button
+          onClick={() => toast.info("Menú Principal")}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          MENU_PRINCIPAL ✖
+        </button>
+        <button
+          onClick={() => toast.info("Módulo Días de Mora")}
+          className="px-3 py-1 border-r border-slate-400 hover:bg-slate-300"
+        >
+          DIAS_DE_MORA ✖
+        </button>
+        <button
+          onClick={() => setModalDevolucion(true)}
+          className="px-3 py-1 hover:bg-slate-300"
+        >
+          ENTREGA_VESTIDO ✖
+        </button>
       </div>
 
       {/* =========================================================
           MODAL: NUEVO / MODIFICAR CLIENTE
       ========================================================= */}
-      <Dialog open={modalClienteAbierto} onOpenChange={setModalClienteAbierto}>
-        <DialogContent className="max-w-md">
+      <Dialog open={modalCliente} onOpenChange={setModalCliente}>
+        <DialogContent className="max-w-md bg-[#F5F5F5] border-2 border-slate-400">
           <DialogHeader>
-            <DialogTitle className="font-bold text-slate-900">
-              {cliente.IDCLIENTES ? "Modificar Cliente" : "Registrar Nuevo Cliente"}
+            <DialogTitle className="font-black text-red-700 uppercase">
+              Alta / Modificación de Cliente
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleGuardarClienteModal} className="space-y-3">
+          <div className="space-y-2 text-xs font-bold">
             <div>
-              <Label className="text-xs font-bold">Cédula / Documento Identidad *</Label>
-              <Input
-                required
+              <label>Cédula *</label>
+              <input
                 type="number"
-                value={cliente.CEDULA || ""}
-                onChange={(e) => setCliente((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))}
+                value={cedula}
+                onChange={(e) => setCedula(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Nombre Completo *</Label>
-              <Input
-                required
-                value={cliente.NOMBRE || ""}
-                onChange={(e) => setCliente((p) => ({ ...p, NOMBRE: e.target.value }))}
+              <label>Nombre Completo *</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Teléfono Principal *</Label>
-              <Input
-                required
-                value={cliente.TELEFONO || ""}
-                onChange={(e) => setCliente((p) => ({ ...p, TELEFONO: e.target.value }))}
+              <label>Dirección</label>
+              <input
+                type="text"
+                value={direccion}
+                onChange={(e) => setDireccion(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Dirección</Label>
-              <Input
-                value={cliente.DIRECCION || ""}
-                onChange={(e) => setCliente((p) => ({ ...p, DIRECCION: e.target.value }))}
+              <label>Teléfono Principal</label>
+              <input
+                type="text"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Empresa / Institución</Label>
-              <Input
-                value={cliente.EMPRESA || ""}
-                onChange={(e) => setCliente((p) => ({ ...p, EMPRESA: e.target.value }))}
+              <label>Empresa</label>
+              <input
+                type="text"
+                value={empresa}
+                onChange={(e) => setEmpresa(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" onClick={() => setModalClienteAbierto(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-red-600 text-white hover:bg-red-700">
-                Guardar Cliente
-              </Button>
-            </DialogFooter>
-          </form>
+          </div>
+          <DialogFooter className="mt-3">
+            <button
+              onClick={() => setModalCliente(false)}
+              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                setModalCliente(false);
+                toast.success("Datos de cliente asignados");
+              }}
+              className="rounded bg-[#B30000] px-4 py-1 text-xs font-bold text-white"
+            >
+              Guardar Cliente
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* =========================================================
           MODAL: BUSCAR CLIENTES
       ========================================================= */}
-      <Dialog open={modalBuscarCliente} onOpenChange={setModalBuscarCliente}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={modalBuscarCli} onOpenChange={setModalBuscarCli}>
+        <DialogContent className="max-w-lg bg-[#F5F5F5] border-2 border-slate-400">
           <DialogHeader>
-            <DialogTitle className="font-bold text-slate-900">Buscar Cliente</DialogTitle>
+            <DialogTitle className="font-black text-slate-900 uppercase">
+              Buscar Cliente en Base de Datos
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input
+              <input
+                type="text"
                 placeholder="Escribe el nombre del cliente..."
-                value={busquedaClienteQuery}
-                onChange={(e) => setBusquedaClienteQuery(e.target.value)}
+                value={busqClienteInput}
+                onChange={(e) => setBusqClienteInput(e.target.value)}
                 onKeyDown={async (e) => {
                   if (e.key === "Enter") {
-                    const clis = await buscarClientesPorNombre(busquedaClienteQuery);
+                    const clis = await buscarClientesPorNombre(busqClienteInput);
                     setClientesEncontrados(clis);
                   }
                 }}
+                className="h-8 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold"
               />
-              <Button
+              <button
                 onClick={async () => {
-                  const clis = await buscarClientesPorNombre(busquedaClienteQuery);
+                  const clis = await buscarClientesPorNombre(busqClienteInput);
                   setClientesEncontrados(clis);
                 }}
-                className="bg-slate-800 text-white"
+                className="rounded bg-[#001F3F] px-4 text-xs font-bold text-white"
               >
                 Buscar
-              </Button>
+              </button>
             </div>
 
-            <div className="max-h-60 overflow-auto rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cédula</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead className="text-right">Acción</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <div className="max-h-60 overflow-auto rounded border border-slate-300 bg-white">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-200 font-bold sticky top-0">
+                  <tr>
+                    <th className="p-2 border-b">Cédula</th>
+                    <th className="p-2 border-b">Nombre</th>
+                    <th className="p-2 border-b">Teléfono</th>
+                    <th className="p-2 border-b text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {clientesEncontrados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="py-6 text-center text-xs text-slate-400">
-                        Ingresa un nombre para buscar clientes.
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-slate-400">
+                        Ingresa un nombre para buscar.
+                      </td>
+                    </tr>
                   ) : (
                     clientesEncontrados.map((c) => (
-                      <TableRow key={c.IDCLIENTES}>
-                        <TableCell className="font-mono text-xs font-bold">{c.CEDULA}</TableCell>
-                        <TableCell className="font-medium">{c.NOMBRE}</TableCell>
-                        <TableCell className="text-xs">{c.TELEFONO}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
+                      <tr key={c.IDCLIENTES} className="border-b hover:bg-slate-50">
+                        <td className="p-2 font-mono font-bold">{c.CEDULA}</td>
+                        <td className="p-2">{c.NOMBRE}</td>
+                        <td className="p-2">{c.TELEFONO}</td>
+                        <td className="p-2 text-right">
+                          <button
                             onClick={() => {
-                              setCliente(c);
-                              setCedulaInput(String(c.CEDULA));
-                              setModalBuscarCliente(false);
-                              toast.success(`Cliente seleccionado: ${c.NOMBRE}`);
+                              setCedula(String(c.CEDULA));
+                              setNombre(c.NOMBRE);
+                              setDireccion(c.DIRECCION);
+                              setTelefono(c.TELEFONO);
+                              setEmpresa(c.EMPRESA || "");
+                              setModalBuscarCli(false);
+                              toast.success(`Cliente cargado: ${c.NOMBRE}`);
                             }}
-                            className="h-7 bg-red-600 px-2 text-xs text-white"
+                            className="rounded bg-[#C71585] px-2 py-0.5 text-xs font-bold text-white"
                           >
                             Seleccionar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                          </button>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* =========================================================
-          MODAL: REGISTRAR GASTO (SALIDA)
+          MODAL: GASTO (SALIDA)
       ========================================================= */}
-      <Dialog open={modalGastoAbierto} onOpenChange={setModalGastoAbierto}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={modalGasto} onOpenChange={setModalGasto}>
+        <DialogContent className="max-w-sm bg-[#F5F5F5] border-2 border-slate-400">
           <DialogHeader>
-            <DialogTitle className="font-bold text-red-700">Registrar Gasto (Salida de Caja)</DialogTitle>
+            <DialogTitle className="font-black text-red-700 uppercase">
+              Registrar Gasto (Salida de Caja)
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-2 text-xs font-bold">
             <div>
-              <Label className="text-xs font-bold">Descripción del Gasto</Label>
-              <Input
-                placeholder="Ej. Pago de lavandería / transporte"
-                value={gastoForm.descripcion}
-                onChange={(e) => setGastoForm((p) => ({ ...p, descripcion: e.target.value }))}
+              <label>Descripción del Gasto</label>
+              <input
+                type="text"
+                placeholder="Ej. Lavandería o transporte"
+                value={gastoDesc}
+                onChange={(e) => setGastoDesc(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Valor Salida ($)</Label>
-              <Input
+              <label>Valor Salida ($)</label>
+              <input
                 type="number"
-                placeholder="0.00"
-                value={gastoForm.valor}
-                onChange={(e) => setGastoForm((p) => ({ ...p, valor: e.target.value }))}
+                placeholder="0"
+                value={gastoMonto}
+                onChange={(e) => setGastoMonto(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2"
               />
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setModalGastoAbierto(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleGuardarGasto} variant="destructive">
-                Guardar Gasto
-              </Button>
-            </DialogFooter>
           </div>
+          <DialogFooter className="mt-3">
+            <button
+              onClick={() => setModalGasto(false)}
+              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={async () => {
+                if (!gastoDesc || !gastoMonto) {
+                  toast.error("Completa descripción y valor");
+                  return;
+                }
+                await registrarGasto({
+                  DESCRIPCIONSALIDA: gastoDesc,
+                  VALORSALIDA: gastoMonto,
+                  FECHA: fechaHoy,
+                  NUMEROGASTO: `G-${Date.now()}`,
+                });
+                toast.success("Gasto registrado");
+                setModalGasto(false);
+                setGastoDesc("");
+                setGastoMonto("");
+              }}
+              className="rounded bg-red-700 px-4 py-1 text-xs font-bold text-white"
+            >
+              Guardar Gasto
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* =========================================================
           MODAL: ENTRADA VESTIDO / DEVOLUCIÓN
       ========================================================= */}
-      <Dialog open={modalDevolucionAbierto} onOpenChange={setModalDevolucionAbierto}>
-        <DialogContent className="max-w-md">
+      <Dialog open={modalDevolucion} onOpenChange={setModalDevolucion}>
+        <DialogContent className="max-w-md bg-[#F5F5F5] border-2 border-slate-400">
           <DialogHeader>
-            <DialogTitle className="font-bold text-emerald-700">
+            <DialogTitle className="font-black text-emerald-800 uppercase">
               Entrada de Vestido & Devolución de Depósito
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-2 text-xs font-bold">
             <div>
-              <Label className="text-xs font-bold">Número de Factura / Recibo de Alquiler</Label>
-              <Input
-                placeholder="Ej. ALQ-001001"
-                value={devolucionForm.numeroFactura}
-                onChange={(e) => setDevolucionForm((p) => ({ ...p, numeroFactura: e.target.value }))}
+              <label>N° Factura / Recibo de Alquiler</label>
+              <input
+                type="text"
+                placeholder="Ej. ALQ-000124"
+                value={devFactura}
+                onChange={(e) => setDevFactura(e.target.value)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2 font-bold"
               />
             </div>
             <div>
-              <Label className="text-xs font-bold">Monto de Depósito a Devolver ($)</Label>
-              <Input
+              <label>Monto de Depósito a Devolver ($)</label>
+              <input
                 type="number"
-                placeholder="0.00"
-                value={devolucionForm.valorDeposito || ""}
-                onChange={(e) => setDevolucionForm((p) => ({ ...p, valorDeposito: Number(e.target.value) || 0 }))}
+                placeholder="0"
+                value={devMonto || ""}
+                onChange={(e) => setDevMonto(Number(e.target.value) || 0)}
+                className="mt-1 h-7 w-full rounded border border-slate-400 bg-white px-2 font-mono text-base font-bold text-blue-700"
               />
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setModalDevolucionAbierto(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleGuardarDevolucion} className="bg-emerald-600 text-white hover:bg-emerald-700">
-                Confirmar Devolución
-              </Button>
-            </DialogFooter>
           </div>
+          <DialogFooter className="mt-3">
+            <button
+              onClick={() => setModalDevolucion(false)}
+              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={async () => {
+                if (!devFactura) {
+                  toast.error("Ingresa el número de factura");
+                  return;
+                }
+                await registrarDevolucionVestido({
+                  numeroFactura: devFactura,
+                  valorDepositoDevuelto: devMonto,
+                });
+                toast.success("Entrada de vestido procesada y depósito liquidado");
+                setModalDevolucion(false);
+                setDevFactura("");
+                setDevMonto(0);
+              }}
+              className="rounded bg-emerald-700 px-4 py-1 text-xs font-bold text-white"
+            >
+              Confirmar Devolución
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* =========================================================
-          MODAL: TICKET DE ALQUILER / COMPROBANTE (IMPRIMIBLE)
+          MODAL: APARTADOS (CONSULTA RÁPIDA)
       ========================================================= */}
-      <Dialog open={modalTicketAbierto} onOpenChange={setModalTicketAbierto}>
-        <DialogContent className="max-w-md">
+      <Dialog open={modalApartados} onOpenChange={setModalApartados}>
+        <DialogContent className="max-w-lg bg-[#F5F5F5] border-2 border-slate-400">
           <DialogHeader>
-            <DialogTitle className="font-bold text-slate-900">Comprobante de Alquiler</DialogTitle>
+            <DialogTitle className="font-black text-amber-800 uppercase">
+              Trajes Apartados / Reservas
+            </DialogTitle>
           </DialogHeader>
-          <div className="rounded-lg border bg-slate-50 p-4 font-mono text-xs text-slate-800">
-            <div className="border-b pb-2 text-center">
+          <div className="space-y-2 text-xs">
+            <p className="text-slate-600">Lista de órdenes activas y apartados:</p>
+            <div className="rounded border border-slate-300 bg-white p-3 font-mono text-xs">
+              <div className="flex justify-between border-b pb-1 font-bold">
+                <span>RECIBO</span>
+                <span>CLIENTE</span>
+                <span>SALIDA - ENTRADA</span>
+                <span>TOTAL</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b text-slate-700">
+                <span>ALQ-000120</span>
+                <span>JUAN PÉREZ</span>
+                <span>2026-09-03 / 2026-09-06</span>
+                <span className="font-bold text-emerald-700">$170.000</span>
+              </div>
+              <div className="flex justify-between py-1.5 text-slate-700">
+                <span>ALQ-000122</span>
+                <span>MARÍA RODRÍGUEZ</span>
+                <span>2026-09-04 / 2026-09-07</span>
+                <span className="font-bold text-emerald-700">$200.000</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setModalApartados(false)}
+              className="rounded bg-slate-800 px-4 py-1 text-xs font-bold text-white"
+            >
+              Cerrar
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          MODAL: COMPROBANTE / TICKET IMPRIMIBLE
+      ========================================================= */}
+      <Dialog open={modalImprimir} onOpenChange={setModalImprimir}>
+        <DialogContent className="max-w-md bg-white p-6 border-2 border-slate-800">
+          <div className="font-mono text-xs text-slate-900">
+            <div className="border-b-2 border-dashed border-slate-400 pb-3 text-center">
               <h2 className="text-base font-black uppercase">LA CASA DEL DISFRAZ</h2>
-              <p className="text-[10px]">Elegance Rentals · Alquiler de Trajes</p>
-              <p className="text-[10px]">NIT: 900.123.456-7 · Tel: (601) 555-0199</p>
-              <p className="mt-1 font-bold">FACTURA: {facturaGenerada?.NUMEROFACT || numeroFactura}</p>
+              <p className="text-[11px] font-bold">Elegance Rentals</p>
+              <p className="text-[10px]">Para toda ocasión sin importar tu edad</p>
+              <p className="mt-1 font-bold text-xs">COMPROBANTE N° {numeroRecibo}</p>
+              <p className="text-[10px]">Fecha: {fechaHoy} · Cajero: {cajero}</p>
             </div>
 
-            <div className="py-2 text-[11px] space-y-0.5">
-              <p>
-                <strong>Cliente:</strong> {cliente.NOMBRE || "CLIENTE GENERAL"}
-              </p>
-              <p>
-                <strong>Cédula:</strong> {cliente.CEDULA || "0000000"}
-              </p>
-              <p>
-                <strong>Teléfono:</strong> {cliente.TELEFONO || "N/A"}
-              </p>
-              <p>
-                <strong>Fecha Salida:</strong> {fechaSalida}
-              </p>
-              <p>
-                <strong>Fecha Entrada:</strong> {fechaEntrada}
-              </p>
+            <div className="py-2 text-[11px] space-y-0.5 border-b border-dashed border-slate-400">
+              <p><strong>CLIENTE:</strong> {nombre.toUpperCase() || "GENERAL"}</p>
+              <p><strong>CÉDULA:</strong> {cedula || "N/A"}</p>
+              <p><strong>TELÉFONO:</strong> {telefono || "N/A"}</p>
+              <p><strong>FECHA SALIDA:</strong> {fechaSalida}</p>
+              <p><strong>FECHA ENTRADA:</strong> {fechaEntrada}</p>
             </div>
 
-            <div className="border-t border-b py-2">
-              <p className="font-bold text-[11px]">PRENDAS ALQUILADAS:</p>
-              {carrito.map((item, i) => (
-                <div key={i} className="flex justify-between text-[11px] py-0.5">
-                  <span>
-                    {item.cantidad}x {item.descripcion} ({item.talla})
-                  </span>
-                  <span>${item.totalAlquiler.toLocaleString()}</span>
+            <div className="py-2 border-b-2 border-dashed border-slate-400">
+              <div className="flex justify-between font-bold pb-1 text-[11px]">
+                <span>CANT / ARTÍCULO</span>
+                <span>TOTAL</span>
+              </div>
+              {gridItems.map((it, i) => (
+                <div key={i} className="flex justify-between py-0.5 text-[11px]">
+                  <span>{it.cantidad}x {it.descripcion} ({it.talla})</span>
+                  <span>${it.totalAlquiler.toLocaleString()}</span>
                 </div>
               ))}
             </div>
 
-            <div className="pt-2 text-right text-[11px] space-y-1">
-              <p>Total Alquiler: ${totalAlquilerConDescuento.toLocaleString()}</p>
-              <p className="font-bold text-blue-700">Depósito en Custodia: ${totalDeposito.toLocaleString()}</p>
-              <p className="text-sm font-black text-slate-900 border-t pt-1">
-                TOTAL RECIBIDO: ${totalDepositoMasAlquiler.toLocaleString()}
+            <div className="py-2 space-y-1 text-right text-[11px]">
+              <p>Total Alquiler: ${totalAlquilerConDesc.toLocaleString()}</p>
+              <p className="font-bold text-blue-800">Total Depósito (Fianza): ${totalDeposito.toLocaleString()}</p>
+              <p className="text-sm font-black border-t pt-1">
+                TOTAL COBRADO: ${totalDepositoMasAlquiler.toLocaleString()}
               </p>
-              <p className="text-emerald-700">Vuelto / Cambio: ${Math.max(0, cambioVuelto).toLocaleString()}</p>
+              <p className="text-slate-600">Efectivo: ${efecNum.toLocaleString()} | Transferencia: ${transNum.toLocaleString()}</p>
+              <p className="text-emerald-700 font-bold">Cambio / Vuelto: ${Math.max(0, cambioVuelto).toLocaleString()}</p>
             </div>
 
-            <p className="mt-4 text-center text-[10px] text-slate-500 italic">
-              ¡Gracias por su preferencia! Favor conservar este comprobante para la devolución de la prenda y su depósito de garantía.
+            <p className="mt-3 text-center text-[10px] text-slate-500 italic">
+              Conservar este recibo para la devolución de la prenda y el reintegro de su depósito.
             </p>
           </div>
-          <DialogFooter>
-            <Button
+          <DialogFooter className="mt-2">
+            <button
               onClick={() => {
                 window.print();
-                setModalTicketAbierto(false);
+                setModalImprimir(false);
               }}
-              className="bg-slate-900 text-white"
+              className="rounded bg-black px-4 py-1.5 text-xs font-bold text-white flex items-center gap-1.5"
             >
-              <Printer className="mr-1.5 h-4 w-4" /> Imprimir Comprobante
-            </Button>
+              <Printer className="h-4 w-4" /> Imprimir Ticket
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
