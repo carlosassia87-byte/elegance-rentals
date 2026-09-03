@@ -12,7 +12,8 @@ import {
   Barcode,
   Search,
   RefreshCw,
-  Sparkles,
+  FileSpreadsheet,
+  Upload,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -32,13 +33,14 @@ import {
 import { LogoCasaDelDisfraz } from "./LogoCasaDelDisfraz";
 
 const ARTICULOS_INICIALES: Articulo[] = [
-  { IDARTICULO: 1, DESCRIPCION: "TRAJE SMOKING NEGRO SLIM FIT COMPLETO", TALLA: "38R", STOCK: 5, VALOR: 120000, CODBARRAS: "7701001", VALORDEPOSITO: 50000 },
-  { IDARTICULO: 2, DESCRIPCION: "TRAJE NOVIO AZUL NOCHE ITALIANO", TALLA: "40R", STOCK: 3, VALOR: 150000, CODBARRAS: "7701002", VALORDEPOSITO: 60000 },
-  { IDARTICULO: 3, DESCRIPCION: "TRAJE QUINCEAÑERO GRIS PLATA C/CHALECO", TALLA: "36R", STOCK: 4, VALOR: 95000, CODBARRAS: "7701003", VALORDEPOSITO: 40000 },
-  { IDARTICULO: 4, DESCRIPCION: "DISFRAZ ÉPOCA MEDIEVAL CABALLERO REY", TALLA: "L", STOCK: 6, VALOR: 85000, CODBARRAS: "7701004", VALORDEPOSITO: 35000 },
-  { IDARTICULO: 5, DESCRIPCION: "VESTIDO DE GALA NOCHE SIRENA ROJO", TALLA: "M", STOCK: 2, VALOR: 140000, CODBARRAS: "7701005", VALORDEPOSITO: 60000 },
-  { IDARTICULO: 6, DESCRIPCION: "ZAPATOS DE CHAROL NEGRO FORMAL", TALLA: "40", STOCK: 8, VALOR: 40000, CODBARRAS: "7701006", VALORDEPOSITO: 20000 },
-  { IDARTICULO: 7, DESCRIPCION: "CHALECO DE SEDA CHAMPAGNE + CORBATÍN", TALLA: "M", STOCK: 10, VALOR: 30000, CODBARRAS: "7701007", VALORDEPOSITO: 15000 },
+  { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
+  { IDARTICULO: 2, DESCRIPCION: "MUSULMÁN BLANCO ALQUI BATA GORRO MUSULMAN CUADROS ROJO CON", TALLA: "M", STOCK: 4, VALOR: 65000, CODBARRAS: "1002", VALORDEPOSITO: 30000 },
+  { IDARTICULO: 3, DESCRIPCION: "TRAJE DE SALSANIÑO:\nCAMISA, PANTALÓN", TALLA: "10", STOCK: 5, VALOR: 70000, CODBARRAS: "1003", VALORDEPOSITO: 35000 },
+  { IDARTICULO: 4, DESCRIPCION: "TRAJE DE SALSANIÑA:\nVESTIDO, GUANTES, PEINETA", TALLA: "8", STOCK: 2, VALOR: 80000, CODBARRAS: "1004", VALORDEPOSITO: 40000 },
+  { IDARTICULO: 5, DESCRIPCION: "PIRATANIÑO:\nPANTALÓN, CAMISA, CHAQUETACINTURÓN, SOBREBOTAS, SOMBRERO, ES", TALLA: "12", STOCK: 4, VALOR: 85000, CODBARRAS: "1538", VALORDEPOSITO: 40000 },
+  { IDARTICULO: 6, DESCRIPCION: "MAGO NIÑO:\nPANTALÓN, CAMISA, CHAQUETÍN, CORBATÍN CINTURÓN, CAPA, SOMBRER", TALLA: "10", STOCK: 3, VALOR: 75000, CODBARRAS: "1006", VALORDEPOSITO: 35000 },
+  { IDARTICULO: 7, DESCRIPCION: "MAGO DE OZ NIÑO:\nTÚNICA, CORDÓN DE CINTURA, VARITA Y SOMBRERO", TALLA: "8", STOCK: 2, VALOR: 70000, CODBARRAS: "1007", VALORDEPOSITO: 30000 },
+  { IDARTICULO: 8, DESCRIPCION: "DRÁCULA NIÑO:\nPANTALÓN, CAMISA, CHAQUETÍN, CORBATÍN CINTURÓN, CAPA, SOMBRER", TALLA: "14", STOCK: 5, VALOR: 90000, CODBARRAS: "1008", VALORDEPOSITO: 45000 },
 ];
 
 export function PuntoDeVenta() {
@@ -89,10 +91,10 @@ export function PuntoDeVenta() {
     IDARTICULO: 0,
     DESCRIPCION: "",
     TALLA: "M",
-    STOCK: 1,
+    STOCK: 0,
     VALOR: 0,
     VALORDEPOSITO: 0,
-    CODBARRAS: "",
+    CODBARRAS: "1538",
   });
 
   // Cantidad y Refs para Navegación por Teclado
@@ -126,6 +128,7 @@ export function PuntoDeVenta() {
   // Formulario de búsqueda / gastos / devoluciones / catálogo
   const [busqClienteInput, setBusqClienteInput] = useState("");
   const [busqArticuloCatalogo, setBusqArticuloCatalogo] = useState("");
+  const [articuloCatalogoSeleccionado, setArticuloCatalogoSeleccionado] = useState<Articulo | null>(null);
   const [clientesEncontrados, setClientesEncontrados] = useState<Cliente[]>([]);
   const [gastoDesc, setGastoDesc] = useState("");
   const [gastoMonto, setGastoMonto] = useState("");
@@ -267,15 +270,14 @@ export function PuntoDeVenta() {
 
   // Abrir Modal de Crear Artículo
   function abrirCrearArticulo() {
-    const randomBarcode = String(Math.floor(1000 + Math.random() * 9000));
     setArticuloForm({
       IDARTICULO: 0,
       DESCRIPCION: "",
-      TALLA: "M",
-      STOCK: 1,
+      TALLA: "",
+      STOCK: 0,
       VALOR: 0,
       VALORDEPOSITO: 0,
-      CODBARRAS: randomBarcode,
+      CODBARRAS: "1538",
     });
     setModalArticuloAlta(true);
   }
@@ -286,7 +288,7 @@ export function PuntoDeVenta() {
     setModalArticuloAlta(true);
   }
 
-  // Guardar Artículo en BD
+  // Guardar Artículo en BD (ALTA_DE_ARTICULOS EXACTO A WINDEV)
   async function handleGuardarArticuloAlta(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!articuloForm.DESCRIPCION || !articuloForm.DESCRIPCION.trim()) {
@@ -299,7 +301,7 @@ export function PuntoDeVenta() {
         ...articuloForm,
         VALOR: Number(articuloForm.VALOR) || 0,
         VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
-        STOCK: Number(articuloForm.STOCK) || 1,
+        STOCK: Number(articuloForm.STOCK) || 0,
       });
 
       if (artGuardado) {
@@ -316,11 +318,11 @@ export function PuntoDeVenta() {
         const nuevo: Articulo = {
           IDARTICULO: articuloForm.IDARTICULO || Date.now(),
           DESCRIPCION: articuloForm.DESCRIPCION,
-          TALLA: articuloForm.TALLA || "M",
-          STOCK: Number(articuloForm.STOCK) || 1,
+          TALLA: articuloForm.TALLA || "",
+          STOCK: Number(articuloForm.STOCK) || 0,
           VALOR: Number(articuloForm.VALOR) || 0,
           VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
-          CODBARRAS: articuloForm.CODBARRAS || "1000",
+          CODBARRAS: articuloForm.CODBARRAS || "1538",
         };
         setArticulos((prev) => [nuevo, ...prev]);
       }
@@ -544,7 +546,7 @@ export function PuntoDeVenta() {
                 onClick={() => setModalArchivoArticulo(true)}
                 className="flex items-center gap-1.5 rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
               >
-                <Package className="h-3.5 w-3.5" /> CATÁLOGO
+                <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
               </button>
             </div>
 
@@ -1052,6 +1054,361 @@ export function PuntoDeVenta() {
       </div>
 
       {/* =========================================================================
+          MODAL: ALTA DE ARTICULOS (IDÉNTICO A LA CAPTURA WINDEV [ALTA DE ARTICULOS])
+      ========================================================================= */}
+      <Dialog open={modalArticuloAlta} onOpenChange={setModalArticuloAlta}>
+        <DialogContent className="max-w-2xl bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
+          {/* BARRA DE TÍTULO SUPERIOR */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300">
+            <div className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-slate-700" />
+              <span className="text-xs font-black text-slate-800 uppercase">
+                ALTA DE ARTICULOS
+              </span>
+            </div>
+            <button
+              onClick={() => setModalArticuloAlta(false)}
+              className="text-slate-400 hover:text-slate-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-6">
+            {/* TÍTULO CENTRADO */}
+            <div className="text-center pb-4">
+              <h2 className="text-xl font-black tracking-wider text-slate-900 uppercase font-sans">
+                INGRESE LOS DATOS DEL ARTICULO
+              </h2>
+            </div>
+
+            {/* CUERPO PRINCIPAL CON FORMULARIO Y BOTONES A LA DERECHA */}
+            <div className="flex items-start gap-4">
+              {/* CAJA DEL FORMULARIO */}
+              <div className="flex-1 rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
+                {/* 1. ID ARTICULO */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    ID ARTICULO
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={articuloForm.IDARTICULO || 0}
+                    className="h-6 w-24 rounded border border-slate-400 bg-white px-2 text-right text-xs font-black text-slate-700 shadow-inner"
+                  />
+                </div>
+
+                {/* 2. ARTICULO (TEXTAREA GRANDE BLANCO PARA DESCRIPCIÓN Y PIEZAS) */}
+                <div className="flex items-start">
+                  <span className="w-32 pt-1 text-xs font-black text-slate-800 uppercase">
+                    ARTICULO
+                  </span>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="TRAJE DE SALSANIÑO:&#10;CAMISA, PANTALÓN"
+                    value={articuloForm.DESCRIPCION || ""}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, DESCRIPCION: e.target.value }))}
+                    className="flex-1 rounded border border-slate-400 bg-white p-2 text-xs font-bold text-slate-900 uppercase focus:outline-none focus:border-blue-600 shadow-inner resize-none font-sans"
+                  />
+                </div>
+
+                {/* 3. VALOR (ALQUILER) */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    VALOR
+                  </span>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0,00"
+                      value={articuloForm.VALOR || ""}
+                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALOR: Number(e.target.value) || 0 }))}
+                      className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                    />
+                    <span className="ml-1 text-xs font-bold text-slate-700">$</span>
+                  </div>
+                </div>
+
+                {/* 4. STOCK */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    STOCK
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={articuloForm.STOCK ?? 0}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    className="h-6 w-24 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                  />
+                </div>
+
+                {/* 5. TALLA */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    TALLA
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Talla"
+                    value={articuloForm.TALLA || ""}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, TALLA: e.target.value.toUpperCase() }))}
+                    className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-xs font-bold uppercase text-slate-900 focus:outline-none shadow-inner"
+                  />
+                </div>
+
+                {/* 6. BARRAS */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    BARRAS
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="1538"
+                    value={articuloForm.CODBARRAS || ""}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
+                    className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-xs font-mono font-bold text-slate-900 focus:outline-none shadow-inner"
+                  />
+                </div>
+
+                {/* 7. VALOR DEPOSITO */}
+                <div className="flex items-center">
+                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                    VALOR DEPOSITO
+                  </span>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0,00"
+                      value={articuloForm.VALORDEPOSITO || ""}
+                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALORDEPOSITO: Number(e.target.value) || 0 }))}
+                      className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                    />
+                    <span className="ml-1 text-xs font-bold text-slate-700">$</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTONES A LA DERECHA (GUARDAR ✔ / SALIR ✖) */}
+              <div className="flex flex-col gap-2.5 pt-4">
+                <button
+                  type="button"
+                  onClick={handleGuardarArticuloAlta}
+                  className="flex items-center justify-center gap-1.5 h-8 w-28 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
+                >
+                  GUARDAR <Check className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModalArticuloAlta(false)}
+                  className="flex items-center justify-center gap-1.5 h-8 w-28 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
+                >
+                  SALIR <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* FRANJA AZUL INFERIOR */}
+          <div className="h-3 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
+          MODAL: ARCHIVO ARTICULO (IDÉNTICO A LA CAPTURA WINDEV [ARCHIVO ARTICULO])
+      ========================================================================= */}
+      <Dialog open={modalArchivoArticulo} onOpenChange={setModalArchivoArticulo}>
+        <DialogContent className="max-w-5xl bg-[#E8E8E8] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
+          {/* BARRA DE TÍTULO */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300">
+            <div className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-slate-700" />
+              <span className="text-xs font-black text-slate-800 uppercase">
+                articulo
+              </span>
+            </div>
+            <button
+              onClick={() => setModalArchivoArticulo(false)}
+              className="text-slate-400 hover:text-slate-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* TÍTULO CENTRADO ARCHIVO ARTICULO */}
+            <div className="text-center">
+              <h2 className="text-2xl font-black tracking-widest text-slate-900 uppercase font-sans">
+                ARCHIVO ARTICULO
+              </h2>
+            </div>
+
+            {/* BARRA DE HERRAMIENTAS Y BOTONES EXACTOS A WINDEV */}
+            <div className="flex items-center justify-between gap-2 overflow-x-auto py-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toast.info("Exportación XLS preparada")}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" /> xls
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toast.info("Ingreso desde archivo")}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  <Upload className="h-3.5 w-3.5" /> ingreso desde
+                </button>
+
+                <button
+                  type="button"
+                  onClick={abrirCrearArticulo}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  NUEVO +
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!articuloCatalogoSeleccionado) {
+                      toast.error("Selecciona un artículo de la lista para modificar");
+                      return;
+                    }
+                    abrirEditarArticulo(articuloCatalogoSeleccionado);
+                  }}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  MODIFICAR <Edit className="h-3 w-3" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!articuloCatalogoSeleccionado) {
+                      toast.error("Selecciona un artículo de la lista para eliminar");
+                      return;
+                    }
+                    handleEliminarArticuloCatalogo(articuloCatalogoSeleccionado.IDARTICULO);
+                  }}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  ELIMINAR <Trash2 className="h-3 w-3" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  Imprimir <Printer className="h-3 w-3" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModalArchivoArticulo(false)}
+                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                >
+                  SALIR <X className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* FILTRAR ARTICULO */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black uppercase text-slate-800 whitespace-nowrap">
+                  FILTRAR ARTICULO:
+                </span>
+                <input
+                  type="text"
+                  placeholder="Escribe para buscar..."
+                  value={busqArticuloCatalogo}
+                  onChange={(e) => setBusqArticuloCatalogo(e.target.value)}
+                  className="h-7 w-48 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                />
+              </div>
+            </div>
+
+            {/* TABLA DE ARTÍCULOS CON FORMATO WINDEV */}
+            <div className="max-h-96 overflow-auto rounded border-2 border-slate-400 bg-white shadow-inner">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[#004B87] text-white font-black uppercase text-xs tracking-wider sticky top-0">
+                  <tr>
+                    <th className="p-2 border-r border-slate-500 w-12 text-center">N°</th>
+                    <th className="p-2 border-r border-slate-500">DESCRIPCION ARTICULO</th>
+                    <th className="p-2 border-r border-slate-500 text-center w-20">TALLA</th>
+                    <th className="p-2 border-r border-slate-500 text-center w-20">STOCK</th>
+                    <th className="p-2 border-r border-slate-500 text-right w-28">VALOR</th>
+                    <th className="p-2 border-r border-slate-500 text-right w-28">VALOR DEPOSITO</th>
+                    <th className="p-2 text-center w-24">BARRAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {articulosCatalogoFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 text-xs font-bold">
+                        No se encontraron artículos con ese filtro.
+                      </td>
+                    </tr>
+                  ) : (
+                    articulosCatalogoFiltrados.map((art, idx) => {
+                      const isSelected = articuloCatalogoSeleccionado?.IDARTICULO === art.IDARTICULO;
+                      const isEven = idx % 2 === 0;
+                      return (
+                        <tr
+                          key={art.IDARTICULO}
+                          onClick={() => setArticuloCatalogoSeleccionado(art)}
+                          onDoubleClick={() => abrirEditarArticulo(art)}
+                          className={`cursor-pointer border-b border-slate-200 text-xs transition-colors ${
+                            isSelected
+                              ? "bg-[#FFE066] font-black text-slate-900"
+                              : isEven
+                              ? "bg-white font-semibold"
+                              : "bg-[#D6E6F2] font-semibold"
+                          }`}
+                        >
+                          <td className="p-2 text-center font-bold border-r border-slate-200">
+                            {idx + 1}
+                          </td>
+                          <td className="p-2 whitespace-pre-line font-bold text-slate-900 border-r border-slate-200">
+                            {art.DESCRIPCION}
+                          </td>
+                          <td className="p-2 text-center font-black border-r border-slate-200">
+                            {art.TALLA || "-"}
+                          </td>
+                          <td className="p-2 text-center font-black border-r border-slate-200">
+                            {art.STOCK}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                            ${Number(art.VALOR).toLocaleString()}
+                          </td>
+                          <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                            ${Number(art.VALORDEPOSITO).toLocaleString()}
+                          </td>
+                          <td className="p-2 text-center font-mono font-bold">
+                            {art.CODBARRAS}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* FRANJA AZUL INFERIOR */}
+          <div className="h-3 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
           MODAL: VENTANA DE PAGO / COBRO Y LIQUIDACIÓN AL PRESIONAR [PAGAR]
       ========================================================================= */}
       <Dialog open={modalCobroDetalle} onOpenChange={setModalCobroDetalle}>
@@ -1252,295 +1609,6 @@ export function PuntoDeVenta() {
           </div>
 
           <div className="h-2 bg-[#004B87] w-full" />
-        </DialogContent>
-      </Dialog>
-
-      {/* =========================================================================
-          MODAL: ALTA_DE_ARTICULOS (MODERNO, ELEGANTE Y FIEL A WINDEV)
-      ========================================================================= */}
-      <Dialog open={modalArticuloAlta} onOpenChange={setModalArticuloAlta}>
-        <DialogContent className="max-w-xl bg-[#F4F6F9] p-0 border border-slate-300 shadow-2xl overflow-hidden rounded-xl">
-          <div className="bg-gradient-to-r from-[#002D62] via-[#004B87] to-[#0A192F] px-5 py-3 text-white flex items-center justify-between shadow">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 backdrop-blur text-yellow-300">
-                <Sparkles className="h-4 w-4" />
-              </span>
-              <div>
-                <h2 className="text-sm font-black tracking-wider uppercase">
-                  {articuloForm.IDARTICULO ? "MODIFICAR ARTÍCULO" : "ALTA DE ARTÍCULOS"}
-                </h2>
-                <p className="text-xs text-blue-200">
-                  Sistema de Inventario y Control de Prendas
-                </p>
-              </div>
-            </div>
-            <span className="rounded-full bg-blue-900/60 px-3 py-0.5 text-xs font-mono font-bold text-cyan-300 border border-cyan-500/30">
-              ID: {articuloForm.IDARTICULO || "NUEVO"}
-            </span>
-          </div>
-
-          <form onSubmit={handleGuardarArticuloAlta} className="p-5 space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-black uppercase text-slate-800 tracking-wide flex items-center gap-1">
-                    <Package className="h-4 w-4 text-blue-600" /> ARTÍCULO / DESCRIPCIÓN *
-                  </label>
-                  <span className="text-[10px] text-slate-400 font-medium">Nombre, accesorios y piezas</span>
-                </div>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Ej. TRAJE DE SALSANIÑO: CAMISA, PANTALÓN, CINTURÓN"
-                  value={articuloForm.DESCRIPCION || ""}
-                  onChange={(e) => setArticuloForm((p) => ({ ...p, DESCRIPCION: e.target.value.toUpperCase() }))}
-                  className="w-full rounded-md border border-slate-300 bg-slate-50/50 p-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none uppercase transition-all shadow-inner resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div className="rounded-lg bg-emerald-50/60 border border-emerald-200 p-2.5 shadow-sm">
-                  <label className="text-xs font-black uppercase text-emerald-900 block mb-1">
-                    VALOR ALQUILER ($) *
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-2 text-xs font-black text-emerald-700">$</span>
-                    <input
-                      type="number"
-                      min={0}
-                      required
-                      placeholder="0"
-                      value={articuloForm.VALOR || ""}
-                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALOR: Number(e.target.value) || 0 }))}
-                      className="h-8 w-full rounded border border-emerald-300 bg-white pl-6 pr-2 text-right font-mono text-sm font-black text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-blue-50/60 border border-blue-200 p-2.5 shadow-sm">
-                  <label className="text-xs font-black uppercase text-blue-900 block mb-1">
-                    VALOR DEPÓSITO / FIANZA ($)
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-2 text-xs font-black text-blue-700">$</span>
-                    <input
-                      type="number"
-                      min={0}
-                      placeholder="0"
-                      value={articuloForm.VALORDEPOSITO || ""}
-                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALORDEPOSITO: Number(e.target.value) || 0 }))}
-                      className="h-8 w-full rounded border border-blue-300 bg-white pl-6 pr-2 text-right font-mono text-sm font-black text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 pt-1">
-                <div>
-                  <label className="text-xs font-black uppercase text-slate-700 block mb-1">
-                    TALLA
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. 38R, M, L"
-                    value={articuloForm.TALLA || ""}
-                    onChange={(e) => setArticuloForm((p) => ({ ...p, TALLA: e.target.value.toUpperCase() }))}
-                    className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-center text-xs font-black uppercase text-slate-800 focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-black uppercase text-slate-700 block mb-1">
-                    STOCK / CANTIDAD
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={articuloForm.STOCK ?? 1}
-                    onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
-                    className="h-8 w-full rounded border border-slate-300 bg-white text-center text-xs font-black text-slate-800 focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-black uppercase text-slate-700">
-                      BARRAS
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setArticuloForm((p) => ({ ...p, CODBARRAS: String(Math.floor(1000 + Math.random() * 9000)) }))
-                      }
-                      title="Generar código aleatorio"
-                      className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-bold"
-                    >
-                      <Barcode className="h-3 w-3" /> Auto
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="1538"
-                    value={articuloForm.CODBARRAS || ""}
-                    onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
-                    className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-center font-mono text-xs font-black text-slate-800 focus:outline-none focus:border-blue-600"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setModalArticuloAlta(false)}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
-              >
-                SALIR <X className="h-4 w-4 text-slate-500" />
-              </button>
-
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#003366] to-[#005599] px-7 py-2 text-xs font-black text-white shadow-md hover:from-[#002244] hover:to-[#004488] active:scale-95 transition-all"
-              >
-                GUARDAR <Check className="h-4 w-4 text-emerald-300" />
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* =========================================================================
-          MODAL: ARCHIVO ARTICULO / CATÁLOGO COMPLETO
-      ========================================================================= */}
-      <Dialog open={modalArchivoArticulo} onOpenChange={setModalArchivoArticulo}>
-        <DialogContent className="max-w-4xl bg-[#F8FAFC] p-4 border border-slate-300 shadow-2xl rounded-xl">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-blue-700" />
-              <h2 className="text-base font-black tracking-wide text-slate-900 uppercase">
-                ARCHIVO ARTÍCULO — CATÁLOGO E INVENTARIO
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={abrirCrearArticulo}
-                className="flex items-center gap-1 rounded bg-[#004B87] px-3.5 py-1.5 text-xs font-black text-white shadow hover:bg-[#003366]"
-              >
-                <Plus className="h-4 w-4" /> NUEVO ARTÍCULO
-              </button>
-              <button
-                onClick={cargarArticulos}
-                title="Refrescar catálogo"
-                className="rounded bg-slate-200 p-1.5 text-slate-700 hover:bg-slate-300"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="py-2 flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Filtrar por nombre, descripción, talla o código de barras..."
-                value={busqArticuloCatalogo}
-                onChange={(e) => setBusqArticuloCatalogo(e.target.value)}
-                className="h-9 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-xs font-bold focus:outline-none focus:border-blue-600"
-              />
-            </div>
-            <span className="text-xs text-slate-600 font-black whitespace-nowrap">
-              {articulosCatalogoFiltrados.length} artículos
-            </span>
-          </div>
-
-          <div className="max-h-96 overflow-auto rounded-lg border border-slate-300 bg-white shadow-inner">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#0A192F] text-white font-black sticky top-0 uppercase text-xs tracking-wider">
-                <tr>
-                  <th className="p-2.5 border-r border-slate-700 w-20 text-center">ID / CÓD</th>
-                  <th className="p-2.5 border-r border-slate-700">DESCRIPCIÓN DEL ARTÍCULO</th>
-                  <th className="p-2.5 border-r border-slate-700 text-center w-16">TALLA</th>
-                  <th className="p-2.5 border-r border-slate-700 text-center w-16">STOCK</th>
-                  <th className="p-2.5 border-r border-slate-700 text-right w-28">VALOR ALQUILER</th>
-                  <th className="p-2.5 border-r border-slate-700 text-right w-28">VALOR DEPÓSITO</th>
-                  <th className="p-2.5 text-center w-24">ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {articulosCatalogoFiltrados.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 text-xs font-semibold">
-                      No se encontraron artículos con ese criterio de búsqueda.
-                    </td>
-                  </tr>
-                ) : (
-                  articulosCatalogoFiltrados.map((art, idx) => (
-                    <tr
-                      key={art.IDARTICULO}
-                      className={`border-b border-slate-200 transition-colors ${
-                        idx % 2 === 0 ? "bg-white hover:bg-blue-50/40" : "bg-slate-50/80 hover:bg-blue-50/40"
-                      }`}
-                    >
-                      <td className="p-2 font-mono text-xs text-center font-black text-slate-600 border-r border-slate-200">
-                        {art.CODBARRAS || `#${art.IDARTICULO}`}
-                      </td>
-                      <td className="p-2 font-bold text-slate-900 border-r border-slate-200">
-                        {art.DESCRIPCION}
-                      </td>
-                      <td className="p-2 text-center font-black text-slate-700 border-r border-slate-200">
-                        <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-black">
-                          {art.TALLA || "U"}
-                        </span>
-                      </td>
-                      <td className="p-2 text-center font-bold border-r border-slate-200">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs font-black ${
-                            (art.STOCK || 0) > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {art.STOCK}
-                        </span>
-                      </td>
-                      <td className="p-2 text-right font-mono font-black text-slate-900 border-r border-slate-200">
-                        ${Number(art.VALOR).toLocaleString()}
-                      </td>
-                      <td className="p-2 text-right font-mono font-black text-blue-800 border-r border-slate-200">
-                        ${Number(art.VALORDEPOSITO).toLocaleString()}
-                      </td>
-                      <td className="p-2 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => abrirEditarArticulo(art)}
-                            title="Modificar"
-                            className="rounded p-1 text-blue-600 hover:bg-blue-100 transition-colors"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEliminarArticuloCatalogo(art.IDARTICULO)}
-                            title="Eliminar"
-                            className="rounded p-1 text-red-600 hover:bg-red-100 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-end pt-3">
-            <button
-              onClick={() => setModalArchivoArticulo(false)}
-              className="rounded bg-slate-800 px-5 py-2 text-xs font-black text-white hover:bg-black"
-            >
-              Cerrar Catálogo
-            </button>
-          </div>
         </DialogContent>
       </Dialog>
 
