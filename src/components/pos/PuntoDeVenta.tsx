@@ -14,6 +14,8 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Upload,
+  Minus,
+  Square,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -90,7 +92,7 @@ export function PuntoDeVenta() {
   const [articuloForm, setArticuloForm] = useState<Partial<Articulo>>({
     IDARTICULO: 0,
     DESCRIPCION: "",
-    TALLA: "M",
+    TALLA: "",
     STOCK: 0,
     VALOR: 0,
     VALORDEPOSITO: 0,
@@ -1057,51 +1059,55 @@ export function PuntoDeVenta() {
           MODAL: ALTA DE ARTICULOS (IDÉNTICO A LA CAPTURA WINDEV [ALTA DE ARTICULOS])
       ========================================================================= */}
       <Dialog open={modalArticuloAlta} onOpenChange={setModalArticuloAlta}>
-        <DialogContent className="max-w-2xl bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
+        <DialogContent className="w-[90vw] max-w-3xl bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
           {/* BARRA DE TÍTULO SUPERIOR */}
           <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300">
             <div className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5 text-slate-700" />
+              <Package className="h-4 w-4 text-slate-700" />
               <span className="text-xs font-black text-slate-800 uppercase">
                 ALTA DE ARTICULOS
               </span>
             </div>
-            <button
-              onClick={() => setModalArticuloAlta(false)}
-              className="text-slate-400 hover:text-slate-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Minus className="h-3.5 w-3.5 cursor-pointer hover:text-slate-800" />
+              <Square className="h-3 w-3 cursor-pointer hover:text-slate-800" />
+              <button
+                onClick={() => setModalArticuloAlta(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="p-6">
             {/* TÍTULO CENTRADO */}
-            <div className="text-center pb-4">
-              <h2 className="text-xl font-black tracking-wider text-slate-900 uppercase font-sans">
+            <div className="text-center pb-5">
+              <h2 className="text-2xl font-black tracking-wider text-slate-900 uppercase font-sans">
                 INGRESE LOS DATOS DEL ARTICULO
               </h2>
             </div>
 
             {/* CUERPO PRINCIPAL CON FORMULARIO Y BOTONES A LA DERECHA */}
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-5">
               {/* CAJA DEL FORMULARIO */}
-              <div className="flex-1 rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
+              <div className="flex-1 rounded border-2 border-slate-400 bg-[#E8E8E8] p-5 shadow-inner space-y-3">
                 {/* 1. ID ARTICULO */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     ID ARTICULO
                   </span>
                   <input
                     type="text"
                     disabled
                     value={articuloForm.IDARTICULO || 0}
-                    className="h-6 w-24 rounded border border-slate-400 bg-white px-2 text-right text-xs font-black text-slate-700 shadow-inner"
+                    className="h-7 w-28 rounded border border-slate-400 bg-white px-2 text-right text-xs font-black text-slate-700 shadow-inner"
                   />
                 </div>
 
                 {/* 2. ARTICULO (TEXTAREA GRANDE BLANCO PARA DESCRIPCIÓN Y PIEZAS) */}
                 <div className="flex items-start">
-                  <span className="w-32 pt-1 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 pt-1 text-xs font-black text-slate-800 uppercase">
                     ARTICULO
                   </span>
                   <textarea
@@ -1110,13 +1116,13 @@ export function PuntoDeVenta() {
                     placeholder="TRAJE DE SALSANIÑO:&#10;CAMISA, PANTALÓN"
                     value={articuloForm.DESCRIPCION || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, DESCRIPCION: e.target.value }))}
-                    className="flex-1 rounded border border-slate-400 bg-white p-2 text-xs font-bold text-slate-900 uppercase focus:outline-none focus:border-blue-600 shadow-inner resize-none font-sans"
+                    className="flex-1 rounded border border-slate-400 bg-white p-2.5 text-xs font-bold text-slate-900 uppercase focus:outline-none focus:border-blue-600 shadow-inner resize-none font-sans"
                   />
                 </div>
 
                 {/* 3. VALOR (ALQUILER) */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     VALOR
                   </span>
                   <div className="relative flex items-center">
@@ -1126,15 +1132,15 @@ export function PuntoDeVenta() {
                       placeholder="0,00"
                       value={articuloForm.VALOR || ""}
                       onChange={(e) => setArticuloForm((p) => ({ ...p, VALOR: Number(e.target.value) || 0 }))}
-                      className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                      className="h-7 w-48 rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
                     />
-                    <span className="ml-1 text-xs font-bold text-slate-700">$</span>
+                    <span className="ml-1.5 text-xs font-bold text-slate-700">$</span>
                   </div>
                 </div>
 
                 {/* 4. STOCK */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     STOCK
                   </span>
                   <input
@@ -1142,13 +1148,13 @@ export function PuntoDeVenta() {
                     min={0}
                     value={articuloForm.STOCK ?? 0}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
-                    className="h-6 w-24 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                    className="h-7 w-28 rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
                   />
                 </div>
 
                 {/* 5. TALLA */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     TALLA
                   </span>
                   <input
@@ -1156,13 +1162,13 @@ export function PuntoDeVenta() {
                     placeholder="Talla"
                     value={articuloForm.TALLA || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, TALLA: e.target.value.toUpperCase() }))}
-                    className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-xs font-bold uppercase text-slate-900 focus:outline-none shadow-inner"
+                    className="h-7 w-48 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold uppercase text-slate-900 focus:outline-none shadow-inner"
                   />
                 </div>
 
                 {/* 6. BARRAS */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     BARRAS
                   </span>
                   <input
@@ -1170,13 +1176,13 @@ export function PuntoDeVenta() {
                     placeholder="1538"
                     value={articuloForm.CODBARRAS || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
-                    className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-xs font-mono font-bold text-slate-900 focus:outline-none shadow-inner"
+                    className="h-7 w-48 rounded border border-slate-400 bg-white px-2.5 text-xs font-mono font-bold text-slate-900 focus:outline-none shadow-inner"
                   />
                 </div>
 
                 {/* 7. VALOR DEPOSITO */}
                 <div className="flex items-center">
-                  <span className="w-32 text-xs font-black text-slate-800 uppercase">
+                  <span className="w-36 text-xs font-black text-slate-800 uppercase">
                     VALOR DEPOSITO
                   </span>
                   <div className="relative flex items-center">
@@ -1186,19 +1192,19 @@ export function PuntoDeVenta() {
                       placeholder="0,00"
                       value={articuloForm.VALORDEPOSITO || ""}
                       onChange={(e) => setArticuloForm((p) => ({ ...p, VALORDEPOSITO: Number(e.target.value) || 0 }))}
-                      className="h-6 w-40 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                      className="h-7 w-48 rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-xs font-black text-slate-900 focus:outline-none shadow-inner"
                     />
-                    <span className="ml-1 text-xs font-bold text-slate-700">$</span>
+                    <span className="ml-1.5 text-xs font-bold text-slate-700">$</span>
                   </div>
                 </div>
               </div>
 
               {/* BOTONES A LA DERECHA (GUARDAR ✔ / SALIR ✖) */}
-              <div className="flex flex-col gap-2.5 pt-4">
+              <div className="flex flex-col gap-3 pt-6">
                 <button
                   type="button"
                   onClick={handleGuardarArticuloAlta}
-                  className="flex items-center justify-center gap-1.5 h-8 w-28 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
+                  className="flex items-center justify-center gap-2 h-9 w-32 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wider transition-all"
                 >
                   GUARDAR <Check className="h-4 w-4" />
                 </button>
@@ -1206,7 +1212,7 @@ export function PuntoDeVenta() {
                 <button
                   type="button"
                   onClick={() => setModalArticuloAlta(false)}
-                  className="flex items-center justify-center gap-1.5 h-8 w-28 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
+                  className="flex items-center justify-center gap-2 h-9 w-32 rounded bg-[#004B87] text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wider transition-all"
                 >
                   SALIR <X className="h-4 w-4" />
                 </button>
@@ -1215,62 +1221,66 @@ export function PuntoDeVenta() {
           </div>
 
           {/* FRANJA AZUL INFERIOR */}
-          <div className="h-3 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+          <div className="h-3.5 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
         </DialogContent>
       </Dialog>
 
       {/* =========================================================================
-          MODAL: ARCHIVO ARTICULO (IDÉNTICO A LA CAPTURA WINDEV [ARCHIVO ARTICULO])
+          MODAL: ARCHIVO ARTICULO (PANTALLA COMPLETA / AMPLIA Y ESPACIOSA EXACTA A WINDEV)
       ========================================================================= */}
       <Dialog open={modalArchivoArticulo} onOpenChange={setModalArchivoArticulo}>
-        <DialogContent className="max-w-5xl bg-[#E8E8E8] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
-          {/* BARRA DE TÍTULO */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300">
-            <div className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5 text-slate-700" />
-              <span className="text-xs font-black text-slate-800 uppercase">
+        <DialogContent className="w-[96vw] max-w-[1600px] h-[92vh] max-h-[92vh] bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md flex flex-col">
+          {/* BARRA DE TÍTULO ESTILO WINDOWS */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300 select-none">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-slate-700" />
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
                 articulo
               </span>
             </div>
-            <button
-              onClick={() => setModalArchivoArticulo(false)}
-              className="text-slate-400 hover:text-slate-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-3 text-slate-500">
+              <Minus className="h-4 w-4 cursor-pointer hover:text-slate-800" />
+              <Square className="h-3.5 w-3.5 cursor-pointer hover:text-slate-800" />
+              <button
+                onClick={() => setModalArchivoArticulo(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
           </div>
 
-          <div className="p-4 space-y-3">
+          <div className="p-4 flex-1 flex flex-col min-h-0 space-y-3">
             {/* TÍTULO CENTRADO ARCHIVO ARTICULO */}
-            <div className="text-center">
-              <h2 className="text-2xl font-black tracking-widest text-slate-900 uppercase font-sans">
+            <div className="text-center py-1">
+              <h2 className="text-3xl font-black tracking-widest text-slate-900 uppercase font-sans">
                 ARCHIVO ARTICULO
               </h2>
             </div>
 
-            {/* BARRA DE HERRAMIENTAS Y BOTONES EXACTOS A WINDEV */}
-            <div className="flex items-center justify-between gap-2 overflow-x-auto py-1">
-              <div className="flex items-center gap-1.5">
+            {/* BARRA DE HERRAMIENTAS Y BOTONES GRANDES Y CÓMODOS */}
+            <div className="flex items-center justify-between gap-3 overflow-x-auto py-1">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => toast.info("Exportación XLS preparada")}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5" /> xls
+                  <FileSpreadsheet className="h-4 w-4" /> xls
                 </button>
 
                 <button
                   type="button"
                   onClick={() => toast.info("Ingreso desde archivo")}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  <Upload className="h-3.5 w-3.5" /> ingreso desde
+                  <Upload className="h-4 w-4" /> ingreso desde
                 </button>
 
                 <button
                   type="button"
                   onClick={abrirCrearArticulo}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-4 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
                   NUEVO +
                 </button>
@@ -1284,9 +1294,9 @@ export function PuntoDeVenta() {
                     }
                     abrirEditarArticulo(articuloCatalogoSeleccionado);
                   }}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  MODIFICAR <Edit className="h-3 w-3" />
+                  MODIFICAR <Edit className="h-3.5 w-3.5" />
                 </button>
 
                 <button
@@ -1298,30 +1308,30 @@ export function PuntoDeVenta() {
                     }
                     handleEliminarArticuloCatalogo(articuloCatalogoSeleccionado.IDARTICULO);
                   }}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  ELIMINAR <Trash2 className="h-3 w-3" />
+                  ELIMINAR <Trash2 className="h-3.5 w-3.5" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  Imprimir <Printer className="h-3 w-3" />
+                  Imprimir <Printer className="h-3.5 w-3.5" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setModalArchivoArticulo(false)}
-                  className="h-7 rounded bg-[#004B87] px-3 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1"
+                  className="h-8 rounded bg-[#004B87] px-4 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase flex items-center gap-1.5 tracking-wider transition-all"
                 >
-                  SALIR <X className="h-3 w-3" />
+                  SALIR <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* FILTRAR ARTICULO */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-xs font-black uppercase text-slate-800 whitespace-nowrap">
                   FILTRAR ARTICULO:
                 </span>
@@ -1330,29 +1340,29 @@ export function PuntoDeVenta() {
                   placeholder="Escribe para buscar..."
                   value={busqArticuloCatalogo}
                   onChange={(e) => setBusqArticuloCatalogo(e.target.value)}
-                  className="h-7 w-48 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                  className="h-8 w-64 rounded border border-slate-400 bg-white px-3 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
                 />
               </div>
             </div>
 
-            {/* TABLA DE ARTÍCULOS CON FORMATO WINDEV */}
-            <div className="max-h-96 overflow-auto rounded border-2 border-slate-400 bg-white shadow-inner">
+            {/* TABLA DE ARTÍCULOS QUE LLENA TODO EL ALTO DISPONIBLE */}
+            <div className="flex-1 overflow-auto rounded border-2 border-slate-400 bg-white shadow-inner min-h-0">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-[#004B87] text-white font-black uppercase text-xs tracking-wider sticky top-0">
                   <tr>
-                    <th className="p-2 border-r border-slate-500 w-12 text-center">N°</th>
-                    <th className="p-2 border-r border-slate-500">DESCRIPCION ARTICULO</th>
-                    <th className="p-2 border-r border-slate-500 text-center w-20">TALLA</th>
-                    <th className="p-2 border-r border-slate-500 text-center w-20">STOCK</th>
-                    <th className="p-2 border-r border-slate-500 text-right w-28">VALOR</th>
-                    <th className="p-2 border-r border-slate-500 text-right w-28">VALOR DEPOSITO</th>
-                    <th className="p-2 text-center w-24">BARRAS</th>
+                    <th className="p-2.5 border-r border-slate-500 w-14 text-center">N°</th>
+                    <th className="p-2.5 border-r border-slate-500">DESCRIPCION ARTICULO</th>
+                    <th className="p-2.5 border-r border-slate-500 text-center w-24">TALLA</th>
+                    <th className="p-2.5 border-r border-slate-500 text-center w-24">STOCK</th>
+                    <th className="p-2.5 border-r border-slate-500 text-right w-36">VALOR</th>
+                    <th className="p-2.5 border-r border-slate-500 text-right w-36">VALOR DEPOSITO</th>
+                    <th className="p-2.5 text-center w-28">BARRAS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {articulosCatalogoFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400 text-xs font-bold">
+                      <td colSpan={7} className="py-24 text-center text-slate-400 text-sm font-bold">
                         No se encontraron artículos con ese filtro.
                       </td>
                     </tr>
@@ -1373,25 +1383,25 @@ export function PuntoDeVenta() {
                               : "bg-[#D6E6F2] font-semibold"
                           }`}
                         >
-                          <td className="p-2 text-center font-bold border-r border-slate-200">
+                          <td className="p-2.5 text-center font-bold border-r border-slate-200">
                             {idx + 1}
                           </td>
-                          <td className="p-2 whitespace-pre-line font-bold text-slate-900 border-r border-slate-200">
+                          <td className="p-2.5 whitespace-pre-line font-bold text-slate-900 border-r border-slate-200">
                             {art.DESCRIPCION}
                           </td>
-                          <td className="p-2 text-center font-black border-r border-slate-200">
+                          <td className="p-2.5 text-center font-black border-r border-slate-200">
                             {art.TALLA || "-"}
                           </td>
-                          <td className="p-2 text-center font-black border-r border-slate-200">
+                          <td className="p-2.5 text-center font-black border-r border-slate-200">
                             {art.STOCK}
                           </td>
-                          <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                          <td className="p-2.5 text-right font-mono font-bold border-r border-slate-200">
                             ${Number(art.VALOR).toLocaleString()}
                           </td>
-                          <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                          <td className="p-2.5 text-right font-mono font-bold border-r border-slate-200">
                             ${Number(art.VALORDEPOSITO).toLocaleString()}
                           </td>
-                          <td className="p-2 text-center font-mono font-bold">
+                          <td className="p-2.5 text-center font-mono font-bold">
                             {art.CODBARRAS}
                           </td>
                         </tr>
@@ -1404,7 +1414,7 @@ export function PuntoDeVenta() {
           </div>
 
           {/* FRANJA AZUL INFERIOR */}
-          <div className="h-3 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+          <div className="h-3.5 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
         </DialogContent>
       </Dialog>
 
