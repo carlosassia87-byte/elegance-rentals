@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura } from "@/types/database.types";
+import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura, AbonoCliente } from "@/types/database.types";
 import {
   buscarClientePorCedula,
   buscarClientesPorNombre,
@@ -31,6 +31,9 @@ import {
   registrarAlquilerFactura,
   registrarDevolucionVestido,
   registrarGasto,
+  buscarFacturaApartado,
+  registrarAbonoCliente,
+  registrarSalidaVestidoApartado,
 } from "@/services/posService";
 import { LogoCasaDelDisfraz } from "./LogoCasaDelDisfraz";
 
@@ -138,6 +141,83 @@ export function PuntoDeVenta() {
   const [gastoMonto, setGastoMonto] = useState("");
   const [devFactura, setDevFactura] = useState("");
   const [devMonto, setDevMonto] = useState<number>(0);
+
+  // Estados del Módulo ENTREGA VESTIDO APARTADO (Abonos)
+  const [apartadoBusqFactura, setApartadoBusqFactura] = useState("");
+  const [apartadoFactura, setApartadoFactura] = useState<Factura | null>(null);
+  const [apartadoItems, setApartadoItems] = useState<CampoFactura[]>([]);
+  const [apartadoAbonos, setApartadoAbonos] = useState<AbonoCliente[]>([]);
+  const [modalSubAbonar, setModalSubAbonar] = useState(false);
+  const [abonoPagoEfec, setAbonoPagoEfec] = useState("");
+  const [abonoPagoTrans, setAbonoPagoTrans] = useState("");
+
+  const apartadoTotalAbonado = useMemo(() => {
+    return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
+  }, [apartadoAbonos]);
+
+  const apartadoSaldoAnterior = useMemo(() => {
+    if (!apartadoFactura) return 0;
+    const total = Number(apartadoFactura.FTOTALVENTADEPOSITO) || 0;
+    const pagado = Number(apartadoFactura.PAGACON) || 0;
+    return Math.max(0, total - pagado);
+  }, [apartadoFactura]);
+
+  const apartadoSaldoRestante = useMemo(() => {
+    return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
+  }, [apartadoSaldoAnterior, apartadoTotalAbonado]);
+
+  async function handleConsultarApartado() {
+    if (!apartadoBusqFactura.trim()) {
+      toast.error("Ingresa el número de factura a consultar");
+      return;
+    }
+    const res = await buscarFacturaApartado(apartadoBusqFactura);
+    if (!res.factura) {
+      toast.error("Factura no encontrada");
+      setApartadoFactura(null);
+      setApartadoItems([]);
+      setApartadoAbonos([]);
+      return;
+    }
+    setApartadoFactura(res.factura);
+    setApartadoItems(res.items);
+    setApartadoAbonos(res.abonos);
+    toast.success(`Factura ${res.factura.NUMEROFACT} cargada exitosamente`);
+  }
+
+  async function handleGuardarAbono() {
+    if (!apartadoFactura) return;
+    const efec = parseFloat(abonoPagoEfec) || 0;
+    const trans = parseFloat(abonoPagoTrans) || 0;
+    const totalAbono = efec + trans;
+
+    if (totalAbono <= 0) {
+      toast.error("Ingresa un monto válido para el abono");
+      return;
+    }
+
+    const nuevoSaldo = Math.max(0, apartadoSaldoRestante - totalAbono);
+
+    const abonoGuardado = await registrarAbonoCliente({
+      numeroFactura: apartadoFactura.NUMEROFACT,
+      cliente: apartadoFactura.CCLIENTE,
+      pagoEfectivo: efec,
+      pagoTransferencia: trans,
+      saldoAnterior: apartadoSaldoRestante,
+      saldoDeber: nuevoSaldo,
+      totalAbono,
+    });
+
+    if (abonoGuardado) {
+      toast.success("¡Abono registrado con éxito!");
+      setApartadoAbonos((prev) => [...prev, abonoGuardado]);
+      setModalSubAbonar(false);
+      setAbonoPagoEfec("");
+      setAbonoPagoTrans("");
+    } else {
+      toast.error("Error al registrar el abono");
+    }
+  }
 
   useEffect(() => {
     generarNumeroFactura().then((num) => setNumeroRecibo(num));
@@ -2131,43 +2211,434 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================
-          MODAL: APARTADOS (RESERVAS ACTIVAS)
+          MODAL: ENTREGA VESTIDO APARTADO (IDÉNTICO A LA CAPTURA WINDEV)
       ========================================================= */}
       <Dialog open={modalApartados} onOpenChange={setModalApartados}>
-        <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
-          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="font-black text-amber-800 uppercase text-xs">
-              Trajes Apartados / Reservas
-            </span>
+        <DialogContent className="w-[96vw] max-w-[1600px] h-[92vh] max-h-[92vh] bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md flex flex-col">
+          {/* BARRA DE TÍTULO SUPERIOR */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300 select-none">
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-500 font-bold text-xs">❖</span>
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                ENTREGA VESTIDO APARTADO
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Minus className="h-3.5 w-3.5 cursor-pointer hover:text-slate-800" />
+              <Square className="h-3 w-3 cursor-pointer hover:text-slate-800" />
+              <button
+                onClick={() => setModalApartados(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <div className="space-y-1.5 text-xs font-mono pt-1">
-            <div className="rounded border border-slate-300 bg-white p-2.5">
-              <div className="flex justify-between border-b pb-1 font-black">
-                <span>RECIBO</span>
-                <span>CLIENTE</span>
-                <span>FECHAS</span>
-                <span>TOTAL</span>
+
+          <div className="p-4 flex-1 flex flex-col min-h-0 space-y-3 overflow-auto">
+            {/* SECCIÓN SUPERIOR: FORMULARIO + BOTONES DE ACCIÓN + CALCULADORA */}
+            <div className="flex items-start justify-between gap-4">
+              {/* FORMULARIO DE CONSULTA DE FACTURA */}
+              <div className="flex-1 rounded border-2 border-slate-400 bg-[#E8E8E8] p-3 shadow-inner space-y-2">
+                {/* FILA 1: NUMEROFACT + BUSCAR + CLIENTE */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                    NUMEROFACT
+                  </span>
+                  <div className="col-span-4 flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="G1 o ALQ-..."
+                      value={apartadoBusqFactura}
+                      onChange={(e) => setApartadoBusqFactura(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter") handleConsultarApartado();
+                      }}
+                      className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-black text-slate-900 focus:outline-none shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleConsultarApartado}
+                      className="h-7 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wider"
+                    >
+                      BUSCAR
+                    </button>
+                  </div>
+
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                    CLIENTE
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={apartadoFactura?.CCLIENTE || ""}
+                    placeholder="Nombre del cliente"
+                    className="col-span-4 h-7 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 shadow-inner"
+                  />
+                </div>
+
+                {/* FILA 2: TOTALALQUILER + TOTAL DEPOSITO + TOTALVENTA+DEPOSITO */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                    TOTALALQUILER
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${(apartadoFactura?.FTOTALALQUILER || 0).toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner"
+                  />
+
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                    TOTAL DEPOSITO
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${(apartadoFactura?.FTOTALDEPOSITO || 0).toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-blue-900 shadow-inner"
+                  />
+
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                    TOTALVENTA+DEPOSITO
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${(apartadoFactura?.FTOTALVENTADEPOSITO || 0).toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-red-700 shadow-inner"
+                  />
+                </div>
+
+                {/* FILA 3: PAGACON + SALDO ANTERIOR + SALDO ABONADO */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                    PAGACON
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${(apartadoFactura?.PAGACON || 0).toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner"
+                  />
+
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                    SALDO ANTERIOR
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${apartadoSaldoAnterior.toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner"
+                  />
+
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                    SALDO ABONADO
+                  </span>
+                  <input
+                    type="text"
+                    disabled
+                    value={`$ ${apartadoTotalAbonado.toLocaleString()}`}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-emerald-800 shadow-inner"
+                  />
+                </div>
+
+                {/* FILA 4: FECHA_RECIBO */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                    FECHA_RECIBO
+                  </span>
+                  <input
+                    type="date"
+                    disabled
+                    value={apartadoFactura?.FECHA_RECIBO || fechaHoy}
+                    className="col-span-2 h-7 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 shadow-inner"
+                  />
+                </div>
               </div>
-              <div className="flex justify-between py-1.5 border-b text-slate-800 font-bold">
-                <span>ALQ-000120</span>
-                <span>JUAN PÉREZ</span>
-                <span>03/09 - 06/09</span>
-                <span className="font-black text-emerald-700">$170.000</span>
+
+              {/* BOTONES SUPERIORES EN MAGENTA + CALCULADORA */}
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!apartadoFactura) {
+                          toast.error("Busca primero una factura de apartado");
+                          return;
+                        }
+                        setModalSubAbonar(true);
+                      }}
+                      className="h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wider"
+                    >
+                      ABONAR
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setModalApartados(false)}
+                      className="flex items-center gap-1 h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wider"
+                    >
+                      <X className="h-3.5 w-3.5" /> Cancelar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="flex items-center gap-1 h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wider"
+                    >
+                      Imprimir <Printer className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* BOTÓN SALIDA DE VESTIDO CUANDO EL SALDO ES CERO */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!apartadoFactura) {
+                        toast.error("Busca primero la factura");
+                        return;
+                      }
+                      if (apartadoSaldoRestante > 0) {
+                        toast.warning(`⚠️ No se puede entregar el vestido. Existe un saldo pendiente de $ ${apartadoSaldoRestante.toLocaleString()}`);
+                        return;
+                      }
+                      const ok = await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
+                      if (ok) {
+                        toast.success("¡Salida de vestido registrada con éxito! Prenda entregada.");
+                      }
+                    }}
+                    className="h-9 rounded bg-[#8A0028] px-4 text-xs font-black text-white shadow-md hover:bg-black active:scale-95 uppercase tracking-wider"
+                  >
+                    SALIDA DE VESTIDO CUANDO EL SALDO ES CERO
+                  </button>
+                </div>
+
+                {/* ÍCONO ILUSTRATIVO DE CALCULADORA ESTILO WINDEV */}
+                <div className="flex items-center justify-center h-24 w-20 rounded-lg border-2 border-slate-400 bg-gradient-to-b from-slate-200 to-slate-300 shadow-md p-1.5 flex-col gap-1">
+                  <div className="h-4 w-full bg-slate-400 rounded border border-slate-500 shadow-inner flex items-center justify-end px-1 font-mono text-[9px] font-black text-slate-900">
+                    0.00
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 w-full flex-1">
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-blue-500 rounded border border-blue-600 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-slate-100 rounded border border-slate-400 shadow-sm" />
+                    <span className="bg-red-500 rounded border border-red-600 shadow-sm" />
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between py-1.5 text-slate-800 font-bold">
-                <span>ALQ-000122</span>
-                <span>MARÍA RODRÍGUEZ</span>
-                <span>04/09 - 07/09</span>
-                <span className="font-black text-emerald-700">$200.000</span>
+            </div>
+
+            {/* SECCIÓN CENTRAL: 2 TABLAS LADO A LADO (ABONOS CLIENTE Y ARTICULOS) */}
+            <div className="grid grid-cols-12 gap-4 flex-1 min-h-0">
+              {/* TABLA IZQUIERDA: ABONOS CLIENTE */}
+              <div className="col-span-7 flex flex-col min-h-0">
+                <div className="text-center py-1">
+                  <h3 className="text-xl font-black tracking-widest text-[#E60000] uppercase font-sans">
+                    ABONOS CLIENTE
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-auto rounded border-2 border-slate-400 bg-white shadow-inner">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#004B87] text-white font-black uppercase text-[11px] tracking-wider sticky top-0">
+                      <tr>
+                        <th className="p-2 border-r border-slate-500">NUMERO_ABONO</th>
+                        <th className="p-2 border-r border-slate-500">CLIENTE</th>
+                        <th className="p-2 border-r border-slate-500">AFACTURA</th>
+                        <th className="p-2 border-r border-slate-500 text-right">PAGOEFECTIVO</th>
+                        <th className="p-2 border-r border-slate-500 text-right">PAGO TRANSFERENCIA</th>
+                        <th className="p-2 border-r border-slate-500 text-center">FECHA</th>
+                        <th className="p-2 text-right">TOTAL_ABONO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apartadoAbonos.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-bold">
+                            No hay abonos registrados para esta factura.
+                          </td>
+                        </tr>
+                      ) : (
+                        apartadoAbonos.map((ab, idx) => (
+                          <tr
+                            key={idx}
+                            className={`border-b border-slate-200 text-xs ${
+                              idx % 2 === 0 ? "bg-white font-semibold" : "bg-[#D6E6F2] font-semibold"
+                            }`}
+                          >
+                            <td className="p-2 font-mono font-bold border-r border-slate-200">
+                              {ab.NUMEROABONO}
+                            </td>
+                            <td className="p-2 font-bold border-r border-slate-200">
+                              {ab.ACLIENTE}
+                            </td>
+                            <td className="p-2 font-mono font-bold border-r border-slate-200">
+                              {ab.AFACTURA}
+                            </td>
+                            <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                              ${Number(ab.PAGOEFECTIVO || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                              ${Number(ab.PAGOTRANFE || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2 text-center font-bold border-r border-slate-200">
+                              {ab.FECHAABONO}
+                            </td>
+                            <td className="p-2 text-right font-mono font-black text-emerald-800">
+                              ${Number(ab.TOTAL_ABONO || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* TABLA DERECHA: ARTICULOS */}
+              <div className="col-span-5 flex flex-col min-h-0">
+                <div className="text-center py-1">
+                  <h3 className="text-xl font-black tracking-widest text-[#E60000] uppercase font-sans">
+                    ARTICULOS
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-auto rounded border-2 border-slate-400 bg-white shadow-inner">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-[#004B87] text-white font-black uppercase text-[11px] tracking-wider sticky top-0">
+                      <tr>
+                        <th className="p-2 border-r border-slate-500">DESCRIPCION</th>
+                        <th className="p-2 border-r border-slate-500 text-center w-20">CANTIDAD</th>
+                        <th className="p-2 border-r border-slate-500 text-right w-24">VALOR</th>
+                        <th className="p-2 text-right w-28">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apartadoItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-16 text-center text-slate-400 text-xs font-bold">
+                            Sin artículos cargados.
+                          </td>
+                        </tr>
+                      ) : (
+                        apartadoItems.map((it, idx) => (
+                          <tr
+                            key={idx}
+                            className={`border-b border-slate-200 text-xs ${
+                              idx % 2 === 0 ? "bg-white font-semibold" : "bg-[#D6E6F2] font-semibold"
+                            }`}
+                          >
+                            <td className="p-2 font-bold text-slate-900 border-r border-slate-200">
+                              {it.DESCRIPCION}
+                            </td>
+                            <td className="p-2 text-center font-black border-r border-slate-200">
+                              {it.CANTIDAD}
+                            </td>
+                            <td className="p-2 text-right font-mono font-bold border-r border-slate-200">
+                              ${Number(it.VALOR || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2 text-right font-mono font-black text-slate-900">
+                              ${Number(it.TOTAL || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN INFERIOR: SALDO RESTANTE (FONDO SALMÓN) */}
+            <div className="flex items-center justify-start gap-4 pt-1">
+              <span className="text-xl font-black tracking-wider text-[#E60000] uppercase font-sans">
+                SALDO RESTANTE
+              </span>
+              <div className="h-14 w-80 rounded border-2 border-red-400 bg-[#FF9999] px-4 flex items-center justify-end font-mono text-3xl font-black text-slate-900 shadow-inner">
+                {apartadoSaldoRestante.toLocaleString()}
               </div>
             </div>
           </div>
-          <div className="flex justify-end mt-2">
+
+          {/* FRANJA AZUL INFERIOR */}
+          <div className="h-3.5 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+        </DialogContent>
+      </Dialog>
+
+      {/* SUB-MODAL DE REGISTRO DE ABONO */}
+      <Dialog open={modalSubAbonar} onOpenChange={setModalSubAbonar}>
+        <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl rounded-md overflow-hidden">
+          <div className="bg-[#B80036] px-4 py-2 text-white flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-wider">
+              REGISTRAR ABONO A FACTURA {apartadoFactura?.NUMEROFACT}
+            </h3>
+            <button onClick={() => setModalSubAbonar(false)} className="text-white hover:opacity-80">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-3 text-xs font-bold">
+            <div>
+              <label className="block text-slate-800 uppercase mb-0.5">PAGO EN EFECTIVO ($):</label>
+              <input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={abonoPagoEfec}
+                onChange={(e) => setAbonoPagoEfec(e.target.value)}
+                className="h-8 w-full rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-base font-black text-slate-900 shadow-inner"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-800 uppercase mb-0.5">PAGO EN TRANSFERENCIA ($):</label>
+              <input
+                type="number"
+                min={0}
+                placeholder="0"
+                value={abonoPagoTrans}
+                onChange={(e) => setAbonoPagoTrans(e.target.value)}
+                className="h-8 w-full rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-base font-black text-slate-900 shadow-inner"
+              />
+            </div>
+
+            <div className="rounded border border-slate-300 bg-white p-2 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span>Saldo Anterior:</span>
+                <span className="font-mono font-bold">${apartadoSaldoRestante.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-emerald-800 font-bold">
+                <span>Total Abono Actual:</span>
+                <span className="font-mono">${((parseFloat(abonoPagoEfec) || 0) + (parseFloat(abonoPagoTrans) || 0)).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-black text-red-700">
+                <span>Nuevo Saldo Restante:</span>
+                <span className="font-mono">
+                  ${Math.max(0, apartadoSaldoRestante - ((parseFloat(abonoPagoEfec) || 0) + (parseFloat(abonoPagoTrans) || 0))).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-3 bg-slate-200 border-t border-slate-300">
             <button
-              onClick={() => setModalApartados(false)}
-              className="rounded bg-slate-800 px-4 py-1.5 text-xs font-black text-white"
+              type="button"
+              onClick={() => setModalSubAbonar(false)}
+              className="rounded bg-slate-300 px-3 py-1.5 text-xs font-bold"
             >
-              Cerrar
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleGuardarAbono}
+              className="rounded bg-[#B80036] px-5 py-1.5 text-xs font-black text-white uppercase shadow hover:bg-[#96002C]"
+            >
+              Confirmar Abono
             </button>
           </div>
         </DialogContent>

@@ -316,25 +316,107 @@ export async function registrarDevolucionVestido(params: {
 }
 
 // ==========================================
-// GASTO (SALIDA DE CAJA)
+// SERVICIO DE ABONOS Y ENTREGA VESTIDO APARTADO
 // ==========================================
-export async function registrarGasto(gasto: Partial<Gasto>): Promise<Gasto> {
+export async function buscarFacturaApartado(numeroFact: string): Promise<{
+  factura: Factura | null;
+  items: CampoFactura[];
+  abonos: AbonoCliente[];
+}> {
   try {
-    const { data, error } = await supabase
-      .from("GASTOS" as any)
+    const { data: factura, error: errFactura } = await supabase
+      .from("FACTURA" as any)
+      .select("*")
+      .ilike("NUMEROFACT", `%${numeroFact.trim()}%`)
+      .maybeSingle();
+
+    if (errFactura || !factura) {
+      return { factura: null, items: [], abonos: [] };
+    }
+
+    const { data: items } = await supabase
+      .from("CAMPOFACTURA" as any)
+      .select("*")
+      .eq("NUMEROFACT", (factura as any).NUMEROFACT);
+
+    const { data: abonos } = await supabase
+      .from("ABONO_CLIENTE" as any)
+      .select("*")
+      .eq("AFACTURA", (factura as any).NUMEROFACT)
+      .order("IDABONO_CLIENTE", { ascending: true });
+
+    return {
+      factura: factura as Factura,
+      items: (items as CampoFactura[]) ?? [],
+      abonos: (abonos as AbonoCliente[]) ?? [],
+    };
+  } catch (err) {
+    console.error("Error buscando factura de apartado:", err);
+    return { factura: null, items: [], abonos: [] };
+  }
+}
+
+export async function registrarAbonoCliente(params: {
+  numeroFactura: string;
+  cliente: string;
+  pagoEfectivo: number;
+  pagoTransferencia: number;
+  saldoAnterior: number;
+  saldoDeber: number;
+  totalAbono: number;
+  fecha?: string;
+}): Promise<AbonoCliente | null> {
+  try {
+    const numeroAbono = `AB-${Date.now()}`;
+    const fecha = params.fecha || new Date().toISOString().split("T")[0];
+
+    const { data: abono, error: errAbono } = await supabase
+      .from("ABONO_CLIENTE" as any)
       .insert({
-        DESCRIPCIONSALIDA: gasto.DESCRIPCIONSALIDA,
-        VALORSALIDA: gasto.VALORSALIDA,
-        FECHA: gasto.FECHA || new Date().toISOString().split("T")[0],
-        NUMEROGASTO: gasto.NUMEROGASTO || `G-${Date.now()}`,
+        NUMEROABONO: numeroAbono,
+        ACLIENTE: params.cliente,
+        AFACTURA: params.numeroFactura,
+        PAGOEFECTIVO: params.pagoEfectivo,
+        PAGOTRANFE: params.pagoTransferencia,
+        FECHAABONO: fecha,
+        SALDOANTERIOR: params.saldoAnterior,
+        SALDODEBER: params.saldoDeber,
+        TOTAL_ABONO: params.totalAbono,
       })
       .select()
       .single();
 
-    if (error) throw error;
-    return data as Gasto;
+    if (errAbono) throw errAbono;
+
+    // Actualizar FACTURA con el saldo acumulado
+    await supabase
+      .from("FACTURA" as any)
+      .update({
+        TOTAL_SALDO: params.saldoDeber,
+      })
+      .eq("NUMEROFACT", params.numeroFactura);
+
+    return abono as AbonoCliente;
   } catch (err) {
-    console.error("Error en registrarGasto:", err);
+    console.error("Error registrando abono cliente:", err);
     throw err;
   }
 }
+
+export async function registrarSalidaVestidoApartado(numeroFactura: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("FACTURA" as any)
+      .update({
+        ESTADOCLIENTE: "ENTREGADO",
+      })
+      .eq("NUMEROFACT", numeroFactura);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Error registrando salida de vestido:", err);
+    return false;
+  }
+}
+
