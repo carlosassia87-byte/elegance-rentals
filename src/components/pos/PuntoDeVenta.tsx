@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Trash2,
   X,
   Printer,
+  ChevronDown,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -46,10 +47,18 @@ export function PuntoDeVenta() {
   });
   const [estadoTraje, setEstadoTraje] = useState("DISPONIBLE");
 
-  // Selector de Artículos
+  // Autocomplete / Combobox de Artículo con Filtro en Vivo y Teclado
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
-  const [articuloSeleccionadoId, setArticuloSeleccionadoId] = useState<string>("");
+  const [articuloTexto, setArticuloTexto] = useState<string>("");
+  const [articuloSeleccionado, setArticuloSeleccionado] = useState<Articulo | null>(null);
+  const [mostrarDropdownArt, setMostrarDropdownArt] = useState<boolean>(false);
+  const [sugerenciaIndex, setSugerenciaIndex] = useState<number>(0);
+
+  // Cantidad y Refs para Navegación por Teclado
   const [cantidad, setCantidad] = useState<number>(1);
+  const articuloInputRef = useRef<HTMLInputElement>(null);
+  const cantidadInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Grid / Tabla de Alquiler
   const [gridItems, setGridItems] = useState<ItemAlquilerCarrito[]>([]);
@@ -83,6 +92,34 @@ export function PuntoDeVenta() {
     });
   }, []);
 
+  // Filtrado de Artículos en Tiempo Real según lo que escribe el usuario
+  const articulosFiltrados = useMemo(() => {
+    if (!articuloTexto.trim()) return articulos;
+    const query = articuloTexto.toLowerCase().trim();
+    return articulos.filter(
+      (a) =>
+        a.DESCRIPCION.toLowerCase().includes(query) ||
+        a.CODBARRAS.toLowerCase().includes(query) ||
+        a.TALLA.toLowerCase().includes(query)
+    );
+  }, [articulos, articuloTexto]);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        articuloInputRef.current &&
+        !articuloInputRef.current.contains(e.target as Node)
+      ) {
+        setMostrarDropdownArt(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Cálculos en tiempo real
   const totalDeposito = useMemo(() => {
     return gridItems.reduce((acc, it) => acc + it.totalDeposito, 0);
@@ -112,19 +149,65 @@ export function PuntoDeVenta() {
       setDireccion(cli.DIRECCION || "");
       setTelefono(cli.TELEFONO || "");
       toast.success(`Cliente: ${cli.NOMBRE}`);
+      // Pasa el foco al selector de artículo
+      articuloInputRef.current?.focus();
     } else {
       toast.info("Cédula no registrada. Puedes completar los datos.");
       setModalCliente(true);
     }
   }
 
-  // Agregar artículo al Grid
+  // Selección de Artículo desde el buscador / dropdown
+  function seleccionarArticulo(art: Articulo) {
+    setArticuloSeleccionado(art);
+    setArticuloTexto(art.DESCRIPCION);
+    setMostrarDropdownArt(false);
+    // Pasa automáticamente el foco a CANTIDAD y selecciona el texto
+    setTimeout(() => {
+      cantidadInputRef.current?.focus();
+      cantidadInputRef.current?.select();
+    }, 50);
+  }
+
+  // Manejo de Teclado en el Campo de ARTÍCULO
+  function handleKeyDownArticulo(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMostrarDropdownArt(true);
+      setSugerenciaIndex((prev) => Math.min(prev + 1, articulosFiltrados.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSugerenciaIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (articulosFiltrados.length > 0) {
+        const art = articulosFiltrados[sugerenciaIndex] || articulosFiltrados[0];
+        seleccionarArticulo(art);
+      } else {
+        toast.error("No se encontró ningún artículo coincidente");
+      }
+    } else if (e.key === "Escape") {
+      setMostrarDropdownArt(false);
+    }
+  }
+
+  // Manejo de Teclado en el Campo de CANTIDAD (Enter para bajar a la tabla)
+  function handleKeyDownCantidad(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAgregarItem();
+    }
+  }
+
+  // Agregar artículo al Grid (Baja a la tabla y regresa el foco al buscador)
   function handleAgregarItem() {
-    const art = articulos.find((a) => String(a.IDARTICULO) === articuloSeleccionadoId);
+    const art = articuloSeleccionado || articulosFiltrados[0];
     if (!art) {
-      toast.error("Selecciona un artículo de la lista");
+      toast.error("Escribe o selecciona un artículo");
+      articuloInputRef.current?.focus();
       return;
     }
+
     const cant = Math.max(1, cantidad || 1);
     const item: ItemAlquilerCarrito = {
       idTemp: `${Date.now()}-${Math.random()}`,
@@ -139,10 +222,19 @@ export function PuntoDeVenta() {
       totalDeposito: Number(art.VALORDEPOSITO) * cant,
       totalGeneral: (Number(art.VALOR) + Number(art.VALORDEPOSITO)) * cant,
     };
+
     setGridItems((prev) => [...prev, item]);
-    setArticuloSeleccionadoId("");
+    setArticuloTexto("");
+    setArticuloSeleccionado(null);
     setCantidad(1);
-    toast.success(`Agregado: ${art.DESCRIPCION}`);
+    setMostrarDropdownArt(false);
+    setSugerenciaIndex(0);
+    toast.success(`Agregado a la tabla: ${art.DESCRIPCION} (${cant} und)`);
+
+    // Retornar el foco inmediatamente a ARTÍCULO para seguir escaneando/escribiendo
+    setTimeout(() => {
+      articuloInputRef.current?.focus();
+    }, 50);
   }
 
   // Eliminar Fila Seleccionada
@@ -164,11 +256,15 @@ export function PuntoDeVenta() {
     setDireccion("");
     setTelefono("");
     setGridItems([]);
+    setArticuloTexto("");
+    setArticuloSeleccionado(null);
+    setCantidad(1);
     setPagaEfectivo("");
     setPagaTransferencia("");
     setDescuentoAlquiler("");
     setFilaSeleccionada(null);
     toast.info("Formulario reiniciado");
+    articuloInputRef.current?.focus();
   }
 
   // Confirmar y Pagar
@@ -401,7 +497,7 @@ export function PuntoDeVenta() {
                   onChange={(e) => setTelefono(e.target.value)}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
-                {/* BOTÓN "Mod" ROJO EXACTO AL ORIGINAL */}
+                {/* BOTÓN "Mod" ROJO */}
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
@@ -482,33 +578,91 @@ export function PuntoDeVenta() {
           </div>
 
           {/* =========================================================================
-              LÍNEA DE ARTÍCULO: SELECTOR + CANTIDAD + BOTONES [ELIMINAR] [PAGAR] [SALIR X]
+              LÍNEA DE ARTÍCULO: AUTOCOMPLETE CON FILTRADO + 1 ENTER A CANTIDAD + ENTER A TABLA
           ========================================================================= */}
-          <div className="flex items-center gap-1 py-0.5">
+          <div className="relative flex items-center gap-1 py-0.5">
             <span className="text-[10px] font-bold text-slate-800 uppercase">ARTICULO</span>
-            <select
-              value={articuloSeleccionadoId}
-              onChange={(e) => setArticuloSeleccionadoId(e.target.value)}
-              className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-semibold text-slate-800 focus:outline-none"
-            >
-              <option value="">-- SELECCIONAR ARTÍCULO --</option>
-              {articulos.map((art) => (
-                <option key={art.IDARTICULO} value={String(art.IDARTICULO)}>
-                  {art.DESCRIPCION} (TALLA: {art.TALLA} | ALQ: ${art.VALOR.toLocaleString()} | DEP: ${art.VALORDEPOSITO.toLocaleString()} | STOCK: {art.STOCK})
-                </option>
-              ))}
-            </select>
+            
+            {/* COMBOBOX DE BÚSQUEDA Y FILTRADO */}
+            <div className="relative flex-1">
+              <div className="relative flex items-center">
+                <input
+                  ref={articuloInputRef}
+                  type="text"
+                  placeholder="Escribe para filtrar artículo o escanear código de barras... (Enter para seleccionar)"
+                  value={articuloTexto}
+                  onChange={(e) => {
+                    setArticuloTexto(e.target.value);
+                    setArticuloSeleccionado(null);
+                    setMostrarDropdownArt(true);
+                    setSugerenciaIndex(0);
+                  }}
+                  onFocus={() => setMostrarDropdownArt(true)}
+                  onKeyDown={handleKeyDownArticulo}
+                  className="h-5 w-full rounded border border-slate-400 bg-white pr-6 pl-1.5 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => {
+                    setMostrarDropdownArt((p) => !p);
+                    articuloInputRef.current?.focus();
+                  }}
+                  className="absolute right-1 text-slate-500 hover:text-slate-800"
+                >
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </div>
 
-            {/* CANTIDAD CON FLECHA ROJA COMO EN EL ORIGINAL */}
+              {/* LISTA DESPLEGABLE FLOTANTE FILTRADA */}
+              {mostrarDropdownArt && articulosFiltrados.length > 0 && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 top-6 z-50 max-h-52 w-full overflow-auto rounded border border-slate-400 bg-white shadow-lg"
+                >
+                  {articulosFiltrados.map((art, idx) => {
+                    const isHovered = sugerenciaIndex === idx;
+                    return (
+                      <div
+                        key={art.IDARTICULO}
+                        onMouseEnter={() => setSugerenciaIndex(idx)}
+                        onClick={() => seleccionarArticulo(art)}
+                        className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-2 py-1 text-[10px] transition-colors ${
+                          isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[9px] opacity-75">[{art.CODBARRAS}]</span>
+                          <span>{art.DESCRIPCION}</span>
+                          <span className={`rounded px-1 py-0.2 text-[9px] ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
+                            Talla: {art.TALLA}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span>Alq: ${art.VALOR.toLocaleString()}</span>
+                          <span className="opacity-90">Dep: ${art.VALORDEPOSITO.toLocaleString()}</span>
+                          <span className={`font-mono font-bold ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
+                            Stock: {art.STOCK}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* CAMPO CANTIDAD (CON FOCO AUTOMÁTICO AL DAR ENTER EN ARTÍCULO) */}
             <div className="flex items-center gap-0.5">
               <span className="text-[10px] font-bold text-red-700 uppercase">▸CANTIDAD</span>
               <input
+                ref={cantidadInputRef}
                 type="number"
                 min={1}
                 value={cantidad}
                 onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
-                onKeyDown={(e) => e.key === "Enter" && handleAgregarItem()}
-                className="h-5 w-10 rounded border border-slate-400 bg-white text-center text-[10px] font-bold text-slate-900 focus:outline-none"
+                onKeyDown={handleKeyDownCantidad}
+                className="h-5 w-11 rounded border-2 border-red-500 bg-white text-center text-[10px] font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
               />
               <span className="text-[10px] font-bold text-red-700">▸</span>
             </div>
@@ -516,12 +670,13 @@ export function PuntoDeVenta() {
             {/* BOTÓN + AGREGAR */}
             <button
               onClick={handleAgregarItem}
+              title="Bajar artículo a la tabla (Enter en cantidad)"
               className="h-5 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white hover:bg-slate-800"
             >
               +
             </button>
 
-            {/* BOTÓN ELIMINAR (MAGENTA CON ICONO DE PAPELERA) */}
+            {/* BOTÓN ELIMINAR */}
             <button
               onClick={handleEliminarFila}
               className="flex items-center gap-0.5 h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95"
@@ -529,7 +684,7 @@ export function PuntoDeVenta() {
               ELIMINAR <Trash2 className="h-3 w-3" />
             </button>
 
-            {/* BOTÓN PAGAR (NEGRO CON TEXTO BLANCO) */}
+            {/* BOTÓN PAGAR */}
             <button
               onClick={handlePagar}
               className="h-5 rounded bg-[#111111] px-3 text-[10px] font-black text-white shadow-sm hover:bg-black active:scale-95"
@@ -537,7 +692,7 @@ export function PuntoDeVenta() {
               PAGAR
             </button>
 
-            {/* BOTÓN SALIR X (ROJO OSCURO / MARRÓN) */}
+            {/* BOTÓN SALIR X */}
             <button
               onClick={handleLimpiar}
               className="flex items-center gap-0.5 h-5 rounded bg-[#992222] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#771111] active:scale-95"
@@ -567,7 +722,7 @@ export function PuntoDeVenta() {
                   {gridItems.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-semibold">
-                        (Tabla vacía. Selecciona un artículo arriba y agrégalo para registrar el alquiler)
+                        (Escribe o escanea un artículo arriba, presiona Enter para pasar a Cantidad, y Enter para bajarlo a la tabla)
                       </td>
                     </tr>
                   ) : (
@@ -777,6 +932,7 @@ export function PuntoDeVenta() {
               onClick={() => {
                 setModalCliente(false);
                 toast.success("Cliente guardado");
+                articuloInputRef.current?.focus();
               }}
               className="rounded bg-[#B80036] px-4 py-1 text-xs font-bold text-white"
             >
@@ -854,6 +1010,7 @@ export function PuntoDeVenta() {
                               setTelefono(c.TELEFONO);
                               setModalBuscarCli(false);
                               toast.success(`Cliente cargado: ${c.NOMBRE}`);
+                              articuloInputRef.current?.focus();
                             }}
                             className="rounded bg-[#B80036] px-2 py-0.5 text-xs font-bold text-white"
                           >
