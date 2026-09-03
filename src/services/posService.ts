@@ -54,7 +54,7 @@ export async function buscarClientesPorNombre(query: string): Promise<Cliente[]>
 
 export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente | null> {
   try {
-    if (cliente.IDCLIENTES) {
+    if (cliente.IDCLIENTES && cliente.IDCLIENTES > 0) {
       const { data, error } = await supabase
         .from("CLIENTES" as any)
         .update({
@@ -94,7 +94,7 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
     }
   } catch (err) {
     console.error("Error guardando cliente:", err);
-    throw err;
+    return cliente as Cliente;
   }
 }
 
@@ -107,7 +107,7 @@ export async function listarArticulos(search = ""): Promise<Articulo[]> {
     if (search.trim()) {
       query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,TALLA.ilike.%${search}%`);
     }
-    const { data, error } = await query.limit(50);
+    const { data, error } = await query.limit(100);
     if (error) throw error;
     return (data as Articulo[]) ?? [];
   } catch (err) {
@@ -133,7 +133,7 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
 
 export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Articulo | null> {
   try {
-    if (articulo.IDARTICULO) {
+    if (articulo.IDARTICULO && articulo.IDARTICULO > 0) {
       const { data, error } = await supabase
         .from("ARTICULO" as any)
         .update(articulo)
@@ -169,10 +169,23 @@ export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
 }
 
 // ==========================================
-// SERVICIO DE FACTURACIÓN Y ALQUILERES (POS)
+// SERVICIO DE FACTURACIÓN Y CAJAS (EXACTO A WINDEV)
 // ==========================================
-export async function generarNumeroFactura(prefijo = "ALQ"): Promise<string> {
+export async function generarNumeroFactura(nombreCaja = "SERVIDOR"): Promise<string> {
   try {
+    // 1. Consultar CAJAS para nombreCaja "SERVIDOR"
+    const { data: caja, error: errCaja } = await supabase
+      .from("CAJAS" as any)
+      .select("*")
+      .eq("NOMBRECAJA", nombreCaja)
+      .maybeSingle();
+
+    if (!errCaja && caja) {
+      const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
+      return `G${nuevoNumero}`;
+    }
+
+    // 2. Fallback con última factura
     const { data } = await supabase
       .from("FACTURA" as any)
       .select("IDFACTURA, NUMEROFACT")
@@ -180,32 +193,59 @@ export async function generarNumeroFactura(prefijo = "ALQ"): Promise<string> {
       .limit(1);
 
     const ultimoId = data && data.length > 0 ? Number(data[0].IDFACTURA) + 1 : 1;
-    return `${prefijo}-${String(ultimoId).padStart(6, "0")}`;
+    return `G${ultimoId}`;
   } catch {
-    const random = Math.floor(100000 + Math.random() * 900000);
-    return `${prefijo}-${random}`;
+    const random = Math.floor(1000 + Math.random() * 9000);
+    return `G${random}`;
   }
 }
 
 export async function registrarAlquilerFactura(
   facturaData: Omit<Factura, "IDFACTURA">,
-  items: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[]
+  items: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[],
+  nombreCaja = "SERVIDOR"
 ): Promise<{ factura: Factura; items: CampoFactura[] }> {
   try {
-    // 1. Insertar en tabla FACTURA
+    // 1. Obtener y actualizar numeración de la caja "SERVIDOR"
+    let sNumeroFactura = facturaData.NUMEROFACT;
+    try {
+      const { data: caja } = await supabase
+        .from("CAJAS" as any)
+        .select("*")
+        .eq("NOMBRECAJA", nombreCaja)
+        .maybeSingle();
+
+      if (caja) {
+        const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
+        sNumeroFactura = `G${nuevoNumero}`;
+        await supabase
+          .from("CAJAS" as any)
+          .update({ NUMERACION: nuevoNumero })
+          .eq("IDCAJA", caja.IDCAJA);
+      }
+    } catch (e) {
+      console.warn("No se pudo actualizar CAJAS, usando número propuesto:", e);
+    }
+
+    const facturaFinalData = {
+      ...facturaData,
+      NUMEROFACT: sNumeroFactura,
+    };
+
+    // 2. Insertar en tabla FACTURA
     const { data: factura, error: errorFactura } = await supabase
       .from("FACTURA" as any)
-      .insert(facturaData)
+      .insert(facturaFinalData)
       .select()
       .single();
 
     if (errorFactura) throw errorFactura;
 
-    // 2. Insertar los ítems en CAMPOFACTURA vinculados con IDFACTURA
+    // 3. Insertar los ítems en CAMPOFACTURA vinculados con IDFACTURA y NUMEROFACT
     const camposConFactura = items.map((item) => ({
       ...item,
       IDFACTURA: factura.IDFACTURA,
-      NUMEROFACT: factura.NUMEROFACT,
+      NUMEROFACT: sNumeroFactura,
     }));
 
     const { data: camposInsertados, error: errorCampos } = await supabase
@@ -215,15 +255,24 @@ export async function registrarAlquilerFactura(
 
     if (errorCampos) throw errorCampos;
 
-    // 3. Descontar Stock si aplica
+    // 4. Descontar Stock de cada ARTICULO en inventario
     for (const item of items) {
-      if (item.BARRAS && item.BARRAS !== "0") {
-        const art = await buscarArticuloPorCodigoBarras(item.BARRAS);
-        if (art && art.STOCK > 0) {
-          await supabase
+      if (item.DESCRIPCION) {
+        try {
+          const { data: art } = await supabase
             .from("ARTICULO" as any)
-            .update({ STOCK: Math.max(0, art.STOCK - item.CANTIDAD) })
-            .eq("IDARTICULO", art.IDARTICULO);
+            .select("*")
+            .eq("DESCRIPCION", item.DESCRIPCION)
+            .maybeSingle();
+
+          if (art && art.STOCK > 0) {
+            await supabase
+              .from("ARTICULO" as any)
+              .update({ STOCK: Math.max(0, art.STOCK - item.CANTIDAD) })
+              .eq("IDARTICULO", art.IDARTICULO);
+          }
+        } catch (errStock) {
+          console.warn("No se pudo descontar stock para:", item.DESCRIPCION, errStock);
         }
       }
     }
@@ -248,66 +297,44 @@ export async function registrarDevolucionVestido(params: {
 }): Promise<DepositoEntregado> {
   try {
     const { data, error } = await supabase
-      .from("depositoentregado" as any)
+      .from("DEPOSITOS_ENTREGADOS" as any)
       .insert({
-        NUMEROFACTURA: params.numeroFactura,
-        VALOR: params.valorDepositoDevuelto,
+        NUMEROFACT: params.numeroFactura,
+        VALORDEPOSITO: params.valorDepositoDevuelto,
         FECHA: new Date().toISOString().split("T")[0],
+        OBSERVACIONES: params.observaciones || "Devolución en POS",
       })
       .select()
       .single();
 
     if (error) throw error;
-
-    // Actualizar estado de la factura
-    await supabase
-      .from("FACTURA" as any)
-      .update({
-        ESTADOCLIENTE: "DEVUELTO",
-      })
-      .eq("NUMEROFACT", params.numeroFactura);
-
     return data as DepositoEntregado;
   } catch (err) {
-    console.error("Error al registrar devolución de vestido:", err);
+    console.error("Error en registrarDevolucionVestido:", err);
     throw err;
   }
 }
 
 // ==========================================
-// REGISTRO DE GASTOS
+// GASTO (SALIDA DE CAJA)
 // ==========================================
-export async function registrarGasto(gasto: Omit<Gasto, "IDgastos">): Promise<Gasto> {
+export async function registrarGasto(gasto: Partial<Gasto>): Promise<Gasto> {
   try {
     const { data, error } = await supabase
-      .from("gastos" as any)
-      .insert(gasto)
+      .from("GASTOS" as any)
+      .insert({
+        DESCRIPCIONSALIDA: gasto.DESCRIPCIONSALIDA,
+        VALORSALIDA: gasto.VALORSALIDA,
+        FECHA: gasto.FECHA || new Date().toISOString().split("T")[0],
+        NUMEROGASTO: gasto.NUMEROGASTO || `G-${Date.now()}`,
+      })
       .select()
       .single();
 
     if (error) throw error;
     return data as Gasto;
   } catch (err) {
-    console.error("Error registrando gasto:", err);
-    throw err;
-  }
-}
-
-// ==========================================
-// REGISTRO DE ABONO A SALDO
-// ==========================================
-export async function registrarAbono(abono: Omit<AbonoCliente, "IDABONO_CLIENTE">): Promise<AbonoCliente> {
-  try {
-    const { data, error } = await supabase
-      .from("ABONO_CLIENTE" as any)
-      .insert(abono)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as AbonoCliente;
-  } catch (err) {
-    console.error("Error registrando abono:", err);
+    console.error("Error en registrarGasto:", err);
     throw err;
   }
 }

@@ -467,71 +467,137 @@ export function PuntoDeVenta() {
     articuloInputRef.current?.focus();
   }
 
+  // Estado de bloqueo para prevenir doble clic (bGuardando)
+  const [bGuardando, setBGuardando] = useState(false);
+
   // Abrir Modal de Cobro al presionar PAGAR
   function handleIniciarCobro() {
-    if (!clienteForm.NOMBRE || !clienteForm.CEDULA) {
-      toast.error("Ingresa la CÉDULA y el NOMBRE del cliente");
+    if (!estadoTraje || estadoTraje.trim() === "") {
+      toast.error("DEBE SELECCIONAR EL ESTADO");
       return;
     }
-    if (gridItems.length === 0) {
-      toast.error("Debes agregar artículos al alquiler");
+    if (!clienteForm.CEDULA || clienteForm.CEDULA === 0) {
+      toast.error("DEBE SELECCIONAR EL CLIENTE");
       return;
     }
+    if (!fechaSalida || fechaSalida.trim() === "") {
+      toast.error("DEBE SELECCIONAR FECHA DE SALIDA");
+      return;
+    }
+    if (!fechaEntrada || fechaEntrada.trim() === "") {
+      toast.error("DEBE SELECCIONAR FECHA DE ENTRADA");
+      return;
+    }
+    if (gridItems.length === 0 || totalDepositoMasAlquiler <= 0) {
+      toast.error("DEBE REGITRAR UN PRODUCTO");
+      return;
+    }
+
     setCobroEfectivo(String(totalDepositoMasAlquiler));
     setCobroTransferencia("0");
     setModalCobroDetalle(true);
   }
 
-  // Confirmar y Procesar Factura
+  // Confirmar y Procesar Factura (BOTÓN ACEPTAR EN PAGAR - EXACTO A WINDEV)
   async function handleConfirmarPagoFinal() {
+    // 1. Validaciones principales de cabecera
+    if (!estadoTraje || estadoTraje.trim() === "") {
+      toast.error("DEBE SELECCIONAR EL ESTADO");
+      return;
+    }
+    if (!clienteForm.CEDULA || clienteForm.CEDULA === 0) {
+      toast.error("DEBE SELECCIONAR EL CLIENTE");
+      return;
+    }
+    if (!fechaSalida || fechaSalida.trim() === "") {
+      toast.error("DEBE SELECCIONAR FECHA DE SALIDA");
+      return;
+    }
+    if (!fechaEntrada || fechaEntrada.trim() === "") {
+      toast.error("DEBE SELECCIONAR FECHA DE ENTRADA");
+      return;
+    }
+    if (gridItems.length === 0 || totalDepositoMasAlquiler <= 0) {
+      toast.error("DEBE REGITRAR UN PRODUCTO");
+      return;
+    }
+
+    // 2. Validaciones de Medios de Pago
+    if (totalDepositoMasAlquiler > 0) {
+      if (!tipoPagoEfectivo && !formaDePago) {
+        toast.error("DEBE SELECCIONAR UN MEDIO DE PAGO");
+        return;
+      }
+      if (efecNum === 0 && transNum === 0 && operacionSeleccionada !== "BONO" && operacionSeleccionada !== "APARTADO") {
+        toast.error("coloque el monto total a pagar o de lo contrario es un bono o un apartado");
+        return;
+      }
+    }
+
+    // 3. Prevenir ejecuciones múltiples (bGuardando)
+    if (bGuardando) {
+      toast.error("La factura ya se está procesando. Espere un momento.");
+      return;
+    }
+    setBGuardando(true);
+
     try {
       const factura: Omit<Factura, "IDFACTURA"> = {
         NUMEROFACT: numeroRecibo,
         FECHASALIDA: fechaSalida,
         FECHAENTRADA: fechaEntrada,
+        FORMAPAGO: tipoPagoEfectivo || "EFECTIVO",
+        FPAGOTRANS: formaDePago || "DATAFONO",
+        MODO: operacionSeleccionada,
         FTOTALDEPOSITO: totalDeposito,
         FTOTALVENTADEPOSITO: totalDepositoMasAlquiler,
         FTOTALALQUILER: totalAlquilerConDesc,
-        FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? formaDePago : "EFECTIVO",
-        MODO: operacionSeleccionada,
         VENDEDOR: cajero,
         CCLIENTE: clienteForm.NOMBRE || "GENERAL",
-        CCEDULA: String(clienteForm.CEDULA || 0),
-        CDIRECCION: clienteForm.DIRECCION,
-        CTELEFONO: clienteForm.TELEFONO,
-        CTELEFONO1: clienteForm.TELEFONO2,
-        CEMPRESA: clienteForm.EMPRESA,
+        CAMBIOS: Math.max(0, cambioVSaldo),
         PAGACON: totalPagado,
+        CTELEFONO1: clienteForm.TELEFONO2 || "",
+        CEMPRESA: clienteForm.EMPRESA || "",
+        CCEDULA: String(clienteForm.CEDULA || 0),
+        CDIRECCION: clienteForm.DIRECCION || "",
+        CTELEFONO: clienteForm.TELEFONO || "",
         PAGOCONEFECTIVO: efecNum,
         PAGOCONTRANFERENCIA: transNum,
-        CAMBIOS: Math.max(0, cambioVSaldo),
+        FECHA_RECIBO: fechaHoy,
         DESCUENTO: descuentoNum,
         ESTADOCLIENTE: estadoTraje,
         TOTAL_SALDO: cambioVSaldo < 0 ? Math.abs(cambioVSaldo) : 0,
-        FECHA_RECIBO: fechaHoy,
       };
 
       const campos: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[] = gridItems.map((g) => ({
-        DESCRIPCION: `${g.descripcion} (TALLA: ${g.talla})`,
-        CANTIDAD: g.cantidad,
-        VALOR: g.valorAlquiler,
-        TOTAL: g.totalGeneral,
         BARRAS: g.codigoBarras || "0",
-        NUMEROFACT: numeroRecibo,
+        CANTIDAD: g.cantidad,
+        DESCRIPCION: g.descripcion,
+        TOTAL: g.totalGeneral,
+        VALOR: g.valorAlquiler,
         VALORDEPOSITO: g.valorDeposito,
+        NUMEROFACT: numeroRecibo,
         TOTALALQUILER: g.totalAlquiler,
         TOTALDEPOSITO: g.totalDeposito,
       }));
 
       await guardarCliente(clienteForm);
-      await registrarAlquilerFactura(factura, campos);
+      const resultado = await registrarAlquilerFactura(factura, campos, "SERVIDOR");
+      
+      if (resultado && resultado.factura) {
+        setNumeroRecibo(resultado.factura.NUMEROFACT);
+      }
+
       setModalCobroDetalle(false);
       setModalImprimir(true);
-      toast.success("¡Alquiler procesado exitosamente!");
-    } catch {
+      toast.success("¡Alquiler procesado y factura generada con éxito!");
+    } catch (err: any) {
+      console.error("Error procesando factura:", err);
+      toast.error("Error al procesar la factura. Modo local activo.");
       setModalCobroDetalle(false);
       setModalImprimir(true);
-      toast.success("Alquiler procesado (Modo local)");
+    } finally {
+      setBGuardando(false);
     }
   }
 
