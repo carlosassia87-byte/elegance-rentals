@@ -110,12 +110,14 @@ export function PuntoDeVenta() {
   const [filaSeleccionada, setFilaSeleccionada] = useState<number | null>(null);
 
   // Tarjetas Inferiores: Descuento y Totales
-  const [descuentoAlquiler, setDescuentoAlquiler] = useState<string>("");
+  const [descuentoAlquiler, setDescuentoAlquiler] = useState<string>("0");
 
-  // Modal de Cobro al presionar [PAGAR]
+  // Modal de Cobro al presionar [PAGAR] (EXACTO A WINDEV)
   const [modalCobroDetalle, setModalCobroDetalle] = useState(false);
-  const [cobroEfectivo, setCobroEfectivo] = useState<string>("");
-  const [cobroTransferencia, setCobroTransferencia] = useState<string>("");
+  const [tipoPagoEfectivo, setTipoPagoEfectivo] = useState("EFECTIVO");
+  const [cobroEfectivo, setCobroEfectivo] = useState<string>("0");
+  const [formaDePago, setFormaDePago] = useState("DATAFONO");
+  const [cobroTransferencia, setCobroTransferencia] = useState<string>("0");
 
   // Modales
   const [modalCliente, setModalCliente] = useState(false);
@@ -204,7 +206,7 @@ export function PuntoDeVenta() {
   const efecNum = parseFloat(cobroEfectivo) || 0;
   const transNum = parseFloat(cobroTransferencia) || 0;
   const totalPagado = efecNum + transNum;
-  const cambioVuelto = totalPagado > 0 ? totalPagado - totalDepositoMasAlquiler : 0;
+  const cambioVSaldo = totalPagado - totalDepositoMasAlquiler;
 
   // Buscar cliente por cédula con Enter o botón Buscar
   async function handleBuscarCedulaDirecta(cedulaValor?: string | number) {
@@ -454,9 +456,9 @@ export function PuntoDeVenta() {
     setArticuloTexto("");
     setArticuloSeleccionado(null);
     setCantidad(1);
-    setDescuentoAlquiler("");
-    setCobroEfectivo("");
-    setCobroTransferencia("");
+    setDescuentoAlquiler("0");
+    setCobroEfectivo("0");
+    setCobroTransferencia("0");
     setFilaSeleccionada(null);
     setNotaAlertaVisible(false);
     setModalOperacionVisible(false);
@@ -476,6 +478,7 @@ export function PuntoDeVenta() {
       return;
     }
     setCobroEfectivo(String(totalDepositoMasAlquiler));
+    setCobroTransferencia("0");
     setModalCobroDetalle(true);
   }
 
@@ -489,7 +492,7 @@ export function PuntoDeVenta() {
         FTOTALDEPOSITO: totalDeposito,
         FTOTALVENTADEPOSITO: totalDepositoMasAlquiler,
         FTOTALALQUILER: totalAlquilerConDesc,
-        FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
+        FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? formaDePago : "EFECTIVO",
         MODO: operacionSeleccionada,
         VENDEDOR: cajero,
         CCLIENTE: clienteForm.NOMBRE || "GENERAL",
@@ -501,10 +504,10 @@ export function PuntoDeVenta() {
         PAGACON: totalPagado,
         PAGOCONEFECTIVO: efecNum,
         PAGOCONTRANFERENCIA: transNum,
-        CAMBIOS: Math.max(0, cambioVuelto),
+        CAMBIOS: Math.max(0, cambioVSaldo),
         DESCUENTO: descuentoNum,
         ESTADOCLIENTE: estadoTraje,
-        TOTAL_SALDO: cambioVuelto < 0 ? Math.abs(cambioVuelto) : 0,
+        TOTAL_SALDO: cambioVSaldo < 0 ? Math.abs(cambioVSaldo) : 0,
         FECHA_RECIBO: fechaHoy,
       };
 
@@ -908,7 +911,7 @@ export function PuntoDeVenta() {
           ELIMINAR <Trash2 className="h-4 w-4" />
         </button>
 
-        {/* BOTÓN PAGAR */}
+        {/* BOTÓN PAGAR (LINEA SUPERIOR DE ARTICULO) */}
         <button
           onClick={handleIniciarCobro}
           className="h-8 rounded bg-[#111111] px-5 text-xs font-black text-white shadow-md hover:bg-black active:scale-95 uppercase tracking-wider"
@@ -1054,6 +1057,169 @@ export function PuntoDeVenta() {
           </button>
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL: PAGAR (IDÉNTICO A LA CAPTURA WINDEV [PAGAR])
+      ========================================================================= */}
+      <Dialog open={modalCobroDetalle} onOpenChange={setModalCobroDetalle}>
+        <DialogContent className="w-[90vw] max-w-2xl bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
+          {/* BARRA DE TÍTULO SUPERIOR ESTILO WINDOWS */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300 select-none">
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-500 font-bold text-xs">❖</span>
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                PAGAR
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Minus className="h-3.5 w-3.5 cursor-pointer hover:text-slate-800" />
+              <Square className="h-3 w-3 cursor-pointer hover:text-slate-800" />
+              <button
+                onClick={() => setModalCobroDetalle(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {/* CONTENEDOR PRINCIPAL CON BORDE GRIS */}
+            <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-5 shadow-inner">
+              <div className="grid grid-cols-12 gap-5">
+                {/* COLUMNA IZQUIERDA: PAGOS */}
+                <div className="col-span-7 space-y-3.5">
+                  {/* PAGO EFECTIVO DROPDOWN */}
+                  <div className="flex items-center gap-2">
+                    <span className="w-36 text-xs font-black text-slate-800 uppercase">
+                      PAGO EFECTIVO
+                    </span>
+                    <select
+                      value={tipoPagoEfectivo}
+                      onChange={(e) => setTipoPagoEfectivo(e.target.value)}
+                      className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                    >
+                      <option value="EFECTIVO">EFECTIVO</option>
+                    </select>
+                  </div>
+
+                  {/* PAGA CON EFECTIVO: INPUT */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-slate-800 uppercase block">
+                      PAGA CON EFECTIVO:
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={cobroEfectivo}
+                      onChange={(e) => setCobroEfectivo(e.target.value)}
+                      className="h-10 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-xl font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                  </div>
+
+                  {/* FORMA DE PAGO DROPDOWN */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="w-36 text-xs font-black text-slate-800 uppercase">
+                      FORMA DE PAGO
+                    </span>
+                    <select
+                      value={formaDePago}
+                      onChange={(e) => setFormaDePago(e.target.value)}
+                      className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                    >
+                      <option value="DATAFONO">DATAFONO</option>
+                      <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                      <option value="NEQUI">NEQUI</option>
+                      <option value="DAVIPLATA">DAVIPLATA</option>
+                      <option value="TARJETA DE CRÉDITO">TARJETA DE CRÉDITO</option>
+                      <option value="BONO">BONO</option>
+                    </select>
+                  </div>
+
+                  {/* PAGA CON TRANSFERENCIA: INPUT */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-slate-800 uppercase block">
+                      PAGA CON TRANSFERENCIA:
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={cobroTransferencia}
+                      onChange={(e) => setCobroTransferencia(e.target.value)}
+                      className="h-10 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-xl font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    />
+                  </div>
+
+                  {/* TOTAL DEPOSITO + ALQUILER */}
+                  <div className="space-y-1 pt-2">
+                    <span className="text-xs font-black text-slate-800 uppercase block">
+                      TOTAL DEPOSITO + ALQUILER
+                    </span>
+                    <div className="h-14 w-full rounded border-2 border-slate-400 bg-white px-4 flex items-center justify-end font-mono text-3xl font-black text-slate-900 shadow-inner">
+                      {totalDepositoMasAlquiler.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* COLUMNA DERECHA: DESCUENTO, RECUADRO AZUL Y CAMBIO Ó SALDO */}
+                <div className="col-span-5 flex flex-col justify-between space-y-3">
+                  {/* DESCUENTO */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-slate-800 uppercase block">
+                      DESCUENTO
+                    </span>
+                    <div className="h-14 rounded border border-slate-400 bg-white p-2 shadow-inner flex items-center justify-end">
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="0"
+                        value={descuentoAlquiler}
+                        onChange={(e) => setDescuentoAlquiler(e.target.value)}
+                        className="w-full text-right font-mono text-xl font-black text-slate-900 focus:outline-none bg-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* RECUADRO AZUL CLARO ESTILO WINDEV */}
+                  <div className="h-10 w-28 bg-[#8BB8E8] rounded border border-blue-400 self-center opacity-80" />
+
+                  {/* CAMBIO Ó SALDO */}
+                  <div className="space-y-1">
+                    <span className="text-xs font-black uppercase text-red-600 block">
+                      CAMBIO Ó SALDO
+                    </span>
+                    <div className="h-16 w-full rounded border-2 border-red-300 bg-[#FF9999] px-4 flex items-center justify-end font-mono text-4xl font-black text-blue-900 shadow-inner">
+                      {cambioVSaldo.toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* BOTONES CANCELAR / ACEPTAR */}
+                  <div className="flex items-center justify-center gap-4 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setModalCobroDetalle(false)}
+                      className="rounded bg-[#004B87] px-6 py-2 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide transition-all"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleConfirmarPagoFinal}
+                      className="rounded bg-[#B82E1F] px-7 py-2 text-xs font-black text-white shadow-md hover:bg-red-900 active:scale-95 uppercase tracking-wide transition-all"
+                    >
+                      Aceptar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FRANJA AZUL INFERIOR */}
+          <div className="h-3.5 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+        </DialogContent>
+      </Dialog>
 
       {/* =========================================================================
           MODAL: ALTA DE ARTICULOS (IDÉNTICO A LA CAPTURA WINDEV [ALTA DE ARTICULOS])
@@ -1415,102 +1581,6 @@ export function PuntoDeVenta() {
 
           {/* FRANJA AZUL INFERIOR */}
           <div className="h-3.5 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
-        </DialogContent>
-      </Dialog>
-
-      {/* =========================================================================
-          MODAL: VENTANA DE PAGO / COBRO Y LIQUIDACIÓN AL PRESIONAR [PAGAR]
-      ========================================================================= */}
-      <Dialog open={modalCobroDetalle} onOpenChange={setModalCobroDetalle}>
-        <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-lg">
-          <div className="bg-[#002D62] px-4 py-2.5 text-white flex items-center justify-between">
-            <h3 className="text-sm font-black uppercase tracking-wider">
-              PAGAR / LIQUIDAR ALQUILER
-            </h3>
-            <span className="font-mono text-xs text-yellow-300 font-bold">
-              RECIBO: {numeroRecibo}
-            </span>
-          </div>
-
-          <div className="p-5 space-y-3 font-sans">
-            {/* RESUMEN DEL COBRO */}
-            <div className="rounded border border-slate-300 bg-white p-3 shadow-inner space-y-1 text-xs">
-              <div className="flex justify-between text-slate-700">
-                <span>Cliente:</span>
-                <strong className="text-slate-900">{clienteForm.NOMBRE || "GENERAL"}</strong>
-              </div>
-              <div className="flex justify-between text-slate-700">
-                <span>Total Alquiler:</span>
-                <span className="font-mono font-bold">${totalAlquilerConDesc.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-700">
-                <span>Total Depósito (Garantía):</span>
-                <span className="font-mono font-bold text-blue-800">${totalDeposito.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm font-black border-t pt-1 text-slate-900">
-                <span>TOTAL A COBRAR:</span>
-                <span className="font-mono text-base text-red-700">${totalDepositoMasAlquiler.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* FORMAS DE PAGO */}
-            <div className="space-y-2 pt-1">
-              <div>
-                <label className="text-xs font-black uppercase text-slate-800 block mb-0.5">
-                  PAGA CON EFECTIVO:
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  value={cobroEfectivo}
-                  onChange={(e) => setCobroEfectivo(e.target.value)}
-                  className="h-8 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-base font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black uppercase text-slate-800 block mb-0.5">
-                  PAGA CON TRANSFERENCIA:
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="0"
-                  value={cobroTransferencia}
-                  onChange={(e) => setCobroTransferencia(e.target.value)}
-                  className="h-8 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-base font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
-
-              {/* SU CAMBIO ES */}
-              <div className="rounded border-2 border-slate-400 bg-white p-2 text-center shadow-inner mt-2">
-                <span className="text-[11px] font-black uppercase text-slate-600 block">
-                  SU CAMBIO / VUELTO ES:
-                </span>
-                <span className="font-mono text-xl font-black text-emerald-700 block">
-                  {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "$ 0"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 p-3 bg-slate-200 border-t border-slate-300">
-            <button
-              type="button"
-              onClick={() => setModalCobroDetalle(false)}
-              className="rounded bg-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-400"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmarPagoFinal}
-              className="rounded bg-[#B80036] px-6 py-2 text-xs font-black uppercase text-white shadow hover:bg-[#96002C] active:scale-95 flex items-center gap-1.5"
-            >
-              <Check className="h-4 w-4" /> CONFIRMAR E IMPRIMIR
-            </button>
-          </div>
         </DialogContent>
       </Dialog>
 
@@ -2073,7 +2143,7 @@ export function PuntoDeVenta() {
               <p className="text-sm font-black border-t pt-1">
                 TOTAL COBRADO: ${totalDepositoMasAlquiler.toLocaleString()}
               </p>
-              <p className="text-emerald-700 font-black">Cambio / Vuelto: ${Math.max(0, cambioVuelto).toLocaleString()}</p>
+              <p className="text-emerald-700 font-black">Cambio / Vuelto: ${Math.max(0, cambioVSaldo).toLocaleString()}</p>
             </div>
 
             <p className="mt-2 text-center text-[10px] text-slate-500 italic font-semibold">
