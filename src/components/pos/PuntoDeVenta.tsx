@@ -1267,23 +1267,13 @@ export function PuntoDeVenta() {
         </div>
 
         {/* TARJETA 4: TOTAL DEPOSITO + ALQUILER (GRAN TOTAL DESTACADO) */}
-        <div className="col-span-4 h-18 rounded-lg border-2 border-red-600 bg-red-50 p-2.5 shadow-lg flex items-center justify-between">
-          <div>
-            <span className="text-xs font-black uppercase text-red-900 tracking-wider block">
-              TOTAL DEP + ALQUILER:
-            </span>
-            <span className="font-mono text-3xl font-black text-red-700 leading-none drop-shadow-sm">
-              ${totalDepositoMasAlquiler.toLocaleString()}
-            </span>
+        <div className="col-span-4 h-18 rounded-lg border-2 border-red-600 bg-red-50 p-2.5 shadow-lg flex flex-col justify-between">
+          <span className="text-xs font-black uppercase text-red-900 tracking-wider block">
+            TOTAL DEP + ALQUILER:
+          </span>
+          <div className="font-mono text-3xl font-black text-red-700 text-right leading-none drop-shadow-sm">
+            ${totalDepositoMasAlquiler.toLocaleString()}
           </div>
-          <button
-            onClick={handleIniciarCobro}
-            disabled={gridItems.length === 0}
-            className="rounded-lg bg-[#002D62] px-5 py-3 text-sm font-black uppercase tracking-wider text-white shadow-md hover:bg-black active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
-          >
-            <span>PAGAR</span>
-            <span className="text-yellow-300">💳</span>
-          </button>
         </div>
       </div>
 
