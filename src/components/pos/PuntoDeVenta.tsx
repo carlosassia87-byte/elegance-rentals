@@ -150,6 +150,8 @@ export function PuntoDeVenta() {
   const [modalSubAbonar, setModalSubAbonar] = useState(false);
   const [abonoPagoEfec, setAbonoPagoEfec] = useState("");
   const [abonoPagoTrans, setAbonoPagoTrans] = useState("");
+  const [modalSaldoPendienteAlerta, setModalSaldoPendienteAlerta] = useState(false);
+  const [montoAlertaSaldo, setMontoAlertaSaldo] = useState(0);
 
   const apartadoTotalAbonado = useMemo(() => {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
@@ -182,7 +184,20 @@ export function PuntoDeVenta() {
     setApartadoFactura(res.factura);
     setApartadoItems(res.items);
     setApartadoAbonos(res.abonos);
-    toast.success(`Factura ${res.factura.NUMEROFACT} cargada exitosamente`);
+
+    // Calcular si tiene saldo pendiente para mostrar la ventanita emergente WINDEV
+    const totalVenta = Number(res.factura.FTOTALVENTADEPOSITO) || 0;
+    const pagado = Number(res.factura.PAGACON) || 0;
+    const sAnterior = Math.max(0, totalVenta - pagado);
+    const totAbonos = (res.abonos || []).reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
+    const sRestante = Math.max(0, sAnterior - totAbonos);
+
+    if (sRestante > 0) {
+      setMontoAlertaSaldo(sRestante);
+      setModalSaldoPendienteAlerta(true);
+    } else {
+      toast.success(`Factura ${res.factura.NUMEROFACT} cargada exitosamente`);
+    }
   }
 
   async function handleGuardarAbono() {
@@ -2700,6 +2715,56 @@ export function PuntoDeVenta() {
               className="rounded bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5"
             >
               <Printer className="h-4 w-4" /> Imprimir
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          MODAL ALERTA: ESTE CLIENTE TIENE SALDO PENDIENTE (EXACTO A WINDEV)
+      ========================================================= */}
+      <Dialog open={modalSaldoPendienteAlerta} onOpenChange={setModalSaldoPendienteAlerta}>
+        <DialogContent className="max-w-sm bg-white p-0 border-2 border-slate-400 shadow-2xl rounded-sm overflow-hidden z-[99999]">
+          {/* BARRA DE TÍTULO */}
+          <div className="flex items-center justify-between px-3 py-1 bg-[#F0F0F0] border-b border-slate-300 select-none">
+            <span className="text-xs font-semibold text-slate-800">
+              ENTREGA VESTIDO APARTADO
+            </span>
+            <button
+              type="button"
+              onClick={() => setModalSaldoPendienteAlerta(false)}
+              className="text-slate-500 hover:text-slate-800"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* CONTENIDO DE LA ALERTA */}
+          <div className="p-5 flex items-start gap-4 bg-white">
+            {/* ÍCONO AZUL INFO ( i ) */}
+            <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-[#0078D7] text-white shadow-sm">
+              <span className="font-serif font-black text-2xl italic leading-none">i</span>
+            </div>
+
+            {/* MENSAJE */}
+            <div className="space-y-2 pt-1 font-sans text-xs text-slate-800">
+              <p className="font-bold uppercase tracking-wide">
+                ESTE CLIENTE TIENE SALDO PENDIENTE
+              </p>
+              <p className="font-black text-sm text-slate-900 font-mono">
+                {montoAlertaSaldo.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* BOTÓN ACEPTAR */}
+          <div className="flex justify-center p-3 bg-[#F0F0F0] border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setModalSaldoPendienteAlerta(false)}
+              className="min-w-[90px] rounded border border-[#0078D7] bg-white px-5 py-1 text-xs font-bold text-slate-900 hover:bg-[#E5F1FB] active:bg-[#CCE4F7] shadow-sm transition-all focus:outline-none focus:ring-1 focus:ring-[#0078D7]"
+            >
+              Aceptar
             </button>
           </div>
         </DialogContent>
