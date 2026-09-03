@@ -208,7 +208,6 @@ export function PuntoDeVenta() {
     const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
       setClienteForm(cli);
-      // SI TIENE NOTA, MOSTRARLA PRIMERO; SI NO, ABRIR DIRECTO EL MODAL DE OPERACIÓN
       if (cli.NOTA && cli.NOTA.trim() !== "") {
         setNotaAlertaVisible(true);
         toast.warning(`⚠️ NOTA DEL CLIENTE: ${cli.NOTA}`, { duration: 7000 });
@@ -222,7 +221,7 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Confirmar Selección de Operación (ALQUILER, VENTA, APARTADO, BONO)
+  // Confirmar Selección de Operación
   function handleConfirmarOperacion() {
     let nuevoEstadoTraje = "EN ALQUILER";
     if (operacionSeleccionada === "VENTA") nuevoEstadoTraje = "VENTA";
@@ -283,7 +282,7 @@ export function PuntoDeVenta() {
     setModalArticuloAlta(true);
   }
 
-  // Guardar Artículo en BD (ALTA_DE_ARTICULOS)
+  // Guardar Artículo en BD
   async function handleGuardarArticuloAlta(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!articuloForm.DESCRIPCION || !articuloForm.DESCRIPCION.trim()) {
@@ -339,7 +338,7 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Selección de Artículo desde el buscador / dropdown
+  // Selección de Artículo
   function seleccionarArticulo(art: Articulo) {
     setArticuloSeleccionado(art);
     setArticuloTexto(art.DESCRIPCION);
@@ -372,7 +371,7 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Manejo de Teclado en CANTIDAD (Enter para bajar a la tabla)
+  // Manejo de Teclado en CANTIDAD
   function handleKeyDownCantidad(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -519,37 +518,37 @@ export function PuntoDeVenta() {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-1.5">
+    <div className="flex h-screen w-full flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-2">
       {/* =========================================================================
           1. ENCABEZADO SUPERIOR: TÍTULO "PUNTO DE VENTA" Y LOGO "La Casa Del Disfraz"
       ========================================================================= */}
-      <div className="flex items-center justify-between px-2 pb-1 border-b border-slate-300">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold text-slate-600">ALQUILER</span>
+      <div className="flex items-center justify-between px-3 pb-1 border-b border-slate-300">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-black tracking-wider text-slate-700 uppercase">ALQUILER</span>
           <button
             onClick={() => setModalArchivoArticulo(true)}
-            className="flex items-center gap-1 rounded bg-slate-700 px-2 py-0.5 text-[9px] font-bold text-white hover:bg-slate-900"
+            className="flex items-center gap-1.5 rounded bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
           >
-            <Package className="h-2.5 w-2.5" /> CATÁLOGO ARTÍCULOS
+            <Package className="h-3.5 w-3.5" /> CATÁLOGO ARTÍCULOS
           </button>
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-black tracking-wider text-[#E60000] uppercase font-sans leading-none">
+          <h1 className="text-3xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
             PUNTO DE VENTA
           </h1>
         </div>
 
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-1 leading-none">
-            <span className="text-sm font-black tracking-tight text-[#1A2B49]">La</span>
-            <span className="rounded bg-red-600 px-1 py-0.5 text-xs font-black text-yellow-300 uppercase shadow-sm">
+            <span className="text-base font-black tracking-tight text-[#1A2B49]">La</span>
+            <span className="rounded bg-red-600 px-1.5 py-0.5 text-sm font-black text-yellow-300 uppercase shadow-sm">
               Casa
             </span>
             <span className="text-xs font-black italic text-[#8B008B]">Del</span>
-            <span className="text-sm font-black text-amber-500 uppercase">Disfraz</span>
+            <span className="text-base font-black text-amber-500 uppercase">Disfraz</span>
           </div>
-          <span className="text-[9px] font-semibold text-slate-500 italic leading-none mt-0.5">
+          <span className="text-[10px] font-bold text-slate-600 italic leading-none mt-1">
             Para toda ocasión sin importar tu edad
           </span>
         </div>
@@ -558,19 +557,19 @@ export function PuntoDeVenta() {
       {/* =========================================================================
           2. CUERPO PRINCIPAL: FORMULARIO + BOTONES + TABLA + PANEL CYAN
       ========================================================================= */}
-      <div className="flex flex-1 pt-1.5 gap-2 overflow-hidden min-h-0">
+      <div className="flex flex-1 pt-2 gap-2.5 overflow-hidden min-h-0">
         {/* LADO IZQUIERDO: FORMULARIO + BOTONES DE ACCIÓN + GRID */}
-        <div className="flex flex-1 flex-col gap-1 overflow-hidden min-h-0">
-          {/* BLOQUE DE CAMPOS DE CABECERA */}
-          <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1 shadow-inner space-y-1">
-            <div className="grid grid-cols-12 gap-x-2 gap-y-1 text-xs">
+        <div className="flex flex-1 flex-col gap-1.5 overflow-hidden min-h-0">
+          {/* BLOQUE DE CAMPOS DE CABECERA (PROPORCIONES Y TIPOGRAFÍA CLARA Y LEGIBLE) */}
+          <div className="rounded border border-slate-300 bg-[#EDEDED] p-2 shadow-inner space-y-1.5">
+            <div className="grid grid-cols-12 gap-x-3 gap-y-1.5 text-xs">
               {/* FILA 1 */}
-              <div className="col-span-3 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">ESTADO</span>
+              <div className="col-span-3 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">ESTADO</span>
                 <select
                   value={estadoCli}
                   onChange={(e) => setEstadoCli(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-600 shadow-inner"
                 >
                   <option value="ACTIVO">ACTIVO</option>
                   <option value="PENDIENTE">PENDIENTE</option>
@@ -578,120 +577,120 @@ export function PuntoDeVenta() {
                 </select>
               </div>
 
-              <div className="col-span-5 flex items-center gap-1">
-                <span className="w-14 font-bold text-slate-800 text-[10px] uppercase">CEDULA</span>
+              <div className="col-span-5 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-800 text-xs uppercase">CEDULA</span>
                 <input
                   type="text"
-                  placeholder="Entrada obligatoria"
+                  placeholder="Ingresa cédula y Enter"
                   value={clienteForm.CEDULA || ""}
                   onChange={(e) =>
                     setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
                   }
                   onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta()}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
                 />
               </div>
 
-              <div className="col-span-4 flex items-center gap-1">
-                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">FECHA SALIDA</span>
+              <div className="col-span-4 flex items-center gap-1.5">
+                <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA SALIDA</span>
                 <input
                   type="date"
                   value={fechaSalida}
                   onChange={(e) => setFechaSalida(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
                 />
               </div>
 
               {/* FILA 2 */}
-              <div className="col-span-3 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">FECHA</span>
+              <div className="col-span-3 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">FECHA</span>
                 <input
                   type="date"
                   value={fechaHoy}
                   onChange={(e) => setFechaHoy(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
                 />
               </div>
 
-              <div className="col-span-5 flex items-center gap-1">
-                <span className="w-14 font-bold text-slate-800 text-[10px] uppercase">NOMBRE</span>
+              <div className="col-span-5 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-800 text-xs uppercase">NOMBRE</span>
                 <input
                   type="text"
-                  placeholder="Nombre"
+                  placeholder="Nombre completo"
                   value={clienteForm.NOMBRE || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-medium placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none shadow-inner"
                 />
               </div>
 
-              <div className="col-span-4 flex items-center gap-1">
-                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">FECHA ENTRADA</span>
+              <div className="col-span-4 flex items-center gap-1.5">
+                <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA ENTRADA</span>
                 <input
                   type="date"
                   value={fechaEntrada}
                   onChange={(e) => setFechaEntrada(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
                 />
               </div>
 
               {/* FILA 3 */}
-              <div className="col-span-3 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">N.RECIBO</span>
+              <div className="col-span-3 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">N.RECIBO</span>
                 <input
                   type="text"
                   value={numeroRecibo}
                   onChange={(e) => setNumeroRecibo(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-bold text-red-700 focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black text-red-700 focus:outline-none shadow-inner"
                 />
               </div>
 
-              <div className="col-span-5 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">DIRECCION</span>
+              <div className="col-span-5 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">DIRECCION</span>
                 <input
                   type="text"
-                  placeholder="Direccion"
+                  placeholder="Dirección"
                   value={clienteForm.DIRECCION || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
                 />
               </div>
 
-              <div className="col-span-4 flex items-center gap-1">
-                <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">ESTADO TRAJE</span>
+              <div className="col-span-4 flex items-center gap-1.5">
+                <span className="w-24 font-black text-slate-800 text-xs uppercase">ESTADO TRAJE</span>
                 <button
                   type="button"
                   onClick={() => setModalOperacionVisible(true)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
                 >
-                  <span className="truncate">{estadoTraje}</span>
-                  <ChevronDown className="h-3 w-3 text-slate-500" />
+                  <span className="truncate text-red-700">{estadoTraje}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
                 </button>
               </div>
 
               {/* FILA 4 */}
-              <div className="col-span-3 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">CAJERO</span>
+              <div className="col-span-3 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">CAJERO</span>
                 <input
                   type="text"
                   value={cajero}
                   onChange={(e) => setCajero(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[8.5px] font-bold uppercase text-slate-700 focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-[10px] font-black uppercase text-slate-700 focus:outline-none shadow-inner"
                 />
               </div>
 
-              <div className="col-span-5 flex items-center gap-1">
-                <span className="w-14 font-semibold text-slate-700 text-[10px] uppercase">TELEFONO</span>
+              <div className="col-span-5 flex items-center gap-1.5">
+                <span className="w-16 font-black text-slate-700 text-xs uppercase">TELEFONO</span>
                 <input
                   type="text"
                   placeholder="Teléfono"
                   value={clienteForm.TELEFONO || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
+                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
                 />
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
-                  className="h-5 rounded-full bg-[#B82E1F] px-2 text-[9px] font-bold text-white shadow-sm hover:bg-red-800 active:scale-95"
+                  className="h-7 rounded-full bg-[#B82E1F] px-3 text-xs font-black text-white shadow hover:bg-red-800 active:scale-95 whitespace-nowrap"
                 >
                   Mod
                 </button>
@@ -700,17 +699,17 @@ export function PuntoDeVenta() {
 
             {/* BANNER DE NOTA */}
             {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
-              <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-950 shadow-sm animate-pulse">
-                <div className="flex items-center gap-1.5 overflow-hidden">
-                  <span className="flex items-center gap-0.5 rounded bg-amber-700 px-1 py-0.2 text-[9px] text-white uppercase font-black tracking-wide">
-                    <AlertTriangle className="h-2.5 w-2.5" /> NOTA CLIENTE
+              <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-3 py-1 text-xs font-black text-amber-950 shadow-sm animate-pulse">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <span className="flex items-center gap-1 rounded bg-amber-700 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide">
+                    <AlertTriangle className="h-3 w-3" /> NOTA CLIENTE:
                   </span>
-                  <span className="truncate">{clienteForm.NOTA}</span>
+                  <span className="truncate text-xs font-bold">{clienteForm.NOTA}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setNotaAlertaVisible(true)}
-                  className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-[9px] font-black"
+                  className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-xs font-black"
                 >
                   [Ver Completa]
                 </button>
@@ -721,66 +720,66 @@ export function PuntoDeVenta() {
           {/* =========================================================================
               BARRA DE LOS 9 BOTONES PRINCIPALES EN ROJO/MAGENTA (EXACTO A WINDEV)
           ========================================================================= */}
-          <div className="flex items-center gap-1 overflow-x-auto py-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
             <button
               onClick={() => setModalCliente(true)}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               NUEVO CLIENTE
             </button>
 
             <button
               onClick={() => setModalCliente(true)}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               MODIFICAR
             </button>
 
             <button
               onClick={() => setModalBuscarCli(true)}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               BUSCAR CLIENTE
             </button>
 
             <button
               onClick={handleLimpiar}
-              className="h-5 rounded bg-[#B80036] px-2.5 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               NUEVO
             </button>
 
             <button
               onClick={handleLimpiar}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               NUEVO ALQUILER
             </button>
 
             <button
               onClick={() => setModalGasto(true)}
-              className="flex items-center gap-1 h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="flex items-center gap-1 h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
-              <span className="text-[8px] text-white">▶</span> GASTO(SALIDA)
+              <span className="text-[9px] text-white">▶</span> GASTO(SALIDA)
             </button>
 
             <button
               onClick={() => setModalImprimir(true)}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               REIMPRIMIR
             </button>
 
             <button
               onClick={() => setModalApartados(true)}
-              className="h-5 rounded bg-[#B80036] px-2.5 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               APARTADOS
             </button>
 
             <button
               onClick={() => setModalDevolucion(true)}
-              className="h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase"
+              className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
             >
               ENTRADA VESTIDO
             </button>
@@ -789,17 +788,17 @@ export function PuntoDeVenta() {
           {/* =========================================================================
               LÍNEA DE ARTÍCULO: AUTOCOMPLETE CON FILTRADO + 1 ENTER A CANTIDAD + ENTER A TABLA
           ========================================================================= */}
-          <div className="relative flex items-center gap-1 py-0.5">
-            <span className="text-[10px] font-bold text-slate-800 uppercase">ARTICULO</span>
+          <div className="relative flex items-center gap-1.5 py-0.5">
+            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">ARTICULO</span>
 
             {/* BOTÓN + PARA CREAR NUEVO ARTÍCULO RÁPIDO */}
             <button
               type="button"
               onClick={abrirCrearArticulo}
               title="Crear nuevo artículo en el catálogo"
-              className="flex items-center justify-center h-5 w-5 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+              className="flex items-center justify-center h-7 w-7 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </button>
             
             {/* COMBOBOX DE BÚSQUEDA Y FILTRADO */}
@@ -818,7 +817,7 @@ export function PuntoDeVenta() {
                   }}
                   onFocus={() => setMostrarDropdownArt(true)}
                   onKeyDown={handleKeyDownArticulo}
-                  className="h-5 w-full rounded border border-slate-400 bg-white pr-6 pl-1.5 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500"
+                  className="h-7 w-full rounded border border-slate-400 bg-white pr-7 pl-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500 shadow-inner"
                 />
                 <button
                   type="button"
@@ -827,9 +826,9 @@ export function PuntoDeVenta() {
                     setMostrarDropdownArt((p) => !p);
                     articuloInputRef.current?.focus();
                   }}
-                  className="absolute right-1 text-slate-500 hover:text-slate-800"
+                  className="absolute right-1.5 text-slate-500 hover:text-slate-800"
                 >
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </button>
               </div>
 
@@ -837,7 +836,7 @@ export function PuntoDeVenta() {
               {mostrarDropdownArt && articulosFiltrados.length > 0 && (
                 <div
                   ref={dropdownRef}
-                  className="absolute left-0 top-6 z-50 max-h-52 w-full overflow-auto rounded border border-slate-400 bg-white shadow-lg"
+                  className="absolute left-0 top-8 z-50 max-h-60 w-full overflow-auto rounded border border-slate-400 bg-white shadow-xl"
                 >
                   {articulosFiltrados.map((art, idx) => {
                     const isHovered = sugerenciaIndex === idx;
@@ -846,21 +845,21 @@ export function PuntoDeVenta() {
                         key={art.IDARTICULO}
                         onMouseEnter={() => setSugerenciaIndex(idx)}
                         onClick={() => seleccionarArticulo(art)}
-                        className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-2 py-1 text-[10px] transition-colors ${
-                          isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800"
+                        className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-3 py-1.5 text-xs transition-colors ${
+                          isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800 font-semibold"
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[9px] opacity-75">[{art.CODBARRAS}]</span>
+                          <span className="font-mono text-[10px] opacity-75">[{art.CODBARRAS}]</span>
                           <span>{art.DESCRIPCION}</span>
-                          <span className={`rounded px-1 py-0.2 text-[9px] ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
                             Talla: {art.TALLA}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <span>Alq: ${art.VALOR.toLocaleString()}</span>
                           <span className="opacity-90">Dep: ${art.VALORDEPOSITO.toLocaleString()}</span>
-                          <span className={`font-mono font-bold ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
+                          <span className={`font-mono font-black ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
                             Stock: {art.STOCK}
                           </span>
                         </div>
@@ -872,8 +871,8 @@ export function PuntoDeVenta() {
             </div>
 
             {/* CAMPO CANTIDAD */}
-            <div className="flex items-center gap-0.5">
-              <span className="text-[10px] font-bold text-red-700 uppercase">▸CANTIDAD</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-black text-red-700 uppercase">▸CANTIDAD</span>
               <input
                 ref={cantidadInputRef}
                 type="number"
@@ -881,16 +880,16 @@ export function PuntoDeVenta() {
                 value={cantidad}
                 onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
                 onKeyDown={handleKeyDownCantidad}
-                className="h-5 w-11 rounded border-2 border-red-500 bg-white text-center text-[10px] font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
+                className="h-7 w-12 rounded border-2 border-red-500 bg-white text-center text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
               />
-              <span className="text-[10px] font-bold text-red-700">▸</span>
+              <span className="text-xs font-black text-red-700">▸</span>
             </div>
 
             {/* BOTÓN + AGREGAR */}
             <button
               onClick={handleAgregarItem}
               title="Bajar artículo a la tabla (Enter en cantidad)"
-              className="h-5 rounded bg-slate-700 px-1.5 text-[10px] font-bold text-white hover:bg-slate-800"
+              className="h-7 rounded bg-slate-700 px-2 text-xs font-black text-white hover:bg-slate-900 shadow"
             >
               +
             </button>
@@ -898,15 +897,15 @@ export function PuntoDeVenta() {
             {/* BOTÓN ELIMINAR */}
             <button
               onClick={handleEliminarFila}
-              className="flex items-center gap-0.5 h-5 rounded bg-[#B80036] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#96002C] active:scale-95"
+              className="flex items-center gap-1 h-7 rounded bg-[#B80036] px-3 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wide"
             >
-              ELIMINAR <Trash2 className="h-3 w-3" />
+              ELIMINAR <Trash2 className="h-3.5 w-3.5" />
             </button>
 
             {/* BOTÓN PAGAR */}
             <button
               onClick={handlePagar}
-              className="h-5 rounded bg-[#111111] px-3 text-[10px] font-black text-white shadow-sm hover:bg-black active:scale-95"
+              className="h-7 rounded bg-[#111111] px-4 text-xs font-black text-white shadow hover:bg-black active:scale-95 uppercase tracking-wide"
             >
               PAGAR
             </button>
@@ -914,9 +913,9 @@ export function PuntoDeVenta() {
             {/* BOTÓN SALIR X */}
             <button
               onClick={handleLimpiar}
-              className="flex items-center gap-0.5 h-5 rounded bg-[#992222] px-2 text-[10px] font-black text-white shadow-sm hover:bg-[#771111] active:scale-95"
+              className="flex items-center gap-1 h-7 rounded bg-[#992222] px-3 text-xs font-black text-white shadow hover:bg-[#771111] active:scale-95 uppercase tracking-wide"
             >
-              SALIR <X className="h-3 w-3" />
+              SALIR <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -927,20 +926,20 @@ export function PuntoDeVenta() {
             <div className="overflow-auto flex-1">
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
-                  <tr className="bg-[#000000] text-white font-bold uppercase text-[10px] tracking-wider sticky top-0">
-                    <th className="border-r border-slate-700 px-2 py-1">DESCRIPCION</th>
-                    <th className="border-r border-slate-700 px-1 py-1 text-center w-14">CANTIDAD</th>
-                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">VALOR ALQUILER</th>
-                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">TOTAL ALQUILER</th>
-                    <th className="border-r border-slate-700 px-2 py-1 text-right w-20">DEPOSITO</th>
-                    <th className="border-r border-slate-700 px-2 py-1 text-right w-24">TOTAL DEPOSITO</th>
-                    <th className="px-2 py-1 text-right w-24">TOT ALQUILER</th>
+                  <tr className="bg-[#000000] text-white font-black uppercase text-xs tracking-wider sticky top-0">
+                    <th className="border-r border-slate-700 px-3 py-1.5">DESCRIPCION</th>
+                    <th className="border-r border-slate-700 px-2 py-1.5 text-center w-16">CANTIDAD</th>
+                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">VALOR ALQUILER</th>
+                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">TOTAL ALQUILER</th>
+                    <th className="border-r border-slate-700 px-2 py-1.5 text-right w-24">DEPOSITO</th>
+                    <th className="border-r border-slate-700 px-3 py-1.5 text-right w-28">TOTAL DEPOSITO</th>
+                    <th className="px-3 py-1.5 text-right w-28">TOT ALQUILER</th>
                   </tr>
                 </thead>
                 <tbody>
                   {gridItems.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-semibold">
+                      <td colSpan={7} className="py-20 text-center text-slate-400 text-xs font-bold">
                         (Escribe o escanea un artículo arriba, presiona Enter para pasar a Cantidad, y Enter para bajarlo a la tabla)
                       </td>
                     </tr>
@@ -952,33 +951,33 @@ export function PuntoDeVenta() {
                         <tr
                           key={item.idTemp}
                           onClick={() => setFilaSeleccionada(index)}
-                          className={`cursor-pointer border-b border-slate-200 text-[11px] ${
+                          className={`cursor-pointer border-b border-slate-200 text-xs ${
                             isSelected
-                              ? "bg-[#FFE066] font-bold text-slate-900"
+                              ? "bg-[#FFE066] font-black text-slate-900"
                               : isEven
-                              ? "bg-white"
-                              : "bg-[#D6E6F2]"
+                              ? "bg-white font-semibold"
+                              : "bg-[#D6E6F2] font-semibold"
                           }`}
                         >
-                          <td className="px-2 py-0.5 font-semibold text-slate-800 border-r border-slate-200">
-                            {item.descripcion} <span className="text-[9px] text-slate-500">(TALLA: {item.talla})</span>
+                          <td className="px-3 py-1 text-slate-900 border-r border-slate-200 font-bold">
+                            {item.descripcion} <span className="text-[10px] text-slate-600 font-normal">(TALLA: {item.talla})</span>
                           </td>
-                          <td className="px-1 py-0.5 text-center font-bold border-r border-slate-200">
+                          <td className="px-2 py-1 text-center font-black border-r border-slate-200">
                             {item.cantidad}
                           </td>
-                          <td className="px-2 py-0.5 text-right font-mono border-r border-slate-200">
+                          <td className="px-3 py-1 text-right font-mono font-bold border-r border-slate-200">
                             {item.valorAlquiler.toLocaleString()}
                           </td>
-                          <td className="px-2 py-0.5 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                          <td className="px-3 py-1 text-right font-mono font-black text-slate-900 border-r border-slate-200">
                             ${item.totalAlquiler.toLocaleString()}
                           </td>
-                          <td className="px-2 py-0.5 text-right font-mono border-r border-slate-200">
+                          <td className="px-2 py-1 text-right font-mono font-bold border-r border-slate-200">
                             {item.valorDeposito.toLocaleString()}
                           </td>
-                          <td className="px-2 py-0.5 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
+                          <td className="px-3 py-1 text-right font-mono font-black text-blue-900 border-r border-slate-200">
                             ${item.totalDeposito.toLocaleString()}
                           </td>
-                          <td className="px-2 py-0.5 text-right font-mono font-black text-emerald-800">
+                          <td className="px-3 py-1 text-right font-mono font-black text-emerald-800">
                             ${item.totalGeneral.toLocaleString()}
                           </td>
                         </tr>
@@ -994,11 +993,11 @@ export function PuntoDeVenta() {
         {/* =========================================================================
             3. PANEL DERECHO CYAN / AZUL (PANEL DE COBRO COMPACTO 100% VISIBLE)
         ========================================================================= */}
-        <div className="w-[240px] rounded border border-slate-400 bg-[#00A8FF] p-2 text-slate-900 flex flex-col justify-between shadow-sm overflow-hidden">
-          <div className="space-y-1">
+        <div className="w-[260px] rounded border border-slate-400 bg-[#00A8FF] p-2.5 text-slate-900 flex flex-col justify-between shadow-md overflow-hidden">
+          <div className="space-y-1.5">
             {/* 1. PAGA CON EFECTIVO: */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 PAGA CON EFECTIVO:
               </label>
               <input
@@ -1007,13 +1006,13 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={pagaEfectivo}
                 onChange={(e) => setPagaEfectivo(e.target.value)}
-                className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-base font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-1 h-8 w-full rounded border border-slate-300 bg-white px-2.5 text-right font-mono text-lg font-black text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 2. PAGA CON TRANSFERENCIA: */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 PAGA CON TRANSFERENCIA:
               </label>
               <input
@@ -1022,33 +1021,33 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={pagaTransferencia}
                 onChange={(e) => setPagaTransferencia(e.target.value)}
-                className="mt-0.5 h-7 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-base font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-1 h-8 w-full rounded border border-slate-300 bg-white px-2.5 text-right font-mono text-lg font-black text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 3. TOTAL DEPOSITO */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 TOTAL DEPOSITO
               </label>
-              <div className="mt-0.5 flex h-7 w-full items-center justify-end rounded border border-slate-300 bg-white px-2 font-mono text-base font-bold text-slate-900 shadow-inner">
+              <div className="mt-1 flex h-8 w-full items-center justify-end rounded border border-slate-300 bg-white px-2.5 font-mono text-lg font-black text-slate-900 shadow-inner">
                 {totalDeposito.toLocaleString()}
               </div>
             </div>
 
             {/* 4. TOTAL ALQUILER */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 TOTAL ALQUILER
               </label>
-              <div className="mt-0.5 flex h-7 w-full items-center justify-end rounded border border-slate-300 bg-white px-2 font-mono text-base font-bold text-slate-900 shadow-inner">
+              <div className="mt-1 flex h-8 w-full items-center justify-end rounded border border-slate-300 bg-white px-2.5 font-mono text-lg font-black text-slate-900 shadow-inner">
                 {totalAlquiler.toLocaleString()}
               </div>
             </div>
 
             {/* 5. DESCUENTO_ALQUILER */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 DESCUENTO_ALQUILER
               </label>
               <input
@@ -1057,26 +1056,26 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={descuentoAlquiler}
                 onChange={(e) => setDescuentoAlquiler(e.target.value)}
-                className="mt-0.5 h-5 w-full rounded border border-slate-300 bg-white px-1.5 text-right font-mono text-xs font-bold text-slate-900 shadow-inner focus:outline-none"
+                className="mt-1 h-6 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner focus:outline-none"
               />
             </div>
 
             {/* 6. TOTAL DEPOSITO + ALQUILER */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 TOTAL DEPOSITO + ALQUILER
               </label>
-              <div className="mt-0.5 flex h-8 w-full items-center justify-end rounded border border-slate-400 bg-white px-2 font-mono text-lg font-black text-slate-900 shadow-inner">
+              <div className="mt-1 flex h-9 w-full items-center justify-end rounded border border-slate-400 bg-white px-2.5 font-mono text-xl font-black text-slate-900 shadow-inner">
                 {totalDepositoMasAlquiler.toLocaleString()}
               </div>
             </div>
 
             {/* 7. SU CAMBIO ES */}
             <div>
-              <label className="text-[9px] font-bold uppercase text-slate-900 block leading-none">
+              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
                 SU CAMBIO ES
               </label>
-              <div className="mt-0.5 flex h-8 w-full items-center justify-center rounded border border-slate-400 bg-white px-2 font-mono text-base font-black text-emerald-700 shadow-inner">
+              <div className="mt-1 flex h-9 w-full items-center justify-center rounded border border-slate-400 bg-white px-2.5 font-mono text-lg font-black text-emerald-800 shadow-inner">
                 {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "+++++"}
               </div>
             </div>
@@ -1085,7 +1084,7 @@ export function PuntoDeVenta() {
           <button
             onClick={handlePagar}
             disabled={gridItems.length === 0}
-            className="mt-1.5 w-full rounded bg-[#002D62] py-2 text-center text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
+            className="mt-2 w-full rounded bg-[#002D62] py-2 text-center text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
           >
             CONFIRMAR ALQUILER
           </button>
@@ -1101,7 +1100,7 @@ export function PuntoDeVenta() {
             <AlertTriangle className="h-6 w-6 text-amber-600 animate-bounce" />
             <div>
               <h3 className="text-sm font-black uppercase">¡ATENCIÓN! OBSERVACIÓN DEL CLIENTE</h3>
-              <p className="text-[10px] text-amber-800">
+              <p className="text-xs text-amber-800 font-bold">
                 Cliente: <strong>{clienteForm.NOMBRE}</strong> (C.C: {clienteForm.CEDULA})
               </p>
             </div>
@@ -1124,7 +1123,6 @@ export function PuntoDeVenta() {
             <button
               onClick={() => {
                 setNotaAlertaVisible(false);
-                // AL CERRAR LA NOTA, ABRIR LA SELECCIÓN DE OPERACIÓN
                 setModalOperacionVisible(true);
               }}
               className="rounded bg-amber-600 px-5 py-1.5 text-xs font-black text-white hover:bg-amber-700 shadow"
@@ -1140,31 +1138,27 @@ export function PuntoDeVenta() {
       ========================================================================= */}
       <Dialog open={modalOperacionVisible} onOpenChange={setModalOperacionVisible}>
         <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
-          {/* BARRA SUPERIOR DE VENTANA */}
-          <div className="flex items-center justify-between px-3 py-1 bg-white border-b border-slate-300">
-            <span className="text-[11px] font-bold text-slate-700 uppercase">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300">
+            <span className="text-xs font-black text-slate-700 uppercase">
               SELECCIONE LA OPERACION A REALIZAR
             </span>
             <button
               onClick={() => setModalOperacionVisible(false)}
               className="text-slate-400 hover:text-slate-700"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* CUERPO DEL DIÁLOGO */}
           <div className="p-6 space-y-4">
-            {/* TÍTULO EN NARANJA / DORADO (EXACTO A WINDEV) */}
             <div className="text-center">
-              <h3 className="text-xs font-black tracking-wider text-[#E65100] uppercase font-sans">
+              <h3 className="text-sm font-black tracking-wider text-[#E65100] uppercase font-sans">
                 SELECCIONE LA OPERACIÓN A REALIZAR
               </h3>
             </div>
 
-            {/* CAMPO DE SELECCIÓN */}
             <div className="flex items-center justify-center gap-2">
-              <label className="text-[11px] font-extrabold uppercase text-slate-800">
+              <label className="text-xs font-black uppercase text-slate-800">
                 SELECCIONE :
               </label>
               <select
@@ -1173,7 +1167,7 @@ export function PuntoDeVenta() {
                 value={operacionSeleccionada}
                 onChange={(e) => setOperacionSeleccionada(e.target.value as any)}
                 onKeyDown={(e) => e.key === "Enter" && handleConfirmarOperacion()}
-                className="h-7 w-48 rounded border border-slate-400 bg-white px-2 font-bold text-xs text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="h-8 w-52 rounded border border-slate-400 bg-white px-2.5 font-bold text-xs text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="ALQUILER">ALQUILER</option>
                 <option value="VENTA">VENTA</option>
@@ -1182,28 +1176,25 @@ export function PuntoDeVenta() {
               </select>
             </div>
 
-            {/* BOTÓN AZUL SELECCIONAR */}
             <div className="flex justify-center pt-1">
               <button
                 type="button"
                 onClick={handleConfirmarOperacion}
-                className="rounded bg-[#004B87] px-6 py-1 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-[#003366] active:scale-95"
+                className="rounded bg-[#004B87] px-8 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow hover:bg-[#003366] active:scale-95"
               >
                 SELECCIONAR
               </button>
             </div>
 
-            {/* LISTA DE VIÑETAS INFORMATIVAS (EXACTA AL ORIGINAL) */}
-            <div className="pt-2 text-[10px] font-bold text-slate-700 space-y-0.5">
-              <p className="text-slate-800 font-extrabold">* SELECCIONE LA OPERACION A REALIZAR SI ES:</p>
-              <p className="pl-2">• ALQUILER</p>
-              <p className="pl-2">• VENTA</p>
-              <p className="pl-2">• APARTADO</p>
-              <p className="pl-2">• BONO</p>
+            <div className="pt-2 text-xs font-bold text-slate-700 space-y-0.5">
+              <p className="text-slate-900 font-black">* SELECCIONE LA OPERACION A REALIZAR SI ES:</p>
+              <p className="pl-2 font-semibold">• ALQUILER</p>
+              <p className="pl-2 font-semibold">• VENTA</p>
+              <p className="pl-2 font-semibold">• APARTADO</p>
+              <p className="pl-2 font-semibold">• BONO</p>
             </div>
           </div>
 
-          {/* BARRA AZUL INFERIOR WINDEV */}
           <div className="h-2 bg-[#004B87] w-full" />
         </DialogContent>
       </Dialog>
@@ -1222,12 +1213,12 @@ export function PuntoDeVenta() {
                 <h2 className="text-sm font-black tracking-wider uppercase">
                   {articuloForm.IDARTICULO ? "MODIFICAR ARTÍCULO" : "ALTA DE ARTÍCULOS"}
                 </h2>
-                <p className="text-[10px] text-blue-200">
+                <p className="text-xs text-blue-200">
                   Sistema de Inventario y Control de Prendas
                 </p>
               </div>
             </div>
-            <span className="rounded-full bg-blue-900/60 px-2.5 py-0.5 text-[10px] font-mono font-bold text-cyan-300 border border-cyan-500/30">
+            <span className="rounded-full bg-blue-900/60 px-3 py-0.5 text-xs font-mono font-bold text-cyan-300 border border-cyan-500/30">
               ID: {articuloForm.IDARTICULO || "NUEVO"}
             </span>
           </div>
@@ -1236,10 +1227,10 @@ export function PuntoDeVenta() {
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-extrabold uppercase text-slate-800 tracking-wide flex items-center gap-1">
-                    <Package className="h-3.5 w-3.5 text-blue-600" /> ARTÍCULO / DESCRIPCIÓN *
+                  <label className="text-xs font-black uppercase text-slate-800 tracking-wide flex items-center gap-1">
+                    <Package className="h-4 w-4 text-blue-600" /> ARTÍCULO / DESCRIPCIÓN *
                   </label>
-                  <span className="text-[9px] text-slate-400 font-medium">Nombre, accesorios y piezas</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Nombre, accesorios y piezas</span>
                 </div>
                 <textarea
                   rows={3}
@@ -1247,17 +1238,17 @@ export function PuntoDeVenta() {
                   placeholder="Ej. TRAJE DE SALSANIÑO: CAMISA, PANTALÓN, CINTURÓN"
                   value={articuloForm.DESCRIPCION || ""}
                   onChange={(e) => setArticuloForm((p) => ({ ...p, DESCRIPCION: e.target.value.toUpperCase() }))}
-                  className="w-full rounded-md border border-slate-300 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none uppercase transition-all shadow-inner resize-none"
+                  className="w-full rounded-md border border-slate-300 bg-slate-50/50 p-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none uppercase transition-all shadow-inner resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="rounded-lg bg-emerald-50/60 border border-emerald-200 p-2.5 shadow-sm">
-                  <label className="text-[10px] font-extrabold uppercase text-emerald-900 block mb-1">
+                  <label className="text-xs font-black uppercase text-emerald-900 block mb-1">
                     VALOR ALQUILER ($) *
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-2 text-xs font-bold text-emerald-700">$</span>
+                    <span className="absolute left-2 text-xs font-black text-emerald-700">$</span>
                     <input
                       type="number"
                       min={0}
@@ -1271,11 +1262,11 @@ export function PuntoDeVenta() {
                 </div>
 
                 <div className="rounded-lg bg-blue-50/60 border border-blue-200 p-2.5 shadow-sm">
-                  <label className="text-[10px] font-extrabold uppercase text-blue-900 block mb-1">
+                  <label className="text-xs font-black uppercase text-blue-900 block mb-1">
                     VALOR DEPÓSITO / FIANZA ($)
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-2 text-xs font-bold text-blue-700">$</span>
+                    <span className="absolute left-2 text-xs font-black text-blue-700">$</span>
                     <input
                       type="number"
                       min={0}
@@ -1290,7 +1281,7 @@ export function PuntoDeVenta() {
 
               <div className="grid grid-cols-3 gap-3 pt-1">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
+                  <label className="text-xs font-black uppercase text-slate-700 block mb-1">
                     TALLA
                   </label>
                   <input
@@ -1298,12 +1289,12 @@ export function PuntoDeVenta() {
                     placeholder="Ej. 38R, M, L"
                     value={articuloForm.TALLA || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, TALLA: e.target.value.toUpperCase() }))}
-                    className="h-7 w-full rounded border border-slate-300 bg-white px-2 text-center text-xs font-bold uppercase text-slate-800 focus:outline-none focus:border-blue-600"
+                    className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-center text-xs font-black uppercase text-slate-800 focus:outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
+                  <label className="text-xs font-black uppercase text-slate-700 block mb-1">
                     STOCK / CANTIDAD
                   </label>
                   <input
@@ -1311,13 +1302,13 @@ export function PuntoDeVenta() {
                     min={0}
                     value={articuloForm.STOCK ?? 1}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
-                    className="h-7 w-full rounded border border-slate-300 bg-white text-center text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                    className="h-8 w-full rounded border border-slate-300 bg-white text-center text-xs font-black text-slate-800 focus:outline-none focus:border-blue-600"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-bold uppercase text-slate-700">
+                    <label className="text-xs font-black uppercase text-slate-700">
                       BARRAS
                     </label>
                     <button
@@ -1326,9 +1317,9 @@ export function PuntoDeVenta() {
                         setArticuloForm((p) => ({ ...p, CODBARRAS: String(Math.floor(1000 + Math.random() * 9000)) }))
                       }
                       title="Generar código aleatorio"
-                      className="text-[9px] text-blue-600 hover:underline flex items-center gap-0.5 font-bold"
+                      className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-bold"
                     >
-                      <Barcode className="h-2.5 w-2.5" /> Auto
+                      <Barcode className="h-3 w-3" /> Auto
                     </button>
                   </div>
                   <input
@@ -1336,7 +1327,7 @@ export function PuntoDeVenta() {
                     placeholder="1538"
                     value={articuloForm.CODBARRAS || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
-                    className="h-7 w-full rounded border border-slate-300 bg-white px-2 text-center font-mono text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                    className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-center font-mono text-xs font-black text-slate-800 focus:outline-none focus:border-blue-600"
                   />
                 </div>
               </div>
@@ -1377,47 +1368,47 @@ export function PuntoDeVenta() {
             <div className="flex items-center gap-2">
               <button
                 onClick={abrirCrearArticulo}
-                className="flex items-center gap-1 rounded bg-[#004B87] px-3 py-1 text-xs font-bold text-white shadow hover:bg-[#003366]"
+                className="flex items-center gap-1 rounded bg-[#004B87] px-3.5 py-1.5 text-xs font-black text-white shadow hover:bg-[#003366]"
               >
-                <Plus className="h-3.5 w-3.5" /> NUEVO ARTÍCULO
+                <Plus className="h-4 w-4" /> NUEVO ARTÍCULO
               </button>
               <button
                 onClick={cargarArticulos}
                 title="Refrescar catálogo"
-                className="rounded bg-slate-200 p-1 text-slate-700 hover:bg-slate-300"
+                className="rounded bg-slate-200 p-1.5 text-slate-700 hover:bg-slate-300"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           <div className="py-2 flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Filtrar por nombre, descripción, talla o código de barras..."
                 value={busqArticuloCatalogo}
                 onChange={(e) => setBusqArticuloCatalogo(e.target.value)}
-                className="h-8 w-full rounded-md border border-slate-300 bg-white pl-8 pr-3 text-xs font-medium focus:outline-none focus:border-blue-600"
+                className="h-9 w-full rounded-md border border-slate-300 bg-white pl-9 pr-3 text-xs font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
-            <span className="text-xs text-slate-500 font-semibold whitespace-nowrap">
+            <span className="text-xs text-slate-600 font-black whitespace-nowrap">
               {articulosCatalogoFiltrados.length} artículos
             </span>
           </div>
 
           <div className="max-h-96 overflow-auto rounded-lg border border-slate-300 bg-white shadow-inner">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#0A192F] text-white font-bold sticky top-0 uppercase text-[10px] tracking-wider">
+              <thead className="bg-[#0A192F] text-white font-black sticky top-0 uppercase text-xs tracking-wider">
                 <tr>
-                  <th className="p-2 border-r border-slate-700 w-16 text-center">ID / CÓD</th>
-                  <th className="p-2 border-r border-slate-700">DESCRIPCIÓN DEL ARTÍCULO</th>
-                  <th className="p-2 border-r border-slate-700 text-center w-16">TALLA</th>
-                  <th className="p-2 border-r border-slate-700 text-center w-16">STOCK</th>
-                  <th className="p-2 border-r border-slate-700 text-right w-28">VALOR ALQUILER</th>
-                  <th className="p-2 border-r border-slate-700 text-right w-28">VALOR DEPÓSITO</th>
-                  <th className="p-2 text-center w-24">ACCIONES</th>
+                  <th className="p-2.5 border-r border-slate-700 w-20 text-center">ID / CÓD</th>
+                  <th className="p-2.5 border-r border-slate-700">DESCRIPCIÓN DEL ARTÍCULO</th>
+                  <th className="p-2.5 border-r border-slate-700 text-center w-16">TALLA</th>
+                  <th className="p-2.5 border-r border-slate-700 text-center w-16">STOCK</th>
+                  <th className="p-2.5 border-r border-slate-700 text-right w-28">VALOR ALQUILER</th>
+                  <th className="p-2.5 border-r border-slate-700 text-right w-28">VALOR DEPÓSITO</th>
+                  <th className="p-2.5 text-center w-24">ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
@@ -1435,47 +1426,47 @@ export function PuntoDeVenta() {
                         idx % 2 === 0 ? "bg-white hover:bg-blue-50/40" : "bg-slate-50/80 hover:bg-blue-50/40"
                       }`}
                     >
-                      <td className="p-2 font-mono text-[10px] text-center font-bold text-slate-600 border-r border-slate-200">
+                      <td className="p-2 font-mono text-xs text-center font-black text-slate-600 border-r border-slate-200">
                         {art.CODBARRAS || `#${art.IDARTICULO}`}
                       </td>
-                      <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">
+                      <td className="p-2 font-bold text-slate-900 border-r border-slate-200">
                         {art.DESCRIPCION}
                       </td>
-                      <td className="p-2 text-center font-bold text-slate-700 border-r border-slate-200">
-                        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[9px]">
+                      <td className="p-2 text-center font-black text-slate-700 border-r border-slate-200">
+                        <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-black">
                           {art.TALLA || "U"}
                         </span>
                       </td>
                       <td className="p-2 text-center font-bold border-r border-slate-200">
                         <span
-                          className={`rounded px-1.5 py-0.5 text-[9px] ${
+                          className={`rounded px-2 py-0.5 text-xs font-black ${
                             (art.STOCK || 0) > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
                           }`}
                         >
                           {art.STOCK}
                         </span>
                       </td>
-                      <td className="p-2 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                      <td className="p-2 text-right font-mono font-black text-slate-900 border-r border-slate-200">
                         ${Number(art.VALOR).toLocaleString()}
                       </td>
-                      <td className="p-2 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
+                      <td className="p-2 text-right font-mono font-black text-blue-800 border-r border-slate-200">
                         ${Number(art.VALORDEPOSITO).toLocaleString()}
                       </td>
                       <td className="p-2 text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => abrirEditarArticulo(art)}
                             title="Modificar"
                             className="rounded p-1 text-blue-600 hover:bg-blue-100 transition-colors"
                           >
-                            <Edit className="h-3.5 w-3.5" />
+                            <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleEliminarArticuloCatalogo(art.IDARTICULO)}
                             title="Eliminar"
                             className="rounded p-1 text-red-600 hover:bg-red-100 transition-colors"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -1489,7 +1480,7 @@ export function PuntoDeVenta() {
           <div className="flex justify-end pt-3">
             <button
               onClick={() => setModalArchivoArticulo(false)}
-              className="rounded bg-slate-800 px-5 py-1.5 text-xs font-bold text-white hover:bg-black"
+              className="rounded bg-slate-800 px-5 py-2 text-xs font-black text-white hover:bg-black"
             >
               Cerrar Catálogo
             </button>
@@ -1503,7 +1494,7 @@ export function PuntoDeVenta() {
       <Dialog open={modalCliente} onOpenChange={setModalCliente}>
         <DialogContent className="max-w-2xl bg-[#E8E8E8] p-4 border-2 border-slate-400 shadow-2xl">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="text-[11px] font-bold text-slate-700 uppercase">ALTA DE CLIENTES</span>
+            <span className="text-xs font-black text-slate-700 uppercase">ALTA DE CLIENTES</span>
           </div>
 
           <div className="text-center py-2">
@@ -1512,21 +1503,21 @@ export function PuntoDeVenta() {
             </h2>
           </div>
 
-          <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
+          <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-3">
             {/* 1. ID CLIENTES */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">ID CLIENTES</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">ID CLIENTES</span>
               <input
                 type="text"
                 disabled
                 value={clienteForm.IDCLIENTES || 0}
-                className="h-6 w-28 rounded border border-slate-400 bg-[#E0E0E0] px-2 text-right text-xs font-bold text-slate-700"
+                className="h-7 w-28 rounded border border-slate-400 bg-[#E0E0E0] px-2 text-right text-xs font-black text-slate-700"
               />
             </div>
 
             {/* 2. CEDULA + BOTÓN BUSCAR AZUL */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">CEDULA</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">CEDULA</span>
               <input
                 type="number"
                 placeholder="Cédula / Documento"
@@ -1535,12 +1526,12 @@ export function PuntoDeVenta() {
                   setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
                 }
                 onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta(clienteForm.CEDULA)}
-                className="h-6 w-44 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                className="h-7 w-48 rounded border border-slate-400 bg-white px-2.5 text-xs font-black text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
               />
               <button
                 type="button"
                 onClick={() => handleBuscarCedulaDirecta(clienteForm.CEDULA)}
-                className="ml-2 h-6 rounded bg-[#004B87] px-4 text-xs font-bold text-white shadow hover:bg-[#003366] active:scale-95"
+                className="ml-2 h-7 rounded bg-[#004B87] px-5 text-xs font-black text-white shadow hover:bg-[#003366] active:scale-95 uppercase"
               >
                 Buscar
               </button>
@@ -1548,85 +1539,85 @@ export function PuntoDeVenta() {
 
             {/* 3. NOMBRE */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">NOMBRE</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">NOMBRE</span>
               <input
                 type="text"
                 placeholder="Nombre completo"
                 value={clienteForm.NOMBRE || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
-                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-900 focus:outline-none"
+                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 4. DIRECCION */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">DIRECCION</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">DIRECCION</span>
               <input
                 type="text"
                 placeholder="Dirección de residencia"
                 value={clienteForm.DIRECCION || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
-                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 5. TELEFONO */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">TELEFONO</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">TELEFONO</span>
               <input
                 type="text"
                 placeholder="Teléfono principal"
                 value={clienteForm.TELEFONO || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
-                className="h-6 w-60 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-900 focus:outline-none"
+                className="h-7 w-64 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 6. TELEFONO2 */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">TELEFONO2</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">TELEFONO2</span>
               <input
                 type="text"
                 placeholder="Teléfono secundario / celular"
                 value={clienteForm.TELEFONO2 || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO2: e.target.value }))}
-                className="h-6 w-60 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+                className="h-7 w-64 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 7. EMPRESA */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">EMPRESA</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">EMPRESA</span>
               <input
                 type="text"
                 placeholder="Nombre de la empresa"
                 value={clienteForm.EMPRESA || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, EMPRESA: e.target.value }))}
-                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 8. DIRECCION EMPRESA */}
             <div className="flex items-center">
-              <span className="w-36 text-xs font-bold text-slate-800 uppercase">DIRECCION EMPRESA</span>
+              <span className="w-36 text-xs font-black text-slate-800 uppercase">DIRECCION EMPRESA</span>
               <input
                 type="text"
                 placeholder="Dirección de la empresa"
                 value={clienteForm.DIRECCIONEMP || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCIONEMP: e.target.value }))}
-                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
 
             {/* 9. NOTA */}
             <div className="flex items-start">
-              <span className="w-36 pt-1 text-xs font-bold text-slate-800 uppercase">NOTA</span>
+              <span className="w-36 pt-1 text-xs font-black text-slate-800 uppercase">NOTA</span>
               <textarea
                 rows={3}
                 placeholder="Observaciones o notas especiales del cliente..."
                 value={clienteForm.NOTA || ""}
                 onChange={(e) => setClienteForm((p) => ({ ...p, NOTA: e.target.value }))}
-                className="flex-1 rounded border border-slate-400 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
+                className="flex-1 rounded border border-slate-400 bg-white p-2.5 text-xs font-bold text-slate-900 focus:outline-none resize-none"
               />
             </div>
 
@@ -1635,7 +1626,7 @@ export function PuntoDeVenta() {
               <button
                 type="button"
                 onClick={handleGuardarClienteAlta}
-                className="flex items-center gap-1.5 rounded-sm bg-[#004B87] px-6 py-1.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95"
+                className="flex items-center gap-1.5 rounded bg-[#004B87] px-6 py-2 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
               >
                 GUARDAR <Check className="h-4 w-4" />
               </button>
@@ -1643,7 +1634,7 @@ export function PuntoDeVenta() {
               <button
                 type="button"
                 onClick={() => setModalCliente(false)}
-                className="flex items-center gap-1.5 rounded-sm bg-[#004B87] px-6 py-1.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95"
+                className="flex items-center gap-1.5 rounded bg-[#004B87] px-6 py-2 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95 uppercase tracking-wide"
               >
                 SALIR <X className="h-4 w-4" />
               </button>
@@ -1658,7 +1649,7 @@ export function PuntoDeVenta() {
       <Dialog open={modalBuscarCli} onOpenChange={setModalBuscarCli}>
         <DialogContent className="max-w-lg bg-[#EDEDED] border border-slate-400">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="font-bold text-slate-900 uppercase text-xs">
+            <span className="font-black text-slate-900 uppercase text-xs">
               Buscar Cliente
             </span>
           </div>
@@ -1675,43 +1666,43 @@ export function PuntoDeVenta() {
                     setClientesEncontrados(clis);
                   }
                 }}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs"
+                className="h-8 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold"
               />
               <button
                 onClick={async () => {
                   const clis = await buscarClientesPorNombre(busqClienteInput);
                   setClientesEncontrados(clis);
                 }}
-                className="rounded bg-[#111111] px-4 text-xs font-bold text-white"
+                className="rounded bg-[#111111] px-4 text-xs font-black text-white uppercase"
               >
                 Buscar
               </button>
             </div>
 
-            <div className="max-h-56 overflow-auto rounded border border-slate-300 bg-white">
+            <div className="max-h-60 overflow-auto rounded border border-slate-300 bg-white">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-200 font-bold sticky top-0">
+                <thead className="bg-slate-200 font-black sticky top-0 uppercase">
                   <tr>
-                    <th className="p-1.5 border-b">Cédula</th>
-                    <th className="p-1.5 border-b">Nombre</th>
-                    <th className="p-1.5 border-b">Teléfono</th>
-                    <th className="p-1.5 border-b text-right">Acción</th>
+                    <th className="p-2 border-b">Cédula</th>
+                    <th className="p-2 border-b">Nombre</th>
+                    <th className="p-2 border-b">Teléfono</th>
+                    <th className="p-2 border-b text-right">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {clientesEncontrados.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="p-4 text-center text-slate-400 text-xs">
+                      <td colSpan={4} className="p-4 text-center text-slate-400 text-xs font-bold">
                         Ingresa un nombre para buscar.
                       </td>
                     </tr>
                   ) : (
                     clientesEncontrados.map((c) => (
-                      <tr key={c.IDCLIENTES} className="border-b hover:bg-slate-50">
-                        <td className="p-1.5 font-mono font-bold">{c.CEDULA}</td>
-                        <td className="p-1.5">{c.NOMBRE}</td>
-                        <td className="p-1.5">{c.TELEFONO}</td>
-                        <td className="p-1.5 text-right">
+                      <tr key={c.IDCLIENTES} className="border-b hover:bg-slate-50 font-medium">
+                        <td className="p-2 font-mono font-black">{c.CEDULA}</td>
+                        <td className="p-2 font-bold">{c.NOMBRE}</td>
+                        <td className="p-2 font-semibold">{c.TELEFONO}</td>
+                        <td className="p-2 text-right">
                           <button
                             onClick={() => {
                               setClienteForm(c);
@@ -1724,7 +1715,7 @@ export function PuntoDeVenta() {
                                 setModalOperacionVisible(true);
                               }
                             }}
-                            className="rounded bg-[#B80036] px-2 py-0.5 text-xs font-bold text-white"
+                            className="rounded bg-[#B80036] px-3 py-1 text-xs font-black text-white uppercase"
                           >
                             Seleccionar
                           </button>
@@ -1745,11 +1736,11 @@ export function PuntoDeVenta() {
       <Dialog open={modalGasto} onOpenChange={setModalGasto}>
         <DialogContent className="max-w-sm bg-[#EDEDED] border border-slate-400">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="font-bold text-red-700 uppercase text-xs">
+            <span className="font-black text-red-700 uppercase text-xs">
               Registrar Gasto (Salida de Caja)
             </span>
           </div>
-          <div className="space-y-2 text-xs font-semibold pt-1">
+          <div className="space-y-2 text-xs font-bold pt-1">
             <div>
               <label className="block mb-0.5">Descripción del Gasto</label>
               <input
@@ -1757,7 +1748,7 @@ export function PuntoDeVenta() {
                 placeholder="Ej. Lavandería o transporte"
                 value={gastoDesc}
                 onChange={(e) => setGastoDesc(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                className="h-7 w-full rounded border border-slate-400 bg-white px-2 font-bold"
               />
             </div>
             <div>
@@ -1767,14 +1758,14 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={gastoMonto}
                 onChange={(e) => setGastoMonto(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                className="h-7 w-full rounded border border-slate-400 bg-white px-2 font-black text-red-700"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={() => setModalGasto(false)}
-              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+              className="rounded bg-slate-300 px-3 py-1.5 text-xs font-bold"
             >
               Cancelar
             </button>
@@ -1795,7 +1786,7 @@ export function PuntoDeVenta() {
                 setGastoDesc("");
                 setGastoMonto("");
               }}
-              className="rounded bg-red-700 px-4 py-1 text-xs font-bold text-white"
+              className="rounded bg-red-700 px-4 py-1.5 text-xs font-black text-white"
             >
               Guardar Gasto
             </button>
@@ -1809,11 +1800,11 @@ export function PuntoDeVenta() {
       <Dialog open={modalDevolucion} onOpenChange={setModalDevolucion}>
         <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="font-bold text-emerald-800 uppercase text-xs">
+            <span className="font-black text-emerald-800 uppercase text-xs">
               Entrada de Vestido & Devolución de Depósito
             </span>
           </div>
-          <div className="space-y-2 text-xs font-semibold pt-1">
+          <div className="space-y-2 text-xs font-bold pt-1">
             <div>
               <label className="block mb-0.5">N° Factura / Recibo de Alquiler</label>
               <input
@@ -1821,7 +1812,7 @@ export function PuntoDeVenta() {
                 placeholder="Ej. ALQ-000124"
                 value={devFactura}
                 onChange={(e) => setDevFactura(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2 font-bold"
+                className="h-7 w-full rounded border border-slate-400 bg-white px-2.5 font-black text-slate-900"
               />
             </div>
             <div>
@@ -1831,14 +1822,14 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={devMonto || ""}
                 onChange={(e) => setDevMonto(Number(e.target.value) || 0)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2 font-mono text-base font-bold text-blue-700"
+                className="h-8 w-full rounded border border-slate-400 bg-white px-2.5 font-mono text-base font-black text-blue-700"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={() => setModalDevolucion(false)}
-              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+              className="rounded bg-slate-300 px-3 py-1.5 text-xs font-bold"
             >
               Cancelar
             </button>
@@ -1857,7 +1848,7 @@ export function PuntoDeVenta() {
                 setDevFactura("");
                 setDevMonto(0);
               }}
-              className="rounded bg-emerald-700 px-4 py-1 text-xs font-bold text-white"
+              className="rounded bg-emerald-700 px-4 py-1.5 text-xs font-black text-white"
             >
               Confirmar Devolución
             </button>
@@ -1871,36 +1862,36 @@ export function PuntoDeVenta() {
       <Dialog open={modalApartados} onOpenChange={setModalApartados}>
         <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-            <span className="font-bold text-amber-800 uppercase text-xs">
+            <span className="font-black text-amber-800 uppercase text-xs">
               Trajes Apartados / Reservas
             </span>
           </div>
           <div className="space-y-1.5 text-xs font-mono pt-1">
-            <div className="rounded border border-slate-300 bg-white p-2">
-              <div className="flex justify-between border-b pb-1 font-bold">
+            <div className="rounded border border-slate-300 bg-white p-2.5">
+              <div className="flex justify-between border-b pb-1 font-black">
                 <span>RECIBO</span>
                 <span>CLIENTE</span>
                 <span>FECHAS</span>
                 <span>TOTAL</span>
               </div>
-              <div className="flex justify-between py-1 border-b text-slate-700">
+              <div className="flex justify-between py-1.5 border-b text-slate-800 font-bold">
                 <span>ALQ-000120</span>
                 <span>JUAN PÉREZ</span>
                 <span>03/09 - 06/09</span>
-                <span className="font-bold text-emerald-700">$170.000</span>
+                <span className="font-black text-emerald-700">$170.000</span>
               </div>
-              <div className="flex justify-between py-1 text-slate-700">
+              <div className="flex justify-between py-1.5 text-slate-800 font-bold">
                 <span>ALQ-000122</span>
                 <span>MARÍA RODRÍGUEZ</span>
                 <span>04/09 - 07/09</span>
-                <span className="font-bold text-emerald-700">$200.000</span>
+                <span className="font-black text-emerald-700">$200.000</span>
               </div>
             </div>
           </div>
           <div className="flex justify-end mt-2">
             <button
               onClick={() => setModalApartados(false)}
-              className="rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white"
+              className="rounded bg-slate-800 px-4 py-1.5 text-xs font-black text-white"
             >
               Cerrar
             </button>
@@ -1915,55 +1906,55 @@ export function PuntoDeVenta() {
         <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800">
           <div className="font-mono text-xs text-slate-900">
             <div className="border-b border-dashed border-slate-400 pb-2 text-center">
-              <h2 className="text-sm font-black uppercase">LA CASA DEL DISFRAZ</h2>
-              <p className="text-[10px]">Elegance Rentals</p>
-              <p className="text-[9px]">Para toda ocasión sin importar tu edad</p>
-              <p className="mt-1 font-bold">RECIBO N° {numeroRecibo}</p>
-              <p className="text-[9px]">Fecha: {fechaHoy} · Cajero: {cajero}</p>
+              <h2 className="text-base font-black uppercase">LA CASA DEL DISFRAZ</h2>
+              <p className="text-xs font-semibold">Elegance Rentals</p>
+              <p className="text-[10px]">Para toda ocasión sin importar tu edad</p>
+              <p className="mt-1.5 font-black text-sm">RECIBO N° {numeroRecibo}</p>
+              <p className="text-[10px]">Fecha: {fechaHoy} · Cajero: {cajero}</p>
             </div>
 
-            <div className="py-1.5 text-[10px] space-y-0.5 border-b border-dashed border-slate-400">
+            <div className="py-2 text-xs space-y-0.5 border-b border-dashed border-slate-400 font-semibold">
               <p><strong>CLIENTE:</strong> {clienteForm.NOMBRE?.toUpperCase() || "GENERAL"}</p>
               <p><strong>CÉDULA:</strong> {clienteForm.CEDULA || "N/A"}</p>
               <p><strong>TELÉFONO:</strong> {clienteForm.TELEFONO || "N/A"}</p>
               <p><strong>SALIDA:</strong> {fechaSalida} | <strong>ENTRADA:</strong> {fechaEntrada}</p>
             </div>
 
-            <div className="py-1.5 border-b border-dashed border-slate-400">
-              <div className="flex justify-between font-bold pb-1 text-[10px]">
+            <div className="py-2 border-b border-dashed border-slate-400">
+              <div className="flex justify-between font-black pb-1 text-xs">
                 <span>ARTÍCULO</span>
                 <span>VALOR</span>
               </div>
               {gridItems.map((it, i) => (
-                <div key={i} className="flex justify-between py-0.5 text-[10px]">
+                <div key={i} className="flex justify-between py-0.5 text-xs font-bold">
                   <span>{it.cantidad}x {it.descripcion} ({it.talla})</span>
                   <span>${it.totalAlquiler.toLocaleString()}</span>
                 </div>
               ))}
             </div>
 
-            <div className="py-1.5 space-y-0.5 text-right text-[10px]">
+            <div className="py-2 space-y-0.5 text-right text-xs font-bold">
               <p>Total Alquiler: ${totalAlquilerConDesc.toLocaleString()}</p>
-              <p className="font-bold text-blue-800">Total Depósito (Fianza): ${totalDeposito.toLocaleString()}</p>
-              <p className="text-xs font-black border-t pt-0.5">
+              <p className="font-black text-blue-800">Total Depósito (Fianza): ${totalDeposito.toLocaleString()}</p>
+              <p className="text-sm font-black border-t pt-1">
                 TOTAL COBRADO: ${totalDepositoMasAlquiler.toLocaleString()}
               </p>
-              <p className="text-emerald-700 font-bold">Cambio / Vuelto: ${Math.max(0, cambioVuelto).toLocaleString()}</p>
+              <p className="text-emerald-700 font-black">Cambio / Vuelto: ${Math.max(0, cambioVuelto).toLocaleString()}</p>
             </div>
 
-            <p className="mt-2 text-center text-[9px] text-slate-500 italic">
+            <p className="mt-2 text-center text-[10px] text-slate-500 italic font-semibold">
               Conservar este recibo para la devolución de la prenda y reintegro del depósito.
             </p>
           </div>
-          <div className="flex justify-end mt-2">
+          <div className="flex justify-end mt-3">
             <button
               onClick={() => {
                 window.print();
                 setModalImprimir(false);
               }}
-              className="rounded bg-black px-4 py-1 text-xs font-bold text-white flex items-center gap-1"
+              className="rounded bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5"
             >
-              <Printer className="h-3.5 w-3.5" /> Imprimir
+              <Printer className="h-4 w-4" /> Imprimir
             </button>
           </div>
         </DialogContent>
