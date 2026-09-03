@@ -5,6 +5,7 @@ import {
   Printer,
   ChevronDown,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -57,6 +58,9 @@ export function PuntoDeVenta() {
     NOTA: "",
     SALDO: 0,
   });
+
+  // Alerta de Nota del Cliente
+  const [notaAlertaVisible, setNotaAlertaVisible] = useState(false);
 
   // Autocomplete / Combobox de Artículo con Filtro en Vivo y Teclado
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
@@ -160,7 +164,13 @@ export function PuntoDeVenta() {
     const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
       setClienteForm(cli);
-      toast.success(`Cliente encontrado: ${cli.NOMBRE}`);
+      // SI TIENE NOTA, MOSTRARLA INMEDIATAMENTE
+      if (cli.NOTA && cli.NOTA.trim() !== "") {
+        setNotaAlertaVisible(true);
+        toast.warning(`⚠️ NOTA DEL CLIENTE: ${cli.NOTA}`, { duration: 7000 });
+      } else {
+        toast.success(`Cliente encontrado: ${cli.NOMBRE}`);
+      }
       articuloInputRef.current?.focus();
     } else {
       toast.info("Cédula no encontrada. Puedes registrar sus datos.");
@@ -303,6 +313,7 @@ export function PuntoDeVenta() {
     setPagaTransferencia("");
     setDescuentoAlquiler("");
     setFilaSeleccionada(null);
+    setNotaAlertaVisible(false);
     toast.info("Formulario reiniciado");
     articuloInputRef.current?.focus();
   }
@@ -405,7 +416,7 @@ export function PuntoDeVenta() {
         {/* LADO IZQUIERDO: FORMULARIO + BOTONES DE ACCIÓN + GRID */}
         <div className="flex flex-1 flex-col gap-1 overflow-hidden min-h-0">
           {/* BLOQUE DE CAMPOS DE CABECERA */}
-          <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1 shadow-inner">
+          <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1 shadow-inner space-y-1">
             <div className="grid grid-cols-12 gap-x-2 gap-y-1 text-xs">
               {/* FILA 1 */}
               <div className="col-span-3 flex items-center gap-1">
@@ -543,6 +554,27 @@ export function PuntoDeVenta() {
                 </button>
               </div>
             </div>
+
+            {/* =========================================================================
+                BANNER VISUAL DESTACADO SI EL CLIENTE TIENE NOTA
+            ========================================================================= */}
+            {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
+              <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-950 shadow-sm animate-pulse">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <span className="flex items-center gap-0.5 rounded bg-amber-700 px-1 py-0.2 text-[9px] text-white uppercase font-black tracking-wide">
+                    <AlertTriangle className="h-2.5 w-2.5" /> NOTA CLIENTE
+                  </span>
+                  <span className="truncate">{clienteForm.NOTA}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotaAlertaVisible(true)}
+                  className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-[9px] font-black"
+                >
+                  [Ver Completa]
+                </button>
+              </div>
+            )}
           </div>
 
           {/* =========================================================================
@@ -910,23 +942,62 @@ export function PuntoDeVenta() {
       </div>
 
       {/* =========================================================================
+          MODAL DE ALERTA: NOTA DESTACADA DEL CLIENTE AL ESCANEAR CÉDULA
+      ========================================================================= */}
+      <Dialog open={notaAlertaVisible} onOpenChange={setNotaAlertaVisible}>
+        <DialogContent className="max-w-md bg-[#FFF9DB] p-5 border-4 border-amber-500 shadow-2xl">
+          <div className="flex items-center gap-2 border-b-2 border-amber-300 pb-2 text-amber-900">
+            <AlertTriangle className="h-6 w-6 text-amber-600 animate-bounce" />
+            <div>
+              <h3 className="text-sm font-black uppercase">¡ATENCIÓN! OBSERVACIÓN DEL CLIENTE</h3>
+              <p className="text-[10px] text-amber-800">
+                Cliente: <strong>{clienteForm.NOMBRE}</strong> (C.C: {clienteForm.CEDULA})
+              </p>
+            </div>
+          </div>
+
+          <div className="my-3 rounded bg-white p-3 border border-amber-300 font-mono text-xs text-slate-900 font-bold leading-relaxed shadow-inner">
+            {clienteForm.NOTA}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setNotaAlertaVisible(false);
+                setModalCliente(true);
+              }}
+              className="rounded bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-300"
+            >
+              Editar Ficha Cliente
+            </button>
+            <button
+              onClick={() => {
+                setNotaAlertaVisible(false);
+                articuloInputRef.current?.focus();
+              }}
+              className="rounded bg-amber-600 px-5 py-1.5 text-xs font-black text-white hover:bg-amber-700 shadow"
+            >
+              ENTENDIDO ✔
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
           MODAL: ALTA_DE_CLIENTES (IDÉNTICO A LA CAPTURA WINDEV [ALTA_DE_CLIENTES])
       ========================================================================= */}
       <Dialog open={modalCliente} onOpenChange={setModalCliente}>
         <DialogContent className="max-w-2xl bg-[#E8E8E8] p-4 border-2 border-slate-400 shadow-2xl">
-          {/* BARRA SUPERIOR DE VENTANA */}
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">
             <span className="text-[11px] font-bold text-slate-700 uppercase">ALTA DE CLIENTES</span>
           </div>
 
-          {/* TÍTULO GRANDE CENTRADO */}
           <div className="text-center py-2">
             <h2 className="text-xl font-black tracking-wider text-slate-900 uppercase">
               INGRESA LOS DATOS DEL CLIENTE
             </h2>
           </div>
 
-          {/* CUADRO PRINCIPAL CON BORDES (EXACTO A WINDEV) */}
           <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
             {/* 1. ID CLIENTES */}
             <div className="flex items-center">
@@ -1045,7 +1116,7 @@ export function PuntoDeVenta() {
               />
             </div>
 
-            {/* 10. BOTONES DE ACCIÓN: GUARDAR ✔ / SALIR ✖ (AZULES EXACTOS A WINDEV) */}
+            {/* 10. BOTONES DE ACCIÓN: GUARDAR ✔ / SALIR ✖ */}
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -1131,7 +1202,12 @@ export function PuntoDeVenta() {
                             onClick={() => {
                               setClienteForm(c);
                               setModalBuscarCli(false);
-                              toast.success(`Cliente cargado: ${c.NOMBRE}`);
+                              if (c.NOTA && c.NOTA.trim() !== "") {
+                                setNotaAlertaVisible(true);
+                                toast.warning(`⚠️ NOTA: ${c.NOTA}`);
+                              } else {
+                                toast.success(`Cliente cargado: ${c.NOMBRE}`);
+                              }
                               articuloInputRef.current?.focus();
                             }}
                             className="rounded bg-[#B80036] px-2 py-0.5 text-xs font-bold text-white"
