@@ -52,7 +52,7 @@ export function PuntoDeVenta() {
     d.setDate(d.getDate() + 3);
     return d.toISOString().split("T")[0];
   });
-  const [estadoTraje, setEstadoTraje] = useState("DISPONIBLE");
+  const [estadoTraje, setEstadoTraje] = useState("EN ALQUILER");
 
   // Estado del Cliente (Campos de la tabla CLIENTES)
   const [clienteForm, setClienteForm] = useState<Partial<Cliente>>({
@@ -70,6 +70,11 @@ export function PuntoDeVenta() {
 
   // Alerta de Nota del Cliente
   const [notaAlertaVisible, setNotaAlertaVisible] = useState(false);
+
+  // Modal: SELECCIONE LA OPERACION A REALIZAR
+  const [modalOperacionVisible, setModalOperacionVisible] = useState(false);
+  const [operacionSeleccionada, setOperacionSeleccionada] = useState<"ALQUILER" | "VENTA" | "APARTADO" | "BONO">("ALQUILER");
+  const selectOperacionRef = useRef<HTMLSelectElement>(null);
 
   // Artículos y Autocomplete
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
@@ -203,17 +208,35 @@ export function PuntoDeVenta() {
     const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
       setClienteForm(cli);
+      // SI TIENE NOTA, MOSTRARLA PRIMERO; SI NO, ABRIR DIRECTO EL MODAL DE OPERACIÓN
       if (cli.NOTA && cli.NOTA.trim() !== "") {
         setNotaAlertaVisible(true);
         toast.warning(`⚠️ NOTA DEL CLIENTE: ${cli.NOTA}`, { duration: 7000 });
       } else {
-        toast.success(`Cliente encontrado: ${cli.NOMBRE}`);
+        toast.success(`Cliente: ${cli.NOMBRE}`);
+        setModalOperacionVisible(true);
       }
-      articuloInputRef.current?.focus();
     } else {
       toast.info("Cédula no encontrada. Puedes registrar sus datos.");
       setModalCliente(true);
     }
+  }
+
+  // Confirmar Selección de Operación (ALQUILER, VENTA, APARTADO, BONO)
+  function handleConfirmarOperacion() {
+    let nuevoEstadoTraje = "EN ALQUILER";
+    if (operacionSeleccionada === "VENTA") nuevoEstadoTraje = "VENTA";
+    else if (operacionSeleccionada === "APARTADO") nuevoEstadoTraje = "APARTADO";
+    else if (operacionSeleccionada === "BONO") nuevoEstadoTraje = "BONO";
+    else nuevoEstadoTraje = "EN ALQUILER";
+
+    setEstadoTraje(nuevoEstadoTraje);
+    setModalOperacionVisible(false);
+    toast.success(`Operación fijada: ${nuevoEstadoTraje}`);
+
+    setTimeout(() => {
+      articuloInputRef.current?.focus();
+    }, 50);
   }
 
   // Guardar Cliente en BD (ALTA_DE_CLIENTES)
@@ -231,11 +254,11 @@ export function PuntoDeVenta() {
       }
       toast.success("¡Cliente guardado exitosamente!");
       setModalCliente(false);
-      articuloInputRef.current?.focus();
+      setModalOperacionVisible(true);
     } catch {
       toast.success("Cliente asignado localmente");
       setModalCliente(false);
-      articuloInputRef.current?.focus();
+      setModalOperacionVisible(true);
     }
   }
 
@@ -287,7 +310,6 @@ export function PuntoDeVenta() {
           return [artGuardado, ...prev];
         });
       } else {
-        // Modo local
         const nuevo: Articulo = {
           IDARTICULO: articuloForm.IDARTICULO || Date.now(),
           DESCRIPCION: articuloForm.DESCRIPCION,
@@ -430,6 +452,8 @@ export function PuntoDeVenta() {
     setDescuentoAlquiler("");
     setFilaSeleccionada(null);
     setNotaAlertaVisible(false);
+    setModalOperacionVisible(false);
+    setEstadoTraje("EN ALQUILER");
     toast.info("Formulario reiniciado");
     articuloInputRef.current?.focus();
   }
@@ -454,7 +478,7 @@ export function PuntoDeVenta() {
         FTOTALVENTADEPOSITO: totalDepositoMasAlquiler,
         FTOTALALQUILER: totalAlquilerConDesc,
         FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
-        MODO: "ALQUILER",
+        MODO: operacionSeleccionada,
         VENDEDOR: cajero,
         CCLIENTE: clienteForm.NOMBRE,
         CCEDULA: String(clienteForm.CEDULA),
@@ -467,7 +491,7 @@ export function PuntoDeVenta() {
         PAGOCONTRANFERENCIA: transNum,
         CAMBIOS: Math.max(0, cambioVuelto),
         DESCUENTO: descuentoNum,
-        ESTADOCLIENTE: "ALQUILADO",
+        ESTADOCLIENTE: estadoTraje,
         TOTAL_SALDO: cambioVuelto < 0 ? Math.abs(cambioVuelto) : 0,
         FECHA_RECIBO: fechaHoy,
       };
@@ -634,16 +658,14 @@ export function PuntoDeVenta() {
 
               <div className="col-span-4 flex items-center gap-1">
                 <span className="w-20 font-bold text-slate-800 text-[10px] uppercase">ESTADO TRAJE</span>
-                <select
-                  value={estadoTraje}
-                  onChange={(e) => setEstadoTraje(e.target.value)}
-                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-medium focus:outline-none"
+                <button
+                  type="button"
+                  onClick={() => setModalOperacionVisible(true)}
+                  className="h-5 flex-1 rounded border border-slate-400 bg-white px-1 text-[10px] font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
                 >
-                  <option value="DISPONIBLE">DISPONIBLE</option>
-                  <option value="ALQUILADO">ALQUILADO</option>
-                  <option value="LAVANDERIA">LAVANDERÍA</option>
-                  <option value="MANTENIMIENTO">MANTENIMIENTO</option>
-                </select>
+                  <span className="truncate">{estadoTraje}</span>
+                  <ChevronDown className="h-3 w-3 text-slate-500" />
+                </button>
               </div>
 
               {/* FILA 4 */}
@@ -1102,7 +1124,8 @@ export function PuntoDeVenta() {
             <button
               onClick={() => {
                 setNotaAlertaVisible(false);
-                articuloInputRef.current?.focus();
+                // AL CERRAR LA NOTA, ABRIR LA SELECCIÓN DE OPERACIÓN
+                setModalOperacionVisible(true);
               }}
               className="rounded bg-amber-600 px-5 py-1.5 text-xs font-black text-white hover:bg-amber-700 shadow"
             >
@@ -1113,11 +1136,83 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================================
+          MODAL: SELECCIONE LA OPERACION A REALIZAR (EXACTO A LA CAPTURA WINDEV)
+      ========================================================================= */}
+      <Dialog open={modalOperacionVisible} onOpenChange={setModalOperacionVisible}>
+        <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-md">
+          {/* BARRA SUPERIOR DE VENTANA */}
+          <div className="flex items-center justify-between px-3 py-1 bg-white border-b border-slate-300">
+            <span className="text-[11px] font-bold text-slate-700 uppercase">
+              SELECCIONE LA OPERACION A REALIZAR
+            </span>
+            <button
+              onClick={() => setModalOperacionVisible(false)}
+              className="text-slate-400 hover:text-slate-700"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* CUERPO DEL DIÁLOGO */}
+          <div className="p-6 space-y-4">
+            {/* TÍTULO EN NARANJA / DORADO (EXACTO A WINDEV) */}
+            <div className="text-center">
+              <h3 className="text-xs font-black tracking-wider text-[#E65100] uppercase font-sans">
+                SELECCIONE LA OPERACIÓN A REALIZAR
+              </h3>
+            </div>
+
+            {/* CAMPO DE SELECCIÓN */}
+            <div className="flex items-center justify-center gap-2">
+              <label className="text-[11px] font-extrabold uppercase text-slate-800">
+                SELECCIONE :
+              </label>
+              <select
+                ref={selectOperacionRef}
+                autoFocus
+                value={operacionSeleccionada}
+                onChange={(e) => setOperacionSeleccionada(e.target.value as any)}
+                onKeyDown={(e) => e.key === "Enter" && handleConfirmarOperacion()}
+                className="h-7 w-48 rounded border border-slate-400 bg-white px-2 font-bold text-xs text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALQUILER">ALQUILER</option>
+                <option value="VENTA">VENTA</option>
+                <option value="BONO">BONO</option>
+                <option value="APARTADO">APARTADO</option>
+              </select>
+            </div>
+
+            {/* BOTÓN AZUL SELECCIONAR */}
+            <div className="flex justify-center pt-1">
+              <button
+                type="button"
+                onClick={handleConfirmarOperacion}
+                className="rounded bg-[#004B87] px-6 py-1 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-[#003366] active:scale-95"
+              >
+                SELECCIONAR
+              </button>
+            </div>
+
+            {/* LISTA DE VIÑETAS INFORMATIVAS (EXACTA AL ORIGINAL) */}
+            <div className="pt-2 text-[10px] font-bold text-slate-700 space-y-0.5">
+              <p className="text-slate-800 font-extrabold">* SELECCIONE LA OPERACION A REALIZAR SI ES:</p>
+              <p className="pl-2">• ALQUILER</p>
+              <p className="pl-2">• VENTA</p>
+              <p className="pl-2">• APARTADO</p>
+              <p className="pl-2">• BONO</p>
+            </div>
+          </div>
+
+          {/* BARRA AZUL INFERIOR WINDEV */}
+          <div className="h-2 bg-[#004B87] w-full" />
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
           MODAL: ALTA_DE_ARTICULOS (MODERNO, ELEGANTE Y FIEL A WINDEV)
       ========================================================================= */}
       <Dialog open={modalArticuloAlta} onOpenChange={setModalArticuloAlta}>
         <DialogContent className="max-w-xl bg-[#F4F6F9] p-0 border border-slate-300 shadow-2xl overflow-hidden rounded-xl">
-          {/* HEADER CON DEGRADADO ELEGANTE */}
           <div className="bg-gradient-to-r from-[#002D62] via-[#004B87] to-[#0A192F] px-5 py-3 text-white flex items-center justify-between shadow">
             <div className="flex items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 backdrop-blur text-yellow-300">
@@ -1137,10 +1232,8 @@ export function PuntoDeVenta() {
             </span>
           </div>
 
-          {/* CONTENIDO DEL FORMULARIO */}
           <form onSubmit={handleGuardarArticuloAlta} className="p-5 space-y-4">
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-              {/* 1. DESCRIPCIÓN DEL ARTÍCULO (TEXTAREA GRANDE) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[11px] font-extrabold uppercase text-slate-800 tracking-wide flex items-center gap-1">
@@ -1158,7 +1251,6 @@ export function PuntoDeVenta() {
                 />
               </div>
 
-              {/* 2. VALOR ALQUILER + VALOR DEPÓSITO EN DOS COLUMNAS DESTACADAS */}
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="rounded-lg bg-emerald-50/60 border border-emerald-200 p-2.5 shadow-sm">
                   <label className="text-[10px] font-extrabold uppercase text-emerald-900 block mb-1">
@@ -1196,9 +1288,7 @@ export function PuntoDeVenta() {
                 </div>
               </div>
 
-              {/* 3. TALLA, STOCK Y CÓDIGO DE BARRAS */}
               <div className="grid grid-cols-3 gap-3 pt-1">
-                {/* TALLA */}
                 <div>
                   <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
                     TALLA
@@ -1212,7 +1302,6 @@ export function PuntoDeVenta() {
                   />
                 </div>
 
-                {/* STOCK */}
                 <div>
                   <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
                     STOCK / CANTIDAD
@@ -1226,7 +1315,6 @@ export function PuntoDeVenta() {
                   />
                 </div>
 
-                {/* BARRAS / SKU */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold uppercase text-slate-700">
@@ -1254,7 +1342,6 @@ export function PuntoDeVenta() {
               </div>
             </div>
 
-            {/* BOTONES DE ACCIÓN: GUARDAR ✔ / SALIR ✖ */}
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
               <button
                 type="button"
@@ -1634,8 +1721,8 @@ export function PuntoDeVenta() {
                                 toast.warning(`⚠️ NOTA: ${c.NOTA}`);
                               } else {
                                 toast.success(`Cliente cargado: ${c.NOMBRE}`);
+                                setModalOperacionVisible(true);
                               }
-                              articuloInputRef.current?.focus();
                             }}
                             className="rounded bg-[#B80036] px-2 py-0.5 text-xs font-bold text-white"
                           >
