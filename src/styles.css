@@ -141,4 +141,17 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /* Quitar flechas de subir/bajar (spinners) de todos los campos numéricos en todos los módulos */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+  }
 }
+
