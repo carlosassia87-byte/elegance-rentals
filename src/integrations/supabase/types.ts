@@ -14,6 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
+      ABONO_CLIENTE: {
+        Row: {
+          ACLIENTE: string | null
+          AFACTURA: string | null
+          FECHAABONO: string | null
+          IDABONO_CLIENTE: number
+          NUMEROABONO: string | null
+          PAGOEFECTIVO: number | null
+          PAGOTRANFE: number | null
+          SALDOANTERIOR: number | null
+          SALDODEBER: number | null
+          TOTAL_ABONO: number | null
+        }
+        Insert: {
+          ACLIENTE?: string | null
+          AFACTURA?: string | null
+          FECHAABONO?: string | null
+          IDABONO_CLIENTE?: number
+          NUMEROABONO?: string | null
+          PAGOEFECTIVO?: number | null
+          PAGOTRANFE?: number | null
+          SALDOANTERIOR?: number | null
+          SALDODEBER?: number | null
+          TOTAL_ABONO?: number | null
+        }
+        Update: {
+          ACLIENTE?: string | null
+          AFACTURA?: string | null
+          FECHAABONO?: string | null
+          IDABONO_CLIENTE?: number
+          NUMEROABONO?: string | null
+          PAGOEFECTIVO?: number | null
+          PAGOTRANFE?: number | null
+          SALDOANTERIOR?: number | null
+          SALDODEBER?: number | null
+          TOTAL_ABONO?: number | null
+        }
+        Relationships: []
+      }
+      ARTICULO: {
+        Row: {
+          CODBARRAS: string | null
+          DESCRIPCION: string | null
+          IDARTICULO: number
+          IDCAMPOFACTURA: number | null
+          STOCK: number | null
+          TALLA: string | null
+          VALOR: number | null
+          VALORDEPOSITO: number | null
+        }
+        Insert: {
+          CODBARRAS?: string | null
+          DESCRIPCION?: string | null
+          IDARTICULO?: number
+          IDCAMPOFACTURA?: number | null
+          STOCK?: number | null
+          TALLA?: string | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Update: {
+          CODBARRAS?: string | null
+          DESCRIPCION?: string | null
+          IDARTICULO?: number
+          IDCAMPOFACTURA?: number | null
+          STOCK?: number | null
+          TALLA?: string | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Relationships: []
+      }
+      CAJAS: {
+        Row: {
+          IDCAJAS: number
+          NOMBRECAJA: string | null
+          NUMERACION: number | null
+          PREFIJO: string | null
+          RESOLUCION: string | null
+        }
+        Insert: {
+          IDCAJAS?: number
+          NOMBRECAJA?: string | null
+          NUMERACION?: number | null
+          PREFIJO?: string | null
+          RESOLUCION?: string | null
+        }
+        Update: {
+          IDCAJAS?: number
+          NOMBRECAJA?: string | null
+          NUMERACION?: number | null
+          PREFIJO?: string | null
+          RESOLUCION?: string | null
+        }
+        Relationships: []
+      }
+      CAMPOFACTURA: {
+        Row: {
+          AUTOMATIC: number
+          BARRAS: string | null
+          CANTIDAD: number | null
+          DESCRIPCION: string | null
+          IDFACTURA: number | null
+          NUMEROFACT: string | null
+          TOTAL: number | null
+          TOTALALQUILER: number | null
+          TOTALDEPOSITO: number | null
+          VALOR: number | null
+          VALORDEPOSITO: number | null
+        }
+        Insert: {
+          AUTOMATIC?: number
+          BARRAS?: string | null
+          CANTIDAD?: number | null
+          DESCRIPCION?: string | null
+          IDFACTURA?: number | null
+          NUMEROFACT?: string | null
+          TOTAL?: number | null
+          TOTALALQUILER?: number | null
+          TOTALDEPOSITO?: number | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Update: {
+          AUTOMATIC?: number
+          BARRAS?: string | null
+          CANTIDAD?: number | null
+          DESCRIPCION?: string | null
+          IDFACTURA?: number | null
+          NUMEROFACT?: string | null
+          TOTAL?: number | null
+          TOTALALQUILER?: number | null
+          TOTALDEPOSITO?: number | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -35,6 +173,523 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      CLIENTES: {
+        Row: {
+          CEDULA: number | null
+          DIRECCION: string | null
+          DIRECCIONEMP: string | null
+          EMPRESA: string | null
+          IDCLIENTES: number
+          NOMBRE: string | null
+          NOTA: string | null
+          SALDO: number | null
+          TELEFONO: string | null
+          TELEFONO2: string | null
+        }
+        Insert: {
+          CEDULA?: number | null
+          DIRECCION?: string | null
+          DIRECCIONEMP?: string | null
+          EMPRESA?: string | null
+          IDCLIENTES?: number
+          NOMBRE?: string | null
+          NOTA?: string | null
+          SALDO?: number | null
+          TELEFONO?: string | null
+          TELEFONO2?: string | null
+        }
+        Update: {
+          CEDULA?: number | null
+          DIRECCION?: string | null
+          DIRECCIONEMP?: string | null
+          EMPRESA?: string | null
+          IDCLIENTES?: number
+          NOMBRE?: string | null
+          NOTA?: string | null
+          SALDO?: number | null
+          TELEFONO?: string | null
+          TELEFONO2?: string | null
+        }
+        Relationships: []
+      }
+      clientesregistrados: {
+        Row: {
+          EDIRECCION: string | null
+          EMAIL: string | null
+          ENOMBRE: string | null
+          ETELEFONO: string | null
+          ETIPO: string | null
+          IDEmpresa: number
+          IDnumero_de_serie: number | null
+          LOGO: string | null
+          MENSAJE: string | null
+          NIT: string | null
+          RAZOSOCIAL: string | null
+          SERIE: string | null
+          WEB: string | null
+        }
+        Insert: {
+          EDIRECCION?: string | null
+          EMAIL?: string | null
+          ENOMBRE?: string | null
+          ETELEFONO?: string | null
+          ETIPO?: string | null
+          IDEmpresa?: number
+          IDnumero_de_serie?: number | null
+          LOGO?: string | null
+          MENSAJE?: string | null
+          NIT?: string | null
+          RAZOSOCIAL?: string | null
+          SERIE?: string | null
+          WEB?: string | null
+        }
+        Update: {
+          EDIRECCION?: string | null
+          EMAIL?: string | null
+          ENOMBRE?: string | null
+          ETELEFONO?: string | null
+          ETIPO?: string | null
+          IDEmpresa?: number
+          IDnumero_de_serie?: number | null
+          LOGO?: string | null
+          MENSAJE?: string | null
+          NIT?: string | null
+          RAZOSOCIAL?: string | null
+          SERIE?: string | null
+          WEB?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_clientesregistrados_serie"
+            columns: ["IDnumero_de_serie"]
+            isOneToOne: false
+            referencedRelation: "numero_de_serie"
+            referencedColumns: ["IDnumero_de_serie"]
+          },
+        ]
+      }
+      contraseñas: {
+        Row: {
+          BORRADO: string | null
+          CONFIGURACIONES: string | null
+          IDcontraseñas: number
+          PERMISOS: string | null
+        }
+        Insert: {
+          BORRADO?: string | null
+          CONFIGURACIONES?: string | null
+          IDcontraseñas?: number
+          PERMISOS?: string | null
+        }
+        Update: {
+          BORRADO?: string | null
+          CONFIGURACIONES?: string | null
+          IDcontraseñas?: number
+          PERMISOS?: string | null
+        }
+        Relationships: []
+      }
+      depositoentregado: {
+        Row: {
+          FECHA: string | null
+          IDdepositoentregado: number
+          NUMEROFACTURA: string | null
+          VALOR: number | null
+        }
+        Insert: {
+          FECHA?: string | null
+          IDdepositoentregado?: number
+          NUMEROFACTURA?: string | null
+          VALOR?: number | null
+        }
+        Update: {
+          FECHA?: string | null
+          IDdepositoentregado?: number
+          NUMEROFACTURA?: string | null
+          VALOR?: number | null
+        }
+        Relationships: []
+      }
+      Empresa: {
+        Row: {
+          EDIRECCION: string | null
+          EMAIL: string | null
+          ENOMBRE: string | null
+          ETELEFONO: string | null
+          ETIPO: string | null
+          IDEmpresa: number
+          LOGO: string | null
+          MENSAJE: string | null
+          NIT: string | null
+          RAZOSOCIAL: string | null
+          SERIE: string | null
+          WEB: string | null
+        }
+        Insert: {
+          EDIRECCION?: string | null
+          EMAIL?: string | null
+          ENOMBRE?: string | null
+          ETELEFONO?: string | null
+          ETIPO?: string | null
+          IDEmpresa?: number
+          LOGO?: string | null
+          MENSAJE?: string | null
+          NIT?: string | null
+          RAZOSOCIAL?: string | null
+          SERIE?: string | null
+          WEB?: string | null
+        }
+        Update: {
+          EDIRECCION?: string | null
+          EMAIL?: string | null
+          ENOMBRE?: string | null
+          ETELEFONO?: string | null
+          ETIPO?: string | null
+          IDEmpresa?: number
+          LOGO?: string | null
+          MENSAJE?: string | null
+          NIT?: string | null
+          RAZOSOCIAL?: string | null
+          SERIE?: string | null
+          WEB?: string | null
+        }
+        Relationships: []
+      }
+      ESTADO_CLI: {
+        Row: {
+          ESTADOCLI: string
+          IDESTADO_CLI: number
+        }
+        Insert: {
+          ESTADOCLI?: string
+          IDESTADO_CLI?: number
+        }
+        Update: {
+          ESTADOCLI?: string
+          IDESTADO_CLI?: number
+        }
+        Relationships: []
+      }
+      ESTADO_TRAJE: {
+        Row: {
+          ESTADO_TRAJE: number | null
+          IDESTADO_TRAJE: number
+        }
+        Insert: {
+          ESTADO_TRAJE?: number | null
+          IDESTADO_TRAJE?: number
+        }
+        Update: {
+          ESTADO_TRAJE?: number | null
+          IDESTADO_TRAJE?: number
+        }
+        Relationships: []
+      }
+      F_PAGO: {
+        Row: {
+          FDEPAGO: string | null
+          IDESTADCLI: number
+        }
+        Insert: {
+          FDEPAGO?: string | null
+          IDESTADCLI?: number
+        }
+        Update: {
+          FDEPAGO?: string | null
+          IDESTADCLI?: number
+        }
+        Relationships: []
+      }
+      FACTURA: {
+        Row: {
+          AUTOMATIC: number | null
+          CAMBIOS: number | null
+          CCEDULA: string | null
+          CCLIENTE: string | null
+          CDIRECCION: string | null
+          CEMPRESA: string | null
+          CTELEFONO: string | null
+          CTELEFONO1: string | null
+          DESCUENTO: number | null
+          ESTADOCLIENTE: string | null
+          FECHA_RECIBO: string | null
+          FECHAENTRADA: string | null
+          FECHAINGRESO: string | null
+          FECHASALIDA: string | null
+          FORMAPAGO: string | null
+          FPAGOTRANS: string | null
+          FTOTALALQUILER: number | null
+          FTOTALDEPOSITO: number | null
+          FTOTALVENTADEPOSITO: number | null
+          GASTOS: string | null
+          IDF_PAGO: number | null
+          IDFACTURA: number
+          IDFCLIENTES: number | null
+          MODO: string | null
+          NUMEROFACT: string | null
+          P_SALDO_EFECTIVO: number | null
+          P_SALDO_TRANFERENCIA: number | null
+          PAGACON: number | null
+          PAGOCONEFECTIVO: number | null
+          PAGOCONTRANFERENCIA: number | null
+          SALDOA_BONADO: number | null
+          TOTAL_SALDO: number | null
+          VENDEDOR: string | null
+        }
+        Insert: {
+          AUTOMATIC?: number | null
+          CAMBIOS?: number | null
+          CCEDULA?: string | null
+          CCLIENTE?: string | null
+          CDIRECCION?: string | null
+          CEMPRESA?: string | null
+          CTELEFONO?: string | null
+          CTELEFONO1?: string | null
+          DESCUENTO?: number | null
+          ESTADOCLIENTE?: string | null
+          FECHA_RECIBO?: string | null
+          FECHAENTRADA?: string | null
+          FECHAINGRESO?: string | null
+          FECHASALIDA?: string | null
+          FORMAPAGO?: string | null
+          FPAGOTRANS?: string | null
+          FTOTALALQUILER?: number | null
+          FTOTALDEPOSITO?: number | null
+          FTOTALVENTADEPOSITO?: number | null
+          GASTOS?: string | null
+          IDF_PAGO?: number | null
+          IDFACTURA?: number
+          IDFCLIENTES?: number | null
+          MODO?: string | null
+          NUMEROFACT?: string | null
+          P_SALDO_EFECTIVO?: number | null
+          P_SALDO_TRANFERENCIA?: number | null
+          PAGACON?: number | null
+          PAGOCONEFECTIVO?: number | null
+          PAGOCONTRANFERENCIA?: number | null
+          SALDOA_BONADO?: number | null
+          TOTAL_SALDO?: number | null
+          VENDEDOR?: string | null
+        }
+        Update: {
+          AUTOMATIC?: number | null
+          CAMBIOS?: number | null
+          CCEDULA?: string | null
+          CCLIENTE?: string | null
+          CDIRECCION?: string | null
+          CEMPRESA?: string | null
+          CTELEFONO?: string | null
+          CTELEFONO1?: string | null
+          DESCUENTO?: number | null
+          ESTADOCLIENTE?: string | null
+          FECHA_RECIBO?: string | null
+          FECHAENTRADA?: string | null
+          FECHAINGRESO?: string | null
+          FECHASALIDA?: string | null
+          FORMAPAGO?: string | null
+          FPAGOTRANS?: string | null
+          FTOTALALQUILER?: number | null
+          FTOTALDEPOSITO?: number | null
+          FTOTALVENTADEPOSITO?: number | null
+          GASTOS?: string | null
+          IDF_PAGO?: number | null
+          IDFACTURA?: number
+          IDFCLIENTES?: number | null
+          MODO?: string | null
+          NUMEROFACT?: string | null
+          P_SALDO_EFECTIVO?: number | null
+          P_SALDO_TRANFERENCIA?: number | null
+          PAGACON?: number | null
+          PAGOCONEFECTIVO?: number | null
+          PAGOCONTRANFERENCIA?: number | null
+          SALDOA_BONADO?: number | null
+          TOTAL_SALDO?: number | null
+          VENDEDOR?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_factura_automatic"
+            columns: ["AUTOMATIC"]
+            isOneToOne: false
+            referencedRelation: "CAMPOFACTURA"
+            referencedColumns: ["AUTOMATIC"]
+          },
+        ]
+      }
+      FACTURA1: {
+        Row: {
+          AUTOMATIC: number | null
+          CAMBIOS: number | null
+          CCEDULA: string | null
+          CCLIENTE: string | null
+          CDIRECCION: string | null
+          CEMPRESA: string | null
+          CTELEFONO: string | null
+          CTELEFONO1: string | null
+          DESCUENTO: number | null
+          ESTADOCLIENTE: string | null
+          FECHAENTRADA: string | null
+          FECHASALIDA: string | null
+          FORMAPAGO: string | null
+          FPAGOTRANS: string | null
+          FTOTALALQUILER: number | null
+          FTOTALDEPOSITO: number | null
+          FTOTALVENTADEPOSITO: number | null
+          GASTOS: string | null
+          IDF_PAGO: number | null
+          IDFACTURA: number
+          IDFCLIENTES: number | null
+          MODO: string | null
+          NUMEROFACT: string | null
+          PAGACON: number | null
+          PAGOCONEFECTIVO: number | null
+          PAGOCONTRANFERENCIA: number | null
+          VENDEDOR: string | null
+        }
+        Insert: {
+          AUTOMATIC?: number | null
+          CAMBIOS?: number | null
+          CCEDULA?: string | null
+          CCLIENTE?: string | null
+          CDIRECCION?: string | null
+          CEMPRESA?: string | null
+          CTELEFONO?: string | null
+          CTELEFONO1?: string | null
+          DESCUENTO?: number | null
+          ESTADOCLIENTE?: string | null
+          FECHAENTRADA?: string | null
+          FECHASALIDA?: string | null
+          FORMAPAGO?: string | null
+          FPAGOTRANS?: string | null
+          FTOTALALQUILER?: number | null
+          FTOTALDEPOSITO?: number | null
+          FTOTALVENTADEPOSITO?: number | null
+          GASTOS?: string | null
+          IDF_PAGO?: number | null
+          IDFACTURA?: number
+          IDFCLIENTES?: number | null
+          MODO?: string | null
+          NUMEROFACT?: string | null
+          PAGACON?: number | null
+          PAGOCONEFECTIVO?: number | null
+          PAGOCONTRANFERENCIA?: number | null
+          VENDEDOR?: string | null
+        }
+        Update: {
+          AUTOMATIC?: number | null
+          CAMBIOS?: number | null
+          CCEDULA?: string | null
+          CCLIENTE?: string | null
+          CDIRECCION?: string | null
+          CEMPRESA?: string | null
+          CTELEFONO?: string | null
+          CTELEFONO1?: string | null
+          DESCUENTO?: number | null
+          ESTADOCLIENTE?: string | null
+          FECHAENTRADA?: string | null
+          FECHASALIDA?: string | null
+          FORMAPAGO?: string | null
+          FPAGOTRANS?: string | null
+          FTOTALALQUILER?: number | null
+          FTOTALDEPOSITO?: number | null
+          FTOTALVENTADEPOSITO?: number | null
+          GASTOS?: string | null
+          IDF_PAGO?: number | null
+          IDFACTURA?: number
+          IDFCLIENTES?: number | null
+          MODO?: string | null
+          NUMEROFACT?: string | null
+          PAGACON?: number | null
+          PAGOCONEFECTIVO?: number | null
+          PAGOCONTRANFERENCIA?: number | null
+          VENDEDOR?: string | null
+        }
+        Relationships: []
+      }
+      gastos: {
+        Row: {
+          DESCRIPCIONSALIDA: string | null
+          FECHA: string | null
+          IDgastos: number
+          NUMEROGASTO: string | null
+          VALORSALIDA: string | null
+        }
+        Insert: {
+          DESCRIPCIONSALIDA?: string | null
+          FECHA?: string | null
+          IDgastos?: number
+          NUMEROGASTO?: string | null
+          VALORSALIDA?: string | null
+        }
+        Update: {
+          DESCRIPCIONSALIDA?: string | null
+          FECHA?: string | null
+          IDgastos?: number
+          NUMEROGASTO?: string | null
+          VALORSALIDA?: string | null
+        }
+        Relationships: []
+      }
+      LOGIN: {
+        Row: {
+          ACCESOALMENU: boolean | null
+          IAPELLIDO: string | null
+          IDLOGIN: number
+          ILOGIN: number | null
+          INOMBRE: string | null
+          PASSWORD: string | null
+          TIPO: boolean | null
+        }
+        Insert: {
+          ACCESOALMENU?: boolean | null
+          IAPELLIDO?: string | null
+          IDLOGIN?: number
+          ILOGIN?: number | null
+          INOMBRE?: string | null
+          PASSWORD?: string | null
+          TIPO?: boolean | null
+        }
+        Update: {
+          ACCESOALMENU?: boolean | null
+          IAPELLIDO?: string | null
+          IDLOGIN?: number
+          ILOGIN?: number | null
+          INOMBRE?: string | null
+          PASSWORD?: string | null
+          TIPO?: boolean | null
+        }
+        Relationships: []
+      }
+      numero_de_serie: {
+        Row: {
+          IDnumero_de_serie: number
+          SERIE: string | null
+        }
+        Insert: {
+          IDnumero_de_serie?: number
+          SERIE?: string | null
+        }
+        Update: {
+          IDnumero_de_serie?: number
+          SERIE?: string | null
+        }
+        Relationships: []
+      }
+      OTRAS_F_PAGO: {
+        Row: {
+          IDOTRA_F_PAGO: number
+          OTRAS_F_PAGO: string | null
+        }
+        Insert: {
+          IDOTRA_F_PAGO?: number
+          OTRAS_F_PAGO?: string | null
+        }
+        Update: {
+          IDOTRA_F_PAGO?: number
+          OTRAS_F_PAGO?: string | null
         }
         Relationships: []
       }
@@ -208,6 +863,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      TRANSACCIONES: {
+        Row: {
+          IDTRANSACCIONES: number
+          TRANSACCIONES_BUSCAR: string
+          TRANSACCIONES_Tabla_FACTURA_CCLIENTE: string
+          TRANSACCIONES_Tabla_FACTURA_FECHAENTRADA: string
+          TRANSACCIONES_Tabla_FACTURA_FECHASALIDA: string
+          TRANSACCIONES_Tabla_FACTURA_FORMAPAGO: number
+          TRANSACCIONES_Tabla_FACTURA_IDFACTURA: number
+          TRANSACCIONES_Tabla_FACTURA_MODO: string
+          TRANSACCIONES_Tabla_FACTURA_NUMEROFACT: string
+          TRANSACCIONES_Tabla_FACTURA_SUBTOTAL: number
+          TRANSACCIONES_Tabla_FACTURA_TOTALVENTA: number
+          TRANSACCIONES_Tabla_FACTURA_VENDEDOR: string
+        }
+        Insert: {
+          IDTRANSACCIONES?: number
+          TRANSACCIONES_BUSCAR: string
+          TRANSACCIONES_Tabla_FACTURA_CCLIENTE: string
+          TRANSACCIONES_Tabla_FACTURA_FECHAENTRADA: string
+          TRANSACCIONES_Tabla_FACTURA_FECHASALIDA: string
+          TRANSACCIONES_Tabla_FACTURA_FORMAPAGO?: number
+          TRANSACCIONES_Tabla_FACTURA_IDFACTURA?: number
+          TRANSACCIONES_Tabla_FACTURA_MODO: string
+          TRANSACCIONES_Tabla_FACTURA_NUMEROFACT: string
+          TRANSACCIONES_Tabla_FACTURA_SUBTOTAL?: number
+          TRANSACCIONES_Tabla_FACTURA_TOTALVENTA?: number
+          TRANSACCIONES_Tabla_FACTURA_VENDEDOR: string
+        }
+        Update: {
+          IDTRANSACCIONES?: number
+          TRANSACCIONES_BUSCAR?: string
+          TRANSACCIONES_Tabla_FACTURA_CCLIENTE?: string
+          TRANSACCIONES_Tabla_FACTURA_FECHAENTRADA?: string
+          TRANSACCIONES_Tabla_FACTURA_FECHASALIDA?: string
+          TRANSACCIONES_Tabla_FACTURA_FORMAPAGO?: number
+          TRANSACCIONES_Tabla_FACTURA_IDFACTURA?: number
+          TRANSACCIONES_Tabla_FACTURA_MODO?: string
+          TRANSACCIONES_Tabla_FACTURA_NUMEROFACT?: string
+          TRANSACCIONES_Tabla_FACTURA_SUBTOTAL?: number
+          TRANSACCIONES_Tabla_FACTURA_TOTALVENTA?: number
+          TRANSACCIONES_Tabla_FACTURA_VENDEDOR?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

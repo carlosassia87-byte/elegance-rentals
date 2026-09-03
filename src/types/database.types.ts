@@ -7,7 +7,7 @@ export interface Articulo {
   STOCK: number;
   VALOR: number;
   CODBARRAS: string;
-  IDCAMPOFACTURA?: number;
+  IDCAMPOFACTURA?: number | undefined;
   VALORDEPOSITO: number;
 }
 
@@ -16,12 +16,12 @@ export interface Cliente {
   CEDULA: number;
   DIRECCION: string;
   TELEFONO: string;
-  TELEFONO2?: string;
-  EMPRESA?: string;
-  DIRECCIONEMP?: string;
+  TELEFONO2?: string | undefined;
+  EMPRESA?: string | undefined;
+  DIRECCIONEMP?: string | undefined;
   NOMBRE: string;
   SALDO: number;
-  NOTA?: string;
+  NOTA?: string | undefined;
 }
 
 export interface Factura {
@@ -32,36 +32,36 @@ export interface Factura {
   FTOTALDEPOSITO: number;
   FTOTALVENTADEPOSITO: number;
   FORMAPAGO: string;
-  MODO?: string;
-  VENDEDOR?: string;
+  MODO?: string | undefined;
+  VENDEDOR?: string | undefined;
   CCLIENTE: string;
-  CAMBIOS?: number;
-  PAGACON?: number;
-  AUTOMATIC?: number;
-  IDFCLIENTES?: number;
-  ESTADOCLIENTE?: string;
-  IDF_PAGO?: number;
-  CDIRECCION?: string;
-  CTELEFONO?: string;
-  CTELEFONO1?: string;
-  CEMPRESA?: string;
-  CCEDULA?: string;
-  GASTOS?: string;
+  CAMBIOS?: number | undefined;
+  PAGACON?: number | undefined;
+  AUTOMATIC?: number | undefined;
+  IDFCLIENTES?: number | undefined;
+  ESTADOCLIENTE?: string | undefined;
+  IDF_PAGO?: number | undefined;
+  CDIRECCION?: string | undefined;
+  CTELEFONO?: string | undefined;
+  CTELEFONO1?: string | undefined;
+  CEMPRESA?: string | undefined;
+  CCEDULA?: string | undefined;
+  GASTOS?: string | undefined;
   PAGOCONEFECTIVO: number;
   PAGOCONTRANFERENCIA: number;
   FTOTALALQUILER: number;
-  FPAGOTRANS?: string;
+  FPAGOTRANS?: string | undefined;
   DESCUENTO: number;
-  P_SALDO_EFECTIVO?: number;
-  P_SALDO_TRANFERENCIA?: number;
-  TOTAL_SALDO?: number;
-  FECHA_RECIBO?: string;
-  SALDOA_BONADO?: number;
-  FECHAINGRESO?: string;
+  P_SALDO_EFECTIVO?: number | undefined;
+  P_SALDO_TRANFERENCIA?: number | undefined;
+  TOTAL_SALDO?: number | undefined;
+  FECHA_RECIBO?: string | undefined;
+  SALDOA_BONADO?: number | undefined;
+  FECHAINGRESO?: string | undefined;
 }
 
 export interface CampoFactura {
-  AUTOMATIC?: number;
+  AUTOMATIC?: number | undefined;
   DESCRIPCION: string;
   CANTIDAD: number;
   VALOR: number;
@@ -75,7 +75,7 @@ export interface CampoFactura {
 }
 
 export interface AbonoCliente {
-  IDABONO_CLIENTE?: number;
+  IDABONO_CLIENTE?: number | undefined;
   NUMEROABONO: string;
   ACLIENTE: string;
   AFACTURA: string;
@@ -88,14 +88,14 @@ export interface AbonoCliente {
 }
 
 export interface DepositoEntregado {
-  IDdepositoentregado?: number;
+  IDdepositoentregado?: number | undefined;
   NUMEROFACTURA: string;
   VALOR: number;
   FECHA: string;
 }
 
 export interface Gasto {
-  IDgastos?: number;
+  IDgastos?: number | undefined;
   DESCRIPCIONSALIDA: string;
   FECHA: string;
   VALORSALIDA: string;
@@ -105,14 +105,14 @@ export interface Gasto {
 export interface Caja {
   IDCAJAS: number;
   NOMBRECAJA: string;
-  RESOLUCION?: string;
+  RESOLUCION?: string | undefined;
   NUMERACION: number;
   PREFIJO: string;
 }
 
 export interface ItemAlquilerCarrito {
   idTemp: string;
-  articulo?: Articulo;
+  articulo?: Articulo | undefined;
   descripcion: string;
   talla: string;
   codigoBarras: string;
