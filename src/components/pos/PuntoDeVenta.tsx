@@ -190,7 +190,7 @@ export function PuntoDeVenta() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Cálculos en tiempo real
+  // Cálculos en tiempo real (EXACTO A WINDEV)
   const totalDeposito = useMemo(() => {
     return gridItems.reduce((acc, it) => acc + it.totalDeposito, 0);
   }, [gridItems]);
@@ -199,7 +199,9 @@ export function PuntoDeVenta() {
     return gridItems.reduce((acc, it) => acc + it.totalAlquiler, 0);
   }, [gridItems]);
 
+  const totalTotaliza = totalDeposito + totalAlquiler;
   const descuentoNum = parseFloat(descuentoAlquiler) || 0;
+  const edtPorcentaje = totalTotaliza > 0 ? (descuentoNum / totalTotaliza) * 100 : 0;
   const totalAlquilerConDesc = Math.max(0, totalAlquiler - descuentoNum);
   const totalDepositoMasAlquiler = totalDeposito + totalAlquilerConDesc;
 
@@ -1246,8 +1248,10 @@ export function PuntoDeVenta() {
                     </div>
                   </div>
 
-                  {/* RECUADRO AZUL CLARO ESTILO WINDEV */}
-                  <div className="h-10 w-28 bg-[#8BB8E8] rounded border border-blue-400 self-center opacity-80" />
+                  {/* RECUADRO AZUL CLARO ESTILO WINDEV: EDT_PORCENTAJE */}
+                  <div className="h-10 w-28 bg-[#8BB8E8] rounded border border-blue-400 self-center flex items-center justify-center font-mono text-sm font-black text-blue-950 shadow-inner">
+                    {edtPorcentaje > 0 ? `${edtPorcentaje.toFixed(1)} %` : "0 %"}
+                  </div>
 
                   {/* CAMBIO Ó SALDO */}
                   <div className="space-y-1">
