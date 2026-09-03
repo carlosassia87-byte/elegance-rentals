@@ -4,8 +4,9 @@ import {
   X,
   Printer,
   ChevronDown,
+  Check,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura } from "@/types/database.types";
 import {
@@ -35,10 +36,6 @@ export function PuntoDeVenta() {
   const [fechaHoy, setFechaHoy] = useState(() => new Date().toISOString().split("T")[0]);
   const [numeroRecibo, setNumeroRecibo] = useState("000124");
   const [cajero, setCajero] = useState("TODO EN MAYUSCULAS, LETRAS, DIGITOS Y SIMBOLOS");
-  const [cedula, setCedula] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [telefono, setTelefono] = useState("");
   const [fechaSalida, setFechaSalida] = useState(() => new Date().toISOString().split("T")[0]);
   const [fechaEntrada, setFechaEntrada] = useState(() => {
     const d = new Date();
@@ -46,6 +43,20 @@ export function PuntoDeVenta() {
     return d.toISOString().split("T")[0];
   });
   const [estadoTraje, setEstadoTraje] = useState("DISPONIBLE");
+
+  // Estado del Cliente (Campos de la tabla CLIENTES)
+  const [clienteForm, setClienteForm] = useState<Partial<Cliente>>({
+    IDCLIENTES: 0,
+    CEDULA: 0,
+    NOMBRE: "",
+    DIRECCION: "",
+    TELEFONO: "",
+    TELEFONO2: "",
+    EMPRESA: "",
+    DIRECCIONEMP: "",
+    NOTA: "",
+    SALDO: 0,
+  });
 
   // Autocomplete / Combobox de Artículo con Filtro en Vivo y Teclado
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
@@ -92,7 +103,7 @@ export function PuntoDeVenta() {
     });
   }, []);
 
-  // Filtrado de Artículos en Tiempo Real según lo que escribe el usuario
+  // Filtrado de Artículos en Tiempo Real
   const articulosFiltrados = useMemo(() => {
     if (!articuloTexto.trim()) return articulos;
     const query = articuloTexto.toLowerCase().trim();
@@ -138,22 +149,45 @@ export function PuntoDeVenta() {
   const totalPagado = efecNum + transNum;
   const cambioVuelto = totalPagado > 0 ? totalPagado - totalDepositoMasAlquiler : 0;
 
-  // Buscar cliente por cédula con Enter
-  async function handleBuscarCedula(e?: React.KeyboardEvent) {
-    if (e && e.key !== "Enter") return;
-    if (!cedula.trim()) return;
+  // Buscar cliente por cédula con Enter o botón Buscar
+  async function handleBuscarCedulaDirecta(cedulaValor?: string | number) {
+    const cedBuscada = cedulaValor ?? clienteForm.CEDULA;
+    if (!cedBuscada) {
+      toast.error("Ingresa la cédula a buscar");
+      return;
+    }
 
-    const cli = await buscarClientePorCedula(cedula);
+    const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
-      setNombre(cli.NOMBRE || "");
-      setDireccion(cli.DIRECCION || "");
-      setTelefono(cli.TELEFONO || "");
-      toast.success(`Cliente: ${cli.NOMBRE}`);
-      // Pasa el foco al selector de artículo
+      setClienteForm(cli);
+      toast.success(`Cliente encontrado: ${cli.NOMBRE}`);
       articuloInputRef.current?.focus();
     } else {
-      toast.info("Cédula no registrada. Puedes completar los datos.");
+      toast.info("Cédula no encontrada. Puedes registrar sus datos.");
       setModalCliente(true);
+    }
+  }
+
+  // Guardar Cliente en BD (ALTA_DE_CLIENTES)
+  async function handleGuardarClienteAlta(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!clienteForm.NOMBRE || !clienteForm.CEDULA) {
+      toast.error("Cédula y Nombre son obligatorios");
+      return;
+    }
+
+    try {
+      const guardado = await guardarCliente(clienteForm);
+      if (guardado) {
+        setClienteForm(guardado);
+      }
+      toast.success("¡Cliente guardado exitosamente!");
+      setModalCliente(false);
+      articuloInputRef.current?.focus();
+    } catch {
+      toast.success("Cliente asignado localmente");
+      setModalCliente(false);
+      articuloInputRef.current?.focus();
     }
   }
 
@@ -162,14 +196,13 @@ export function PuntoDeVenta() {
     setArticuloSeleccionado(art);
     setArticuloTexto(art.DESCRIPCION);
     setMostrarDropdownArt(false);
-    // Pasa automáticamente el foco a CANTIDAD y selecciona el texto
     setTimeout(() => {
       cantidadInputRef.current?.focus();
       cantidadInputRef.current?.select();
     }, 50);
   }
 
-  // Manejo de Teclado en el Campo de ARTÍCULO
+  // Manejo de Teclado en ARTÍCULO
   function handleKeyDownArticulo(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -191,7 +224,7 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Manejo de Teclado en el Campo de CANTIDAD (Enter para bajar a la tabla)
+  // Manejo de Teclado en CANTIDAD (Enter para bajar a la tabla)
   function handleKeyDownCantidad(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -199,7 +232,7 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Agregar artículo al Grid (Baja a la tabla y regresa el foco al buscador)
+  // Agregar artículo al Grid
   function handleAgregarItem() {
     const art = articuloSeleccionado || articulosFiltrados[0];
     if (!art) {
@@ -229,15 +262,14 @@ export function PuntoDeVenta() {
     setCantidad(1);
     setMostrarDropdownArt(false);
     setSugerenciaIndex(0);
-    toast.success(`Agregado a la tabla: ${art.DESCRIPCION} (${cant} und)`);
+    toast.success(`Agregado: ${art.DESCRIPCION} (${cant} und)`);
 
-    // Retornar el foco inmediatamente a ARTÍCULO para seguir escaneando/escribiendo
     setTimeout(() => {
       articuloInputRef.current?.focus();
     }, 50);
   }
 
-  // Eliminar Fila Seleccionada
+  // Eliminar Fila
   function handleEliminarFila() {
     if (filaSeleccionada === null || filaSeleccionada < 0) {
       toast.error("Selecciona una fila de la tabla para eliminar");
@@ -251,10 +283,18 @@ export function PuntoDeVenta() {
   // Limpiar / Nuevo Alquiler
   function handleLimpiar() {
     generarNumeroFactura().then(setNumeroRecibo);
-    setCedula("");
-    setNombre("");
-    setDireccion("");
-    setTelefono("");
+    setClienteForm({
+      IDCLIENTES: 0,
+      CEDULA: 0,
+      NOMBRE: "",
+      DIRECCION: "",
+      TELEFONO: "",
+      TELEFONO2: "",
+      EMPRESA: "",
+      DIRECCIONEMP: "",
+      NOTA: "",
+      SALDO: 0,
+    });
     setGridItems([]);
     setArticuloTexto("");
     setArticuloSeleccionado(null);
@@ -269,7 +309,7 @@ export function PuntoDeVenta() {
 
   // Confirmar y Pagar
   async function handlePagar() {
-    if (!nombre.trim() || !cedula.trim()) {
+    if (!clienteForm.NOMBRE || !clienteForm.CEDULA) {
       toast.error("Ingresa la CÉDULA y el NOMBRE del cliente");
       return;
     }
@@ -289,10 +329,12 @@ export function PuntoDeVenta() {
         FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
         MODO: "ALQUILER",
         VENDEDOR: cajero,
-        CCLIENTE: nombre,
-        CCEDULA: cedula,
-        CDIRECCION: direccion,
-        CTELEFONO: telefono,
+        CCLIENTE: clienteForm.NOMBRE,
+        CCEDULA: String(clienteForm.CEDULA),
+        CDIRECCION: clienteForm.DIRECCION,
+        CTELEFONO: clienteForm.TELEFONO,
+        CTELEFONO1: clienteForm.TELEFONO2,
+        CEMPRESA: clienteForm.EMPRESA,
         PAGACON: totalPagado,
         PAGOCONEFECTIVO: efecNum,
         PAGOCONTRANFERENCIA: transNum,
@@ -315,13 +357,7 @@ export function PuntoDeVenta() {
         TOTALDEPOSITO: g.totalDeposito,
       }));
 
-      await guardarCliente({
-        CEDULA: Number(cedula) || 0,
-        NOMBRE: nombre,
-        DIRECCION: direccion,
-        TELEFONO: telefono,
-      });
-
+      await guardarCliente(clienteForm);
       await registrarAlquilerFactura(factura, campos);
       setModalImprimir(true);
       toast.success("¡Alquiler procesado exitosamente!");
@@ -341,14 +377,12 @@ export function PuntoDeVenta() {
           <span className="text-[11px] font-bold text-slate-600">ALQUILER</span>
         </div>
 
-        {/* TÍTULO ROJO CENTRADO */}
         <div className="text-center">
           <h1 className="text-2xl font-black tracking-wider text-[#E60000] uppercase font-sans leading-none">
             PUNTO DE VENTA
           </h1>
         </div>
 
-        {/* LOGO DE "La Casa Del Disfraz" (ORIGINAL) */}
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center gap-1 leading-none">
             <span className="text-sm font-black tracking-tight text-[#1A2B49]">La</span>
@@ -370,7 +404,7 @@ export function PuntoDeVenta() {
       <div className="flex flex-1 pt-1.5 gap-2 overflow-hidden min-h-0">
         {/* LADO IZQUIERDO: FORMULARIO + BOTONES DE ACCIÓN + GRID */}
         <div className="flex flex-1 flex-col gap-1 overflow-hidden min-h-0">
-          {/* BLOQUE DE CAMPOS DE CABECERA (COMPACTO Y AJUSTADO A PANTALLA) */}
+          {/* BLOQUE DE CAMPOS DE CABECERA */}
           <div className="rounded border border-slate-300 bg-[#EDEDED] px-2 py-1 shadow-inner">
             <div className="grid grid-cols-12 gap-x-2 gap-y-1 text-xs">
               {/* FILA 1 */}
@@ -392,9 +426,11 @@ export function PuntoDeVenta() {
                 <input
                   type="text"
                   placeholder="Entrada obligatoria"
-                  value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
-                  onKeyDown={handleBuscarCedula}
+                  value={clienteForm.CEDULA || ""}
+                  onChange={(e) =>
+                    setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta()}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500"
                 />
               </div>
@@ -425,8 +461,8 @@ export function PuntoDeVenta() {
                 <input
                   type="text"
                   placeholder="Nombre"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
+                  value={clienteForm.NOMBRE || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] font-medium placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
@@ -457,8 +493,8 @@ export function PuntoDeVenta() {
                 <input
                   type="text"
                   placeholder="Direccion"
-                  value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
+                  value={clienteForm.DIRECCION || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
@@ -493,11 +529,11 @@ export function PuntoDeVenta() {
                 <input
                   type="text"
                   placeholder="Teléfono"
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
+                  value={clienteForm.TELEFONO || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
-                {/* BOTÓN "Mod" ROJO */}
+                {/* BOTÓN "Mod" ROJO QUE ABRE ALTA_DE_CLIENTES */}
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
@@ -652,7 +688,7 @@ export function PuntoDeVenta() {
               )}
             </div>
 
-            {/* CAMPO CANTIDAD (CON FOCO AUTOMÁTICO AL DAR ENTER EN ARTÍCULO) */}
+            {/* CAMPO CANTIDAD */}
             <div className="flex items-center gap-0.5">
               <span className="text-[10px] font-bold text-red-700 uppercase">▸CANTIDAD</span>
               <input
@@ -702,7 +738,7 @@ export function PuntoDeVenta() {
           </div>
 
           {/* =========================================================================
-              TABLA PRINCIPAL DE ALQUILER (AJUSTADA Y FLEXIBLE A LA PANTALLA)
+              TABLA PRINCIPAL DE ALQUILER
           ========================================================================= */}
           <div className="flex-1 rounded border border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col min-h-0">
             <div className="overflow-auto flex-1">
@@ -873,72 +909,161 @@ export function PuntoDeVenta() {
         </div>
       </div>
 
-      {/* =========================================================
-          MODAL: NUEVO / MODIFICAR CLIENTE
-      ========================================================= */}
+      {/* =========================================================================
+          MODAL: ALTA_DE_CLIENTES (IDÉNTICO A LA CAPTURA WINDEV [ALTA_DE_CLIENTES])
+      ========================================================================= */}
       <Dialog open={modalCliente} onOpenChange={setModalCliente}>
-        <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
-          <DialogHeader>
-            <DialogTitle className="font-bold text-red-700 uppercase text-sm">
-              Alta / Modificación de Cliente
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 text-xs font-semibold">
-            <div>
-              <label className="block mb-0.5">Cédula *</label>
+        <DialogContent className="max-w-2xl bg-[#E8E8E8] p-4 border-2 border-slate-400 shadow-2xl">
+          {/* BARRA SUPERIOR DE VENTANA */}
+          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+            <span className="text-[11px] font-bold text-slate-700 uppercase">ALTA DE CLIENTES</span>
+          </div>
+
+          {/* TÍTULO GRANDE CENTRADO */}
+          <div className="text-center py-2">
+            <h2 className="text-xl font-black tracking-wider text-slate-900 uppercase">
+              INGRESA LOS DATOS DEL CLIENTE
+            </h2>
+          </div>
+
+          {/* CUADRO PRINCIPAL CON BORDES (EXACTO A WINDEV) */}
+          <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
+            {/* 1. ID CLIENTES */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">ID CLIENTES</span>
+              <input
+                type="text"
+                disabled
+                value={clienteForm.IDCLIENTES || 0}
+                className="h-6 w-28 rounded border border-slate-400 bg-[#E0E0E0] px-2 text-right text-xs font-bold text-slate-700"
+              />
+            </div>
+
+            {/* 2. CEDULA + BOTÓN BUSCAR AZUL */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">CEDULA</span>
               <input
                 type="number"
-                value={cedula}
-                onChange={(e) => setCedula(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                placeholder="Cédula / Documento"
+                value={clienteForm.CEDULA || ""}
+                onChange={(e) =>
+                  setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
+                }
+                onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta(clienteForm.CEDULA)}
+                className="h-6 w-44 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
               />
+              <button
+                type="button"
+                onClick={() => handleBuscarCedulaDirecta(clienteForm.CEDULA)}
+                className="ml-2 h-6 rounded bg-[#004B87] px-4 text-xs font-bold text-white shadow hover:bg-[#003366] active:scale-95"
+              >
+                Buscar
+              </button>
             </div>
-            <div>
-              <label className="block mb-0.5">Nombre Completo *</label>
+
+            {/* 3. NOMBRE */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">NOMBRE</span>
               <input
                 type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                placeholder="Nombre completo"
+                value={clienteForm.NOMBRE || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
+                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-900 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block mb-0.5">Dirección</label>
+
+            {/* 4. DIRECCION */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">DIRECCION</span>
               <input
                 type="text"
-                value={direccion}
-                onChange={(e) => setDireccion(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                placeholder="Dirección de residencia"
+                value={clienteForm.DIRECCION || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
+                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block mb-0.5">Teléfono Principal</label>
+
+            {/* 5. TELEFONO */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">TELEFONO</span>
               <input
                 type="text"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                className="h-6 w-full rounded border border-slate-400 bg-white px-2"
+                placeholder="Teléfono principal"
+                value={clienteForm.TELEFONO || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
+                className="h-6 w-60 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-900 focus:outline-none"
               />
+            </div>
+
+            {/* 6. TELEFONO2 */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">TELEFONO2</span>
+              <input
+                type="text"
+                placeholder="Teléfono secundario / celular"
+                value={clienteForm.TELEFONO2 || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO2: e.target.value }))}
+                className="h-6 w-60 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+              />
+            </div>
+
+            {/* 7. EMPRESA */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">EMPRESA</span>
+              <input
+                type="text"
+                placeholder="Nombre de la empresa"
+                value={clienteForm.EMPRESA || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, EMPRESA: e.target.value }))}
+                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+              />
+            </div>
+
+            {/* 8. DIRECCION EMPRESA */}
+            <div className="flex items-center">
+              <span className="w-36 text-xs font-bold text-slate-800 uppercase">DIRECCION EMPRESA</span>
+              <input
+                type="text"
+                placeholder="Dirección de la empresa"
+                value={clienteForm.DIRECCIONEMP || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCIONEMP: e.target.value }))}
+                className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs text-slate-900 focus:outline-none"
+              />
+            </div>
+
+            {/* 9. NOTA */}
+            <div className="flex items-start">
+              <span className="w-36 pt-1 text-xs font-bold text-slate-800 uppercase">NOTA</span>
+              <textarea
+                rows={3}
+                placeholder="Observaciones o notas especiales del cliente..."
+                value={clienteForm.NOTA || ""}
+                onChange={(e) => setClienteForm((p) => ({ ...p, NOTA: e.target.value }))}
+                className="flex-1 rounded border border-slate-400 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
+              />
+            </div>
+
+            {/* 10. BOTONES DE ACCIÓN: GUARDAR ✔ / SALIR ✖ (AZULES EXACTOS A WINDEV) */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleGuardarClienteAlta}
+                className="flex items-center gap-1.5 rounded-sm bg-[#004B87] px-6 py-1.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95"
+              >
+                GUARDAR <Check className="h-4 w-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalCliente(false)}
+                className="flex items-center gap-1.5 rounded-sm bg-[#004B87] px-6 py-1.5 text-xs font-black text-white shadow-md hover:bg-[#003366] active:scale-95"
+              >
+                SALIR <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <DialogFooter className="mt-2">
-            <button
-              onClick={() => setModalCliente(false)}
-              className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                setModalCliente(false);
-                toast.success("Cliente guardado");
-                articuloInputRef.current?.focus();
-              }}
-              className="rounded bg-[#B80036] px-4 py-1 text-xs font-bold text-white"
-            >
-              Guardar Cliente
-            </button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -947,12 +1072,12 @@ export function PuntoDeVenta() {
       ========================================================= */}
       <Dialog open={modalBuscarCli} onOpenChange={setModalBuscarCli}>
         <DialogContent className="max-w-lg bg-[#EDEDED] border border-slate-400">
-          <DialogHeader>
-            <DialogTitle className="font-bold text-slate-900 uppercase text-sm">
+          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+            <span className="font-bold text-slate-900 uppercase text-xs">
               Buscar Cliente
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
+            </span>
+          </div>
+          <div className="space-y-2 pt-1">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1004,10 +1129,7 @@ export function PuntoDeVenta() {
                         <td className="p-1.5 text-right">
                           <button
                             onClick={() => {
-                              setCedula(String(c.CEDULA));
-                              setNombre(c.NOMBRE);
-                              setDireccion(c.DIRECCION);
-                              setTelefono(c.TELEFONO);
+                              setClienteForm(c);
                               setModalBuscarCli(false);
                               toast.success(`Cliente cargado: ${c.NOMBRE}`);
                               articuloInputRef.current?.focus();
@@ -1032,12 +1154,12 @@ export function PuntoDeVenta() {
       ========================================================= */}
       <Dialog open={modalGasto} onOpenChange={setModalGasto}>
         <DialogContent className="max-w-sm bg-[#EDEDED] border border-slate-400">
-          <DialogHeader>
-            <DialogTitle className="font-bold text-red-700 uppercase text-sm">
+          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+            <span className="font-bold text-red-700 uppercase text-xs">
               Registrar Gasto (Salida de Caja)
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 text-xs font-semibold">
+            </span>
+          </div>
+          <div className="space-y-2 text-xs font-semibold pt-1">
             <div>
               <label className="block mb-0.5">Descripción del Gasto</label>
               <input
@@ -1059,7 +1181,7 @@ export function PuntoDeVenta() {
               />
             </div>
           </div>
-          <DialogFooter className="mt-2">
+          <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={() => setModalGasto(false)}
               className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
@@ -1087,7 +1209,7 @@ export function PuntoDeVenta() {
             >
               Guardar Gasto
             </button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1096,12 +1218,12 @@ export function PuntoDeVenta() {
       ========================================================= */}
       <Dialog open={modalDevolucion} onOpenChange={setModalDevolucion}>
         <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
-          <DialogHeader>
-            <DialogTitle className="font-bold text-emerald-800 uppercase text-sm">
+          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+            <span className="font-bold text-emerald-800 uppercase text-xs">
               Entrada de Vestido & Devolución de Depósito
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 text-xs font-semibold">
+            </span>
+          </div>
+          <div className="space-y-2 text-xs font-semibold pt-1">
             <div>
               <label className="block mb-0.5">N° Factura / Recibo de Alquiler</label>
               <input
@@ -1123,7 +1245,7 @@ export function PuntoDeVenta() {
               />
             </div>
           </div>
-          <DialogFooter className="mt-2">
+          <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={() => setModalDevolucion(false)}
               className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
@@ -1149,7 +1271,7 @@ export function PuntoDeVenta() {
             >
               Confirmar Devolución
             </button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1158,12 +1280,12 @@ export function PuntoDeVenta() {
       ========================================================= */}
       <Dialog open={modalApartados} onOpenChange={setModalApartados}>
         <DialogContent className="max-w-md bg-[#EDEDED] border border-slate-400">
-          <DialogHeader>
-            <DialogTitle className="font-bold text-amber-800 uppercase text-sm">
+          <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+            <span className="font-bold text-amber-800 uppercase text-xs">
               Trajes Apartados / Reservas
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5 text-xs font-mono">
+            </span>
+          </div>
+          <div className="space-y-1.5 text-xs font-mono pt-1">
             <div className="rounded border border-slate-300 bg-white p-2">
               <div className="flex justify-between border-b pb-1 font-bold">
                 <span>RECIBO</span>
@@ -1185,14 +1307,14 @@ export function PuntoDeVenta() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <div className="flex justify-end mt-2">
             <button
               onClick={() => setModalApartados(false)}
               className="rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white"
             >
               Cerrar
             </button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1211,9 +1333,9 @@ export function PuntoDeVenta() {
             </div>
 
             <div className="py-1.5 text-[10px] space-y-0.5 border-b border-dashed border-slate-400">
-              <p><strong>CLIENTE:</strong> {nombre.toUpperCase() || "GENERAL"}</p>
-              <p><strong>CÉDULA:</strong> {cedula || "N/A"}</p>
-              <p><strong>TELÉFONO:</strong> {telefono || "N/A"}</p>
+              <p><strong>CLIENTE:</strong> {clienteForm.NOMBRE?.toUpperCase() || "GENERAL"}</p>
+              <p><strong>CÉDULA:</strong> {clienteForm.CEDULA || "N/A"}</p>
+              <p><strong>TELÉFONO:</strong> {clienteForm.TELEFONO || "N/A"}</p>
               <p><strong>SALIDA:</strong> {fechaSalida} | <strong>ENTRADA:</strong> {fechaEntrada}</p>
             </div>
 
@@ -1243,7 +1365,7 @@ export function PuntoDeVenta() {
               Conservar este recibo para la devolución de la prenda y reintegro del depósito.
             </p>
           </div>
-          <DialogFooter className="mt-2">
+          <div className="flex justify-end mt-2">
             <button
               onClick={() => {
                 window.print();
@@ -1253,7 +1375,7 @@ export function PuntoDeVenta() {
             >
               <Printer className="h-3.5 w-3.5" /> Imprimir
             </button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
