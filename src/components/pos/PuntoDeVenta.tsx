@@ -104,10 +104,11 @@ export function PuntoDeVenta() {
   const [gridItems, setGridItems] = useState<ItemAlquilerCarrito[]>([]);
   const [filaSeleccionada, setFilaSeleccionada] = useState<number | null>(null);
 
-  // Panel de Cobro Lateral Derecho (Cyan)
-  const [pagaEfectivo, setPagaEfectivo] = useState<string>("");
-  const [pagaTransferencia, setPagaTransferencia] = useState<string>("");
+  // Panel de Cobro Lateral Derecho (Totales y Descuento)
   const [descuentoAlquiler, setDescuentoAlquiler] = useState<string>("");
+  const [modalCobroDetalle, setModalCobroDetalle] = useState(false);
+  const [cobroEfectivo, setCobroEfectivo] = useState<string>("");
+  const [cobroTransferencia, setCobroTransferencia] = useState<string>("");
 
   // Modales
   const [modalCliente, setModalCliente] = useState(false);
@@ -192,8 +193,8 @@ export function PuntoDeVenta() {
   const totalAlquilerConDesc = Math.max(0, totalAlquiler - descuentoNum);
   const totalDepositoMasAlquiler = totalDeposito + totalAlquilerConDesc;
 
-  const efecNum = parseFloat(pagaEfectivo) || 0;
-  const transNum = parseFloat(pagaTransferencia) || 0;
+  const efecNum = parseFloat(cobroEfectivo) || 0;
+  const transNum = parseFloat(cobroTransferencia) || 0;
   const totalPagado = efecNum + transNum;
   const cambioVuelto = totalPagado > 0 ? totalPagado - totalDepositoMasAlquiler : 0;
 
@@ -446,9 +447,9 @@ export function PuntoDeVenta() {
     setArticuloTexto("");
     setArticuloSeleccionado(null);
     setCantidad(1);
-    setPagaEfectivo("");
-    setPagaTransferencia("");
     setDescuentoAlquiler("");
+    setCobroEfectivo("");
+    setCobroTransferencia("");
     setFilaSeleccionada(null);
     setNotaAlertaVisible(false);
     setModalOperacionVisible(false);
@@ -457,8 +458,8 @@ export function PuntoDeVenta() {
     articuloInputRef.current?.focus();
   }
 
-  // Confirmar y Pagar
-  async function handlePagar() {
+  // Abrir Modal de Cobro / Liquidación
+  function handleIniciarCobro() {
     if (!clienteForm.NOMBRE || !clienteForm.CEDULA) {
       toast.error("Ingresa la CÉDULA y el NOMBRE del cliente");
       return;
@@ -467,7 +468,12 @@ export function PuntoDeVenta() {
       toast.error("Debes agregar artículos al alquiler");
       return;
     }
+    setCobroEfectivo(String(totalDepositoMasAlquiler));
+    setModalCobroDetalle(true);
+  }
 
+  // Confirmar y Procesar Factura
+  async function handleConfirmarPagoFinal() {
     try {
       const factura: Omit<Factura, "IDFACTURA"> = {
         NUMEROFACT: numeroRecibo,
@@ -479,8 +485,8 @@ export function PuntoDeVenta() {
         FORMAPAGO: efecNum > 0 && transNum > 0 ? "MIXTO" : transNum > 0 ? "TRANSFERENCIA" : "EFECTIVO",
         MODO: operacionSeleccionada,
         VENDEDOR: cajero,
-        CCLIENTE: clienteForm.NOMBRE,
-        CCEDULA: String(clienteForm.CEDULA),
+        CCLIENTE: clienteForm.NOMBRE || "GENERAL",
+        CCEDULA: String(clienteForm.CEDULA || 0),
         CDIRECCION: clienteForm.DIRECCION,
         CTELEFONO: clienteForm.TELEFONO,
         CTELEFONO1: clienteForm.TELEFONO2,
@@ -509,9 +515,11 @@ export function PuntoDeVenta() {
 
       await guardarCliente(clienteForm);
       await registrarAlquilerFactura(factura, campos);
+      setModalCobroDetalle(false);
       setModalImprimir(true);
       toast.success("¡Alquiler procesado exitosamente!");
     } catch {
+      setModalCobroDetalle(false);
       setModalImprimir(true);
       toast.success("Alquiler procesado (Modo local)");
     }
@@ -555,12 +563,12 @@ export function PuntoDeVenta() {
       </div>
 
       {/* =========================================================================
-          2. CUERPO PRINCIPAL: FORMULARIO + BOTONES + TABLA + PANEL CYAN
+          2. CUERPO PRINCIPAL: FORMULARIO + BOTONES + TABLA + PANEL CYAN (ACOMÓDADO)
       ========================================================================= */}
       <div className="flex flex-1 pt-2 gap-2.5 overflow-hidden min-h-0">
         {/* LADO IZQUIERDO: FORMULARIO + BOTONES DE ACCIÓN + GRID */}
         <div className="flex flex-1 flex-col gap-1.5 overflow-hidden min-h-0">
-          {/* BLOQUE DE CAMPOS DE CABECERA (PROPORCIONES Y TIPOGRAFÍA CLARA Y LEGIBLE) */}
+          {/* BLOQUE DE CAMPOS DE CABECERA */}
           <div className="rounded border border-slate-300 bg-[#EDEDED] p-2 shadow-inner space-y-1.5">
             <div className="grid grid-cols-12 gap-x-3 gap-y-1.5 text-xs">
               {/* FILA 1 */}
@@ -904,7 +912,7 @@ export function PuntoDeVenta() {
 
             {/* BOTÓN PAGAR */}
             <button
-              onClick={handlePagar}
+              onClick={handleIniciarCobro}
               className="h-7 rounded bg-[#111111] px-4 text-xs font-black text-white shadow hover:bg-black active:scale-95 uppercase tracking-wide"
             >
               PAGAR
@@ -991,64 +999,34 @@ export function PuntoDeVenta() {
         </div>
 
         {/* =========================================================================
-            3. PANEL DERECHO CYAN / AZUL (PANEL DE COBRO COMPACTO 100% VISIBLE)
+            3. PANEL DERECHO CYAN (ACOMÓDADO: SOLO TOTALES DE ALQUILER Y BOTÓN PAGAR)
         ========================================================================= */}
-        <div className="w-[260px] rounded border border-slate-400 bg-[#00A8FF] p-2.5 text-slate-900 flex flex-col justify-between shadow-md overflow-hidden">
-          <div className="space-y-1.5">
-            {/* 1. PAGA CON EFECTIVO: */}
+        <div className="w-[250px] rounded border border-slate-400 bg-[#00A8FF] p-3 text-slate-900 flex flex-col justify-between shadow-md overflow-hidden">
+          <div className="space-y-3">
+            {/* 1. TOTAL DEPOSITO */}
             <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                PAGA CON EFECTIVO:
+              <label className="text-xs font-black uppercase text-slate-900 block leading-tight tracking-wider">
+                TOTAL DEPOSITO:
               </label>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={pagaEfectivo}
-                onChange={(e) => setPagaEfectivo(e.target.value)}
-                className="mt-1 h-8 w-full rounded border border-slate-300 bg-white px-2.5 text-right font-mono text-lg font-black text-slate-900 shadow-inner focus:outline-none"
-              />
-            </div>
-
-            {/* 2. PAGA CON TRANSFERENCIA: */}
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                PAGA CON TRANSFERENCIA:
-              </label>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={pagaTransferencia}
-                onChange={(e) => setPagaTransferencia(e.target.value)}
-                className="mt-1 h-8 w-full rounded border border-slate-300 bg-white px-2.5 text-right font-mono text-lg font-black text-slate-900 shadow-inner focus:outline-none"
-              />
-            </div>
-
-            {/* 3. TOTAL DEPOSITO */}
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                TOTAL DEPOSITO
-              </label>
-              <div className="mt-1 flex h-8 w-full items-center justify-end rounded border border-slate-300 bg-white px-2.5 font-mono text-lg font-black text-slate-900 shadow-inner">
-                {totalDeposito.toLocaleString()}
+              <div className="mt-1 flex h-9 w-full items-center justify-end rounded border border-slate-400 bg-white px-3 font-mono text-lg font-black text-blue-900 shadow-inner">
+                ${totalDeposito.toLocaleString()}
               </div>
             </div>
 
-            {/* 4. TOTAL ALQUILER */}
+            {/* 2. TOTAL ALQUILER */}
             <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                TOTAL ALQUILER
+              <label className="text-xs font-black uppercase text-slate-900 block leading-tight tracking-wider">
+                TOTAL ALQUILER:
               </label>
-              <div className="mt-1 flex h-8 w-full items-center justify-end rounded border border-slate-300 bg-white px-2.5 font-mono text-lg font-black text-slate-900 shadow-inner">
-                {totalAlquiler.toLocaleString()}
+              <div className="mt-1 flex h-9 w-full items-center justify-end rounded border border-slate-400 bg-white px-3 font-mono text-lg font-black text-slate-900 shadow-inner">
+                ${totalAlquiler.toLocaleString()}
               </div>
             </div>
 
-            {/* 5. DESCUENTO_ALQUILER */}
+            {/* 3. DESCUENTO_ALQUILER */}
             <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                DESCUENTO_ALQUILER
+              <label className="text-xs font-black uppercase text-slate-900 block leading-tight tracking-wider">
+                DESCUENTO_ALQUILER:
               </label>
               <input
                 type="number"
@@ -1056,40 +1034,130 @@ export function PuntoDeVenta() {
                 placeholder="0"
                 value={descuentoAlquiler}
                 onChange={(e) => setDescuentoAlquiler(e.target.value)}
-                className="mt-1 h-6 w-full rounded border border-slate-300 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner focus:outline-none"
+                className="mt-1 h-8 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-sm font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
-            {/* 6. TOTAL DEPOSITO + ALQUILER */}
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                TOTAL DEPOSITO + ALQUILER
+            {/* 4. TOTAL DEPOSITO + ALQUILER (DESTACADO Y GRANDE) */}
+            <div className="pt-2 border-t-2 border-cyan-300">
+              <label className="text-xs font-black uppercase text-slate-900 block leading-tight tracking-wider">
+                TOTAL DEPOSITO + ALQUILER:
               </label>
-              <div className="mt-1 flex h-9 w-full items-center justify-end rounded border border-slate-400 bg-white px-2.5 font-mono text-xl font-black text-slate-900 shadow-inner">
-                {totalDepositoMasAlquiler.toLocaleString()}
-              </div>
-            </div>
-
-            {/* 7. SU CAMBIO ES */}
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-900 block leading-none tracking-wide">
-                SU CAMBIO ES
-              </label>
-              <div className="mt-1 flex h-9 w-full items-center justify-center rounded border border-slate-400 bg-white px-2.5 font-mono text-lg font-black text-emerald-800 shadow-inner">
-                {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "+++++"}
+              <div className="mt-1 flex h-12 w-full items-center justify-end rounded border-2 border-slate-500 bg-white px-3 font-mono text-2xl font-black text-slate-900 shadow-inner">
+                ${totalDepositoMasAlquiler.toLocaleString()}
               </div>
             </div>
           </div>
 
+          {/* BOTÓN PAGAR / CONFIRMAR ALQUILER */}
           <button
-            onClick={handlePagar}
+            onClick={handleIniciarCobro}
             disabled={gridItems.length === 0}
-            className="mt-2 w-full rounded bg-[#002D62] py-2 text-center text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-black transition-transform active:scale-95 disabled:opacity-50"
+            className="mt-4 w-full rounded bg-[#002D62] py-3 text-center text-sm font-black uppercase tracking-widest text-white shadow-lg hover:bg-black transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            CONFIRMAR ALQUILER
+            <span>PAGAR</span>
+            <span className="text-yellow-300 font-mono text-base font-black">
+              ${totalDepositoMasAlquiler.toLocaleString()}
+            </span>
           </button>
         </div>
       </div>
+
+      {/* =========================================================================
+          MODAL: VENTANA DE PAGO / COBRO Y LIQUIDACIÓN AL PRESIONAR [PAGAR]
+      ========================================================================= */}
+      <Dialog open={modalCobroDetalle} onOpenChange={setModalCobroDetalle}>
+        <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl overflow-hidden rounded-lg">
+          <div className="bg-[#002D62] px-4 py-2.5 text-white flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-wider">
+              PAGAR / LIQUIDAR ALQUILER
+            </h3>
+            <span className="font-mono text-xs text-yellow-300 font-bold">
+              RECIBO: {numeroRecibo}
+            </span>
+          </div>
+
+          <div className="p-5 space-y-3 font-sans">
+            {/* RESUMEN DEL COBRO */}
+            <div className="rounded border border-slate-300 bg-white p-3 shadow-inner space-y-1 text-xs">
+              <div className="flex justify-between text-slate-700">
+                <span>Cliente:</span>
+                <strong className="text-slate-900">{clienteForm.NOMBRE || "GENERAL"}</strong>
+              </div>
+              <div className="flex justify-between text-slate-700">
+                <span>Total Alquiler:</span>
+                <span className="font-mono font-bold">${totalAlquilerConDesc.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-slate-700">
+                <span>Total Depósito (Garantía):</span>
+                <span className="font-mono font-bold text-blue-800">${totalDeposito.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm font-black border-t pt-1 text-slate-900">
+                <span>TOTAL A COBRAR:</span>
+                <span className="font-mono text-base text-red-700">${totalDepositoMasAlquiler.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* FORMAS DE PAGO */}
+            <div className="space-y-2 pt-1">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-800 block mb-0.5">
+                  PAGA CON EFECTIVO:
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={cobroEfectivo}
+                  onChange={(e) => setCobroEfectivo(e.target.value)}
+                  className="h-8 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-base font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase text-slate-800 block mb-0.5">
+                  PAGA CON TRANSFERENCIA:
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={cobroTransferencia}
+                  onChange={(e) => setCobroTransferencia(e.target.value)}
+                  className="h-8 w-full rounded border border-slate-400 bg-white px-3 text-right font-mono text-base font-black text-slate-900 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              {/* SU CAMBIO ES */}
+              <div className="rounded border-2 border-slate-400 bg-white p-2 text-center shadow-inner mt-2">
+                <span className="text-[11px] font-black uppercase text-slate-600 block">
+                  SU CAMBIO / VUELTO ES:
+                </span>
+                <span className="font-mono text-xl font-black text-emerald-700 block">
+                  {totalPagado > 0 ? `$ ${cambioVuelto.toLocaleString()}` : "$ 0"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 p-3 bg-slate-200 border-t border-slate-300">
+            <button
+              type="button"
+              onClick={() => setModalCobroDetalle(false)}
+              className="rounded bg-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-400"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmarPagoFinal}
+              className="rounded bg-[#B80036] px-6 py-2 text-xs font-black uppercase text-white shadow hover:bg-[#96002C] active:scale-95 flex items-center gap-1.5"
+            >
+              <Check className="h-4 w-4" /> CONFIRMAR E IMPRIMIR
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* =========================================================================
           MODAL DE ALERTA: NOTA DESTACADA DEL CLIENTE AL ESCANEAR CÉDULA
