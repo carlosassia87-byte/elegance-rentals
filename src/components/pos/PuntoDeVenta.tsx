@@ -29,6 +29,7 @@ import {
   registrarDevolucionVestido,
   registrarGasto,
 } from "@/services/posService";
+import { LogoCasaDelDisfraz } from "./LogoCasaDelDisfraz";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "TRAJE SMOKING NEGRO SLIM FIT COMPLETO", TALLA: "38R", STOCK: 5, VALOR: 120000, CODBARRAS: "7701001", VALORDEPOSITO: 50000 },
@@ -530,530 +531,522 @@ export function PuntoDeVenta() {
   return (
     <div className="flex h-screen w-full flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-2">
       {/* =========================================================================
-          1. ENCABEZADO SUPERIOR: TÍTULO "PUNTO DE VENTA" Y LOGO "La Casa Del Disfraz"
+          1. SECCIÓN SUPERIOR: FORMULARIO RECOGIDO A LA IZQUIERDA + LOGO A LA DERECHA
       ========================================================================= */}
-      <div className="flex items-center justify-between px-3 pb-1 border-b border-slate-300">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-black tracking-wider text-slate-700 uppercase">ALQUILER</span>
-          <button
-            onClick={() => setModalArchivoArticulo(true)}
-            className="flex items-center gap-1.5 rounded bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
-          >
-            <Package className="h-3.5 w-3.5" /> CATÁLOGO ARTÍCULOS
-          </button>
-        </div>
+      <div className="flex items-start gap-4 pb-1">
+        {/* LADO IZQUIERDO: TÍTULO "PUNTO DE VENTA" + FORMULARIO COMPACTO DE 3 COLUMNAS */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
+          <div className="flex items-center justify-between px-1 pb-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black tracking-wider text-slate-700 uppercase">ALQUILER</span>
+              <button
+                onClick={() => setModalArchivoArticulo(true)}
+                className="flex items-center gap-1 rounded bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-black shadow-sm"
+              >
+                <Package className="h-3 w-3" /> CATÁLOGO
+              </button>
+            </div>
 
-        <div className="text-center">
-          <h1 className="text-3xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
-            PUNTO DE VENTA
-          </h1>
-        </div>
+            <h1 className="text-2xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
+              PUNTO DE VENTA
+            </h1>
 
-        <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-1 leading-none">
-            <span className="text-base font-black tracking-tight text-[#1A2B49]">La</span>
-            <span className="rounded bg-red-600 px-1.5 py-0.5 text-sm font-black text-yellow-300 uppercase shadow-sm">
-              Casa
-            </span>
-            <span className="text-xs font-black italic text-[#8B008B]">Del</span>
-            <span className="text-base font-black text-amber-500 uppercase">Disfraz</span>
+            <div className="w-16" /> {/* Espaciador balanceador */}
           </div>
-          <span className="text-[10px] font-bold text-slate-600 italic leading-none mt-1">
-            Para toda ocasión sin importar tu edad
-          </span>
+
+          {/* FORMULARIO DE CABECERA COMPACTO */}
+          <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-2 shadow-inner space-y-1">
+            <div className="grid grid-cols-12 gap-x-2 gap-y-1 text-xs">
+              {/* FILA 1 */}
+              <div className="col-span-3 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">ESTADO</span>
+                <select
+                  value={estadoCli}
+                  onChange={(e) => setEstadoCli(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-600 shadow-inner"
+                >
+                  <option value="ACTIVO">ACTIVO</option>
+                  <option value="PENDIENTE">PENDIENTE</option>
+                  <option value="BLOQUEADO">BLOQUEADO</option>
+                </select>
+              </div>
+
+              <div className="col-span-5 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-800 text-[11px] uppercase">CEDULA</span>
+                <input
+                  type="text"
+                  placeholder="Ingresa cédula y Enter"
+                  value={clienteForm.CEDULA || ""}
+                  onChange={(e) =>
+                    setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta()}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-1">
+                <span className="w-20 font-black text-slate-800 text-[11px] uppercase">FECHA SALIDA</span>
+                <input
+                  type="date"
+                  value={fechaSalida}
+                  onChange={(e) => setFechaSalida(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              {/* FILA 2 */}
+              <div className="col-span-3 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">FECHA</span>
+                <input
+                  type="date"
+                  value={fechaHoy}
+                  onChange={(e) => setFechaHoy(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-5 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-800 text-[11px] uppercase">NOMBRE</span>
+                <input
+                  type="text"
+                  placeholder="Nombre completo"
+                  value={clienteForm.NOMBRE || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-1">
+                <span className="w-20 font-black text-slate-800 text-[11px] uppercase">FECHA ENTRADA</span>
+                <input
+                  type="date"
+                  value={fechaEntrada}
+                  onChange={(e) => setFechaEntrada(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              {/* FILA 3 */}
+              <div className="col-span-3 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">N.RECIBO</span>
+                <input
+                  type="text"
+                  value={numeroRecibo}
+                  onChange={(e) => setNumeroRecibo(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-black text-red-700 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-5 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">DIRECCION</span>
+                <input
+                  type="text"
+                  placeholder="Dirección"
+                  value={clienteForm.DIRECCION || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-4 flex items-center gap-1">
+                <span className="w-20 font-black text-slate-800 text-[11px] uppercase">ESTADO TRAJE</span>
+                <button
+                  type="button"
+                  onClick={() => setModalOperacionVisible(true)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-xs font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
+                >
+                  <span className="truncate text-red-700">{estadoTraje}</span>
+                  <ChevronDown className="h-3 w-3 text-slate-500" />
+                </button>
+              </div>
+
+              {/* FILA 4 */}
+              <div className="col-span-3 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">CAJERO</span>
+                <input
+                  type="text"
+                  value={cajero}
+                  onChange={(e) => setCajero(e.target.value)}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[9px] font-black uppercase text-slate-700 focus:outline-none shadow-inner"
+                />
+              </div>
+
+              <div className="col-span-5 flex items-center gap-1">
+                <span className="w-14 font-black text-slate-700 text-[11px] uppercase">TELEFONO</span>
+                <input
+                  type="text"
+                  placeholder="Teléfono"
+                  value={clienteForm.TELEFONO || ""}
+                  onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
+                  className="h-6 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setModalCliente(true)}
+                  className="h-6 rounded bg-[#B82E1F] px-2.5 text-xs font-black text-white shadow hover:bg-red-800 active:scale-95 whitespace-nowrap"
+                >
+                  Mod
+                </button>
+              </div>
+            </div>
+
+            {/* BANNER DE NOTA */}
+            {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
+              <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-950 shadow-sm animate-pulse">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <span className="flex items-center gap-1 rounded bg-amber-700 px-1 py-0.2 text-[9px] text-white uppercase font-black tracking-wide">
+                    <AlertTriangle className="h-2.5 w-2.5" /> NOTA CLIENTE:
+                  </span>
+                  <span className="truncate text-xs font-bold">{clienteForm.NOTA}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotaAlertaVisible(true)}
+                  className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-xs font-black"
+                >
+                  [Ver Completa]
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* LADO DERECHO SUPERIOR: LOGO ORIGINAL "LA CASA DEL DISFRAZ" + "SERVIDOR" */}
+        <div className="w-60 flex flex-col items-center justify-center p-1 border-2 border-slate-300 rounded bg-white shadow-sm self-stretch">
+          <LogoCasaDelDisfraz />
         </div>
       </div>
 
       {/* =========================================================================
-          2. CUERPO PRINCIPAL: FORMULARIO + BOTONES + TABLA EXPANDIDA
+          2. BARRA DE LOS 9 BOTONES PRINCIPALES EN ROJO/MAGENTA (EXACTO A WINDEV)
       ========================================================================= */}
-      <div className="flex flex-1 flex-col pt-1.5 gap-1.5 overflow-hidden min-h-0">
-        {/* BLOQUE DE CAMPOS DE CABECERA (ORIGINAL WINDEV) */}
-        <div className="rounded border border-slate-300 bg-[#EDEDED] p-2 shadow-inner space-y-1.5">
-          <div className="grid grid-cols-12 gap-x-3 gap-y-1.5 text-xs">
-            {/* FILA 1 */}
-            <div className="col-span-3 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">ESTADO</span>
-              <select
-                value={estadoCli}
-                onChange={(e) => setEstadoCli(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-600 shadow-inner"
-              >
-                <option value="ACTIVO">ACTIVO</option>
-                <option value="PENDIENTE">PENDIENTE</option>
-                <option value="BLOQUEADO">BLOQUEADO</option>
-              </select>
-            </div>
+      <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+        <button
+          onClick={() => setModalCliente(true)}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          NUEVO CLIENTE
+        </button>
 
-            <div className="col-span-5 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-800 text-xs uppercase">CEDULA</span>
-              <input
-                type="text"
-                placeholder="Ingresa cédula y Enter"
-                value={clienteForm.CEDULA || ""}
-                onChange={(e) =>
-                  setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
-                }
-                onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta()}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
-              />
-            </div>
+        <button
+          onClick={() => setModalCliente(true)}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          MODIFICAR
+        </button>
 
-            <div className="col-span-4 flex items-center gap-1.5">
-              <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA SALIDA</span>
-              <input
-                type="date"
-                value={fechaSalida}
-                onChange={(e) => setFechaSalida(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={() => setModalBuscarCli(true)}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          BUSCAR CLIENTE
+        </button>
 
-            {/* FILA 2 */}
-            <div className="col-span-3 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">FECHA</span>
-              <input
-                type="date"
-                value={fechaHoy}
-                onChange={(e) => setFechaHoy(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={handleLimpiar}
+          className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          NUEVO
+        </button>
 
-            <div className="col-span-5 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-800 text-xs uppercase">NOMBRE</span>
-              <input
-                type="text"
-                placeholder="Nombre completo"
-                value={clienteForm.NOMBRE || ""}
-                onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={handleLimpiar}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          NUEVO ALQUILER
+        </button>
 
-            <div className="col-span-4 flex items-center gap-1.5">
-              <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA ENTRADA</span>
-              <input
-                type="date"
-                value={fechaEntrada}
-                onChange={(e) => setFechaEntrada(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={() => setModalGasto(true)}
+          className="flex items-center gap-1 h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          <span className="text-[9px] text-white">▶</span> GASTO(SALIDA)
+        </button>
 
-            {/* FILA 3 */}
-            <div className="col-span-3 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">N.RECIBO</span>
-              <input
-                type="text"
-                value={numeroRecibo}
-                onChange={(e) => setNumeroRecibo(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black text-red-700 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={() => setModalImprimir(true)}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          REIMPRIMIR
+        </button>
 
-            <div className="col-span-5 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">DIRECCION</span>
-              <input
-                type="text"
-                placeholder="Dirección"
-                value={clienteForm.DIRECCION || ""}
-                onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
-              />
-            </div>
+        <button
+          onClick={() => setModalApartados(true)}
+          className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          APARTADOS
+        </button>
 
-            <div className="col-span-4 flex items-center gap-1.5">
-              <span className="w-24 font-black text-slate-800 text-xs uppercase">ESTADO TRAJE</span>
-              <button
-                type="button"
-                onClick={() => setModalOperacionVisible(true)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
-              >
-                <span className="truncate text-red-700">{estadoTraje}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-              </button>
-            </div>
+        <button
+          onClick={() => setModalDevolucion(true)}
+          className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
+        >
+          ENTRADA VESTIDO
+        </button>
+      </div>
 
-            {/* FILA 4 */}
-            <div className="col-span-3 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">CAJERO</span>
-              <input
-                type="text"
-                value={cajero}
-                onChange={(e) => setCajero(e.target.value)}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-[10px] font-black uppercase text-slate-700 focus:outline-none shadow-inner"
-              />
-            </div>
+      {/* =========================================================================
+          3. LÍNEA DE ARTÍCULO: AUTOCOMPLETE CON FILTRADO + 1 ENTER A CANTIDAD + ENTER A TABLA
+      ========================================================================= */}
+      <div className="relative flex items-center gap-1.5 py-0.5">
+        <span className="text-xs font-black text-slate-800 uppercase tracking-wide">ARTICULO</span>
 
-            <div className="col-span-5 flex items-center gap-1.5">
-              <span className="w-16 font-black text-slate-700 text-xs uppercase">TELEFONO</span>
-              <input
-                type="text"
-                placeholder="Teléfono"
-                value={clienteForm.TELEFONO || ""}
-                onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
-                className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
-              />
-              <button
-                type="button"
-                onClick={() => setModalCliente(true)}
-                className="h-7 rounded-full bg-[#B82E1F] px-3 text-xs font-black text-white shadow hover:bg-red-800 active:scale-95 whitespace-nowrap"
-              >
-                Mod
-              </button>
-            </div>
+        {/* BOTÓN + PARA CREAR NUEVO ARTÍCULO RÁPIDO */}
+        <button
+          type="button"
+          onClick={abrirCrearArticulo}
+          title="Crear nuevo artículo en el catálogo"
+          className="flex items-center justify-center h-7 w-7 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        
+        {/* COMBOBOX DE BÚSQUEDA Y FILTRADO */}
+        <div className="relative flex-1">
+          <div className="relative flex items-center">
+            <input
+              ref={articuloInputRef}
+              type="text"
+              placeholder="Escribe para filtrar artículo o escanear código de barras... (Enter para seleccionar)"
+              value={articuloTexto}
+              onChange={(e) => {
+                setArticuloTexto(e.target.value);
+                setArticuloSeleccionado(null);
+                setMostrarDropdownArt(true);
+                setSugerenciaIndex(0);
+              }}
+              onFocus={() => setMostrarDropdownArt(true)}
+              onKeyDown={handleKeyDownArticulo}
+              className="h-7 w-full rounded border border-slate-400 bg-white pr-7 pl-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500 shadow-inner"
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                setMostrarDropdownArt((p) => !p);
+                articuloInputRef.current?.focus();
+              }}
+              className="absolute right-1.5 text-slate-500 hover:text-slate-800"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          {/* BANNER DE NOTA */}
-          {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
-            <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-3 py-1 text-xs font-black text-amber-950 shadow-sm animate-pulse">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <span className="flex items-center gap-1 rounded bg-amber-700 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide">
-                  <AlertTriangle className="h-3 w-3" /> NOTA CLIENTE:
-                </span>
-                <span className="truncate text-xs font-bold">{clienteForm.NOTA}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setNotaAlertaVisible(true)}
-                className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-xs font-black"
-              >
-                [Ver Completa]
-              </button>
+          {/* LISTA DESPLEGABLE FLOTANTE FILTRADA */}
+          {mostrarDropdownArt && articulosFiltrados.length > 0 && (
+            <div
+              ref={dropdownRef}
+              className="absolute left-0 top-8 z-50 max-h-60 w-full overflow-auto rounded border border-slate-400 bg-white shadow-xl"
+            >
+              {articulosFiltrados.map((art, idx) => {
+                const isHovered = sugerenciaIndex === idx;
+                return (
+                  <div
+                    key={art.IDARTICULO}
+                    onMouseEnter={() => setSugerenciaIndex(idx)}
+                    onClick={() => seleccionarArticulo(art)}
+                    className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-3 py-1.5 text-xs transition-colors ${
+                      isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800 font-semibold"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] opacity-75">[{art.CODBARRAS}]</span>
+                      <span>{art.DESCRIPCION}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
+                        Talla: {art.TALLA}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span>Alq: ${art.VALOR.toLocaleString()}</span>
+                      <span className="opacity-90">Dep: ${art.VALORDEPOSITO.toLocaleString()}</span>
+                      <span className={`font-mono font-black ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
+                        Stock: {art.STOCK}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* =========================================================================
-            BARRA DE LOS 9 BOTONES PRINCIPALES EN ROJO/MAGENTA (EXACTO A WINDEV)
-        ========================================================================= */}
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
-          <button
-            onClick={() => setModalCliente(true)}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            NUEVO CLIENTE
-          </button>
-
-          <button
-            onClick={() => setModalCliente(true)}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            MODIFICAR
-          </button>
-
-          <button
-            onClick={() => setModalBuscarCli(true)}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            BUSCAR CLIENTE
-          </button>
-
-          <button
-            onClick={handleLimpiar}
-            className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            NUEVO
-          </button>
-
-          <button
-            onClick={handleLimpiar}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            NUEVO ALQUILER
-          </button>
-
-          <button
-            onClick={() => setModalGasto(true)}
-            className="flex items-center gap-1 h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            <span className="text-[9px] text-white">▶</span> GASTO(SALIDA)
-          </button>
-
-          <button
-            onClick={() => setModalImprimir(true)}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            REIMPRIMIR
-          </button>
-
-          <button
-            onClick={() => setModalApartados(true)}
-            className="h-6.5 rounded bg-[#B80036] px-3 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            APARTADOS
-          </button>
-
-          <button
-            onClick={() => setModalDevolucion(true)}
-            className="h-6.5 rounded bg-[#B80036] px-2.5 text-[11px] font-black text-white shadow hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wide"
-          >
-            ENTRADA VESTIDO
-          </button>
+        {/* CAMPO CANTIDAD */}
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-black text-red-700 uppercase">▸CANTIDAD</span>
+          <input
+            ref={cantidadInputRef}
+            type="number"
+            min={1}
+            value={cantidad}
+            onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+            onKeyDown={handleKeyDownCantidad}
+            className="h-7 w-12 rounded border-2 border-red-500 bg-white text-center text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
+          />
+          <span className="text-xs font-black text-red-700">▸</span>
         </div>
 
-        {/* =========================================================================
-            LÍNEA DE ARTÍCULO: AUTOCOMPLETE CON FILTRADO + 1 ENTER A CANTIDAD + ENTER A TABLA
-        ========================================================================= */}
-        <div className="relative flex items-center gap-1.5 py-0.5">
-          <span className="text-xs font-black text-slate-800 uppercase tracking-wide">ARTICULO</span>
+        {/* BOTÓN + AGREGAR */}
+        <button
+          onClick={handleAgregarItem}
+          title="Bajar artículo a la tabla (Enter en cantidad)"
+          className="h-7 rounded bg-slate-700 px-2 text-xs font-black text-white hover:bg-slate-900 shadow"
+        >
+          +
+        </button>
 
-          {/* BOTÓN + PARA CREAR NUEVO ARTÍCULO RÁPIDO */}
-          <button
-            type="button"
-            onClick={abrirCrearArticulo}
-            title="Crear nuevo artículo en el catálogo"
-            className="flex items-center justify-center h-7 w-7 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          
-          {/* COMBOBOX DE BÚSQUEDA Y FILTRADO */}
-          <div className="relative flex-1">
-            <div className="relative flex items-center">
-              <input
-                ref={articuloInputRef}
-                type="text"
-                placeholder="Escribe para filtrar artículo o escanear código de barras... (Enter para seleccionar)"
-                value={articuloTexto}
-                onChange={(e) => {
-                  setArticuloTexto(e.target.value);
-                  setArticuloSeleccionado(null);
-                  setMostrarDropdownArt(true);
-                  setSugerenciaIndex(0);
-                }}
-                onFocus={() => setMostrarDropdownArt(true)}
-                onKeyDown={handleKeyDownArticulo}
-                className="h-7 w-full rounded border border-slate-400 bg-white pr-7 pl-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500 shadow-inner"
-              />
-              <button
-                type="button"
-                tabIndex={-1}
-                onClick={() => {
-                  setMostrarDropdownArt((p) => !p);
-                  articuloInputRef.current?.focus();
-                }}
-                className="absolute right-1.5 text-slate-500 hover:text-slate-800"
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
+        {/* BOTÓN ELIMINAR */}
+        <button
+          onClick={handleEliminarFila}
+          className="flex items-center gap-1 h-7 rounded bg-[#B80036] px-3 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wide"
+        >
+          ELIMINAR <Trash2 className="h-3.5 w-3.5" />
+        </button>
 
-            {/* LISTA DESPLEGABLE FLOTANTE FILTRADA */}
-            {mostrarDropdownArt && articulosFiltrados.length > 0 && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 top-8 z-50 max-h-60 w-full overflow-auto rounded border border-slate-400 bg-white shadow-xl"
-              >
-                {articulosFiltrados.map((art, idx) => {
-                  const isHovered = sugerenciaIndex === idx;
+        {/* BOTÓN PAGAR */}
+        <button
+          onClick={handleIniciarCobro}
+          className="h-7 rounded bg-[#111111] px-4 text-xs font-black text-white shadow hover:bg-black active:scale-95 uppercase tracking-wide"
+        >
+          PAGAR
+        </button>
+
+        {/* BOTÓN SALIR X */}
+        <button
+          onClick={handleLimpiar}
+          className="flex items-center gap-1 h-7 rounded bg-[#992222] px-3 text-xs font-black text-white shadow hover:bg-[#771111] active:scale-95 uppercase tracking-wide"
+        >
+          SALIR <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* =========================================================================
+          4. TABLA PRINCIPAL DE ALQUILER (ANCHO COMPLETO)
+      ========================================================================= */}
+      <div className="flex-1 rounded border border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col min-h-0 my-1">
+        <div className="overflow-auto flex-1">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead>
+              <tr className="bg-[#000000] text-white font-black uppercase text-xs tracking-wider sticky top-0">
+                <th className="border-r border-slate-700 px-3 py-1.5">DESCRIPCION</th>
+                <th className="border-r border-slate-700 px-2 py-1.5 text-center w-20">CANTIDAD</th>
+                <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">VALOR ALQUILER</th>
+                <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">TOTAL ALQUILER</th>
+                <th className="border-r border-slate-700 px-3 py-1.5 text-right w-32">DEPOSITO</th>
+                <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">TOTAL DEPOSITO</th>
+                <th className="px-3 py-1.5 text-right w-36">TOT DEP+ALQUILER</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gridItems.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-20 text-center text-slate-400 text-xs font-bold">
+                    (Escribe o escanea un artículo arriba, presiona Enter para pasar a Cantidad, y Enter para bajarlo a la tabla)
+                  </td>
+                </tr>
+              ) : (
+                gridItems.map((item, index) => {
+                  const isSelected = filaSeleccionada === index;
+                  const isEven = index % 2 === 0;
                   return (
-                    <div
-                      key={art.IDARTICULO}
-                      onMouseEnter={() => setSugerenciaIndex(idx)}
-                      onClick={() => seleccionarArticulo(art)}
-                      className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-3 py-1.5 text-xs transition-colors ${
-                        isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800 font-semibold"
+                    <tr
+                      key={item.idTemp}
+                      onClick={() => setFilaSeleccionada(index)}
+                      className={`cursor-pointer border-b border-slate-200 text-xs ${
+                        isSelected
+                          ? "bg-[#FFE066] font-black text-slate-900"
+                          : isEven
+                          ? "bg-white font-semibold"
+                          : "bg-[#D6E6F2] font-semibold"
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] opacity-75">[{art.CODBARRAS}]</span>
-                        <span>{art.DESCRIPCION}</span>
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
-                          Talla: {art.TALLA}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span>Alq: ${art.VALOR.toLocaleString()}</span>
-                        <span className="opacity-90">Dep: ${art.VALORDEPOSITO.toLocaleString()}</span>
-                        <span className={`font-mono font-black ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
-                          Stock: {art.STOCK}
-                        </span>
-                      </div>
-                    </div>
+                      <td className="px-3 py-1 text-slate-900 border-r border-slate-200 font-bold">
+                        {item.descripcion} <span className="text-[10px] text-slate-600 font-normal">(TALLA: {item.talla})</span>
+                      </td>
+                      <td className="px-2 py-1 text-center font-black border-r border-slate-200">
+                        {item.cantidad}
+                      </td>
+                      <td className="px-3 py-1 text-right font-mono font-bold border-r border-slate-200">
+                        ${item.valorAlquiler.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-1 text-right font-mono font-black text-slate-900 border-r border-slate-200">
+                        ${item.totalAlquiler.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-1 text-right font-mono font-bold border-r border-slate-200">
+                        ${item.valorDeposito.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-1 text-right font-mono font-black text-blue-900 border-r border-slate-200">
+                        ${item.totalDeposito.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-1 text-right font-mono font-black text-emerald-800">
+                        ${item.totalGeneral.toLocaleString()}
+                      </td>
+                    </tr>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          5. BARRA INFERIOR DE TARJETAS DE TOTALES (REUBICADAS ABAJO)
+      ========================================================================= */}
+      <div className="grid grid-cols-12 gap-2 bg-[#E2E8F0] p-1.5 rounded border border-slate-400 shadow-sm items-center">
+        {/* TARJETA 1: TOTAL DEPOSITO */}
+        <div className="col-span-3 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
+          <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
+            TOTAL DEPOSITO:
+          </span>
+          <div className="font-mono text-base font-black text-blue-900 text-right leading-none pt-0.5">
+            ${totalDeposito.toLocaleString()}
           </div>
+        </div>
 
-          {/* CAMPO CANTIDAD */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-black text-red-700 uppercase">▸CANTIDAD</span>
-            <input
-              ref={cantidadInputRef}
-              type="number"
-              min={1}
-              value={cantidad}
-              onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
-              onKeyDown={handleKeyDownCantidad}
-              className="h-7 w-12 rounded border-2 border-red-500 bg-white text-center text-xs font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
-            />
-            <span className="text-xs font-black text-red-700">▸</span>
+        {/* TARJETA 2: TOTAL ALQUILER */}
+        <div className="col-span-3 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
+          <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
+            TOTAL ALQUILER:
+          </span>
+          <div className="font-mono text-base font-black text-slate-900 text-right leading-none pt-0.5">
+            ${totalAlquiler.toLocaleString()}
           </div>
+        </div>
 
-          {/* BOTÓN + AGREGAR */}
-          <button
-            onClick={handleAgregarItem}
-            title="Bajar artículo a la tabla (Enter en cantidad)"
-            className="h-7 rounded bg-slate-700 px-2 text-xs font-black text-white hover:bg-slate-900 shadow"
-          >
-            +
-          </button>
+        {/* TARJETA 3: DESCUENTO_ALQUILER */}
+        <div className="col-span-2 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
+          <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
+            DESCUENTO_ALQUILER:
+          </span>
+          <input
+            type="number"
+            min={0}
+            placeholder="0"
+            value={descuentoAlquiler}
+            onChange={(e) => setDescuentoAlquiler(e.target.value)}
+            className="w-full font-mono text-xs font-black text-red-700 text-right focus:outline-none bg-transparent"
+          />
+        </div>
 
-          {/* BOTÓN ELIMINAR */}
-          <button
-            onClick={handleEliminarFila}
-            className="flex items-center gap-1 h-7 rounded bg-[#B80036] px-3 text-xs font-black text-white shadow hover:bg-[#96002C] active:scale-95 uppercase tracking-wide"
-          >
-            ELIMINAR <Trash2 className="h-3.5 w-3.5" />
-          </button>
-
-          {/* BOTÓN PAGAR */}
+        {/* TARJETA 4: TOTAL DEPOSITO + ALQUILER (GRAN TOTAL DESTACADO) */}
+        <div className="col-span-4 rounded border-2 border-red-600 bg-red-50 p-1.5 shadow-md flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-black uppercase text-red-900 block leading-tight">
+              TOTAL DEP + ALQUILER:
+            </span>
+            <span className="font-mono text-xl font-black text-red-700 leading-none">
+              ${totalDepositoMasAlquiler.toLocaleString()}
+            </span>
+          </div>
           <button
             onClick={handleIniciarCobro}
-            className="h-7 rounded bg-[#111111] px-4 text-xs font-black text-white shadow hover:bg-black active:scale-95 uppercase tracking-wide"
+            disabled={gridItems.length === 0}
+            className="rounded bg-[#002D62] px-4 py-2 text-xs font-black uppercase text-white shadow hover:bg-black active:scale-95 disabled:opacity-50"
           >
-            PAGAR
+            PAGAR 💳
           </button>
-
-          {/* BOTÓN SALIR X */}
-          <button
-            onClick={handleLimpiar}
-            className="flex items-center gap-1 h-7 rounded bg-[#992222] px-3 text-xs font-black text-white shadow hover:bg-[#771111] active:scale-95 uppercase tracking-wide"
-          >
-            SALIR <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* =========================================================================
-            TABLA PRINCIPAL DE ALQUILER (ANCHO COMPLETO)
-        ========================================================================= */}
-        <div className="flex-1 rounded border border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col min-h-0">
-          <div className="overflow-auto flex-1">
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr className="bg-[#000000] text-white font-black uppercase text-xs tracking-wider sticky top-0">
-                  <th className="border-r border-slate-700 px-3 py-1.5">DESCRIPCION</th>
-                  <th className="border-r border-slate-700 px-2 py-1.5 text-center w-20">CANTIDAD</th>
-                  <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">VALOR ALQUILER</th>
-                  <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">TOTAL ALQUILER</th>
-                  <th className="border-r border-slate-700 px-3 py-1.5 text-right w-32">DEPOSITO</th>
-                  <th className="border-r border-slate-700 px-3 py-1.5 text-right w-36">TOTAL DEPOSITO</th>
-                  <th className="px-3 py-1.5 text-right w-36">TOT DEP+ALQUILER</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gridItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-24 text-center text-slate-400 text-xs font-bold">
-                      (Escribe o escanea un artículo arriba, presiona Enter para pasar a Cantidad, y Enter para bajarlo a la tabla)
-                    </td>
-                  </tr>
-                ) : (
-                  gridItems.map((item, index) => {
-                    const isSelected = filaSeleccionada === index;
-                    const isEven = index % 2 === 0;
-                    return (
-                      <tr
-                        key={item.idTemp}
-                        onClick={() => setFilaSeleccionada(index)}
-                        className={`cursor-pointer border-b border-slate-200 text-xs ${
-                          isSelected
-                            ? "bg-[#FFE066] font-black text-slate-900"
-                            : isEven
-                            ? "bg-white font-semibold"
-                            : "bg-[#D6E6F2] font-semibold"
-                        }`}
-                      >
-                        <td className="px-3 py-1.5 text-slate-900 border-r border-slate-200 font-bold">
-                          {item.descripcion} <span className="text-[10px] text-slate-600 font-normal">(TALLA: {item.talla})</span>
-                        </td>
-                        <td className="px-2 py-1.5 text-center font-black border-r border-slate-200">
-                          {item.cantidad}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono font-bold border-r border-slate-200">
-                          ${item.valorAlquiler.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono font-black text-slate-900 border-r border-slate-200">
-                          ${item.totalAlquiler.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono font-bold border-r border-slate-200">
-                          ${item.valorDeposito.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono font-black text-blue-900 border-r border-slate-200">
-                          ${item.totalDeposito.toLocaleString()}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-mono font-black text-emerald-800">
-                          ${item.totalGeneral.toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* =========================================================================
-            3. BARRA INFERIOR DE TARJETAS (REUBICACIÓN DE TOTALES ABAJO)
-        ========================================================================= */}
-        <div className="grid grid-cols-12 gap-2 bg-[#E2E8F0] p-2 rounded-lg border border-slate-400 shadow-sm items-center">
-          {/* TARJETA 1: TOTAL DEPOSITO */}
-          <div className="col-span-3 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
-            <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
-              TOTAL DEPOSITO:
-            </span>
-            <div className="font-mono text-base font-black text-blue-900 text-right leading-none pt-0.5">
-              ${totalDeposito.toLocaleString()}
-            </div>
-          </div>
-
-          {/* TARJETA 2: TOTAL ALQUILER */}
-          <div className="col-span-3 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
-            <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
-              TOTAL ALQUILER:
-            </span>
-            <div className="font-mono text-base font-black text-slate-900 text-right leading-none pt-0.5">
-              ${totalAlquiler.toLocaleString()}
-            </div>
-          </div>
-
-          {/* TARJETA 3: DESCUENTO_ALQUILER */}
-          <div className="col-span-2 rounded border border-slate-400 bg-white p-1.5 shadow-inner">
-            <span className="text-[10px] font-black uppercase text-slate-600 block leading-tight">
-              DESCUENTO_ALQUILER:
-            </span>
-            <input
-              type="number"
-              min={0}
-              placeholder="0"
-              value={descuentoAlquiler}
-              onChange={(e) => setDescuentoAlquiler(e.target.value)}
-              className="w-full font-mono text-xs font-black text-red-700 text-right focus:outline-none bg-transparent"
-            />
-          </div>
-
-          {/* TARJETA 4: TOTAL DEPOSITO + ALQUILER (GRAN TOTAL DESTACADO) */}
-          <div className="col-span-4 rounded border-2 border-red-600 bg-red-50 p-1.5 shadow-md flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase text-red-900 block leading-tight">
-                TOTAL DEP + ALQUILER:
-              </span>
-              <span className="font-mono text-xl font-black text-red-700 leading-none">
-                ${totalDepositoMasAlquiler.toLocaleString()}
-              </span>
-            </div>
-            <button
-              onClick={handleIniciarCobro}
-              disabled={gridItems.length === 0}
-              className="rounded bg-[#002D62] px-4 py-2 text-xs font-black uppercase text-white shadow hover:bg-black active:scale-95 disabled:opacity-50"
-            >
-              PAGAR 💳
-            </button>
-          </div>
         </div>
       </div>
 
