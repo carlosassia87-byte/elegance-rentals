@@ -430,19 +430,19 @@ export async function registrarSalidaVestidoApartado(numeroFactura: string): Pro
 // SERVICIO DE GASTOS
 // ==========================================
 export async function registrarGasto(params: {
-  descripcion: string;
-  valor: number | string;
-  numeroGasto?: string | undefined;
-  fecha?: string | undefined;
+  DESCRIPCIONSALIDA: string;
+  VALORSALIDA: number | string;
+  NUMEROGASTO?: string | undefined;
+  FECHA?: string | undefined;
 }): Promise<Gasto | null> {
   try {
     const { data, error } = await supabase
       .from("GASTOS" as any)
       .insert({
-        DESCRIPCIONSALIDA: params.descripcion,
-        VALORSALIDA: String(params.valor),
-        NUMEROGASTO: params.numeroGasto || `GA-${Date.now()}`,
-        FECHA: params.fecha || new Date().toISOString().split("T")[0],
+        DESCRIPCIONSALIDA: params.DESCRIPCIONSALIDA,
+        VALORSALIDA: String(params.VALORSALIDA),
+        NUMEROGASTO: params.NUMEROGASTO || `GA-${Date.now()}`,
+        FECHA: params.FECHA || new Date().toISOString().split("T")[0],
       })
       .select()
       .single();
