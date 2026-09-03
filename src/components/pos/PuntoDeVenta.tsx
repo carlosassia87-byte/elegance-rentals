@@ -148,10 +148,21 @@ export function PuntoDeVenta() {
   const [apartadoItems, setApartadoItems] = useState<CampoFactura[]>([]);
   const [apartadoAbonos, setApartadoAbonos] = useState<AbonoCliente[]>([]);
   const [modalSubAbonar, setModalSubAbonar] = useState(false);
-  const [abonoPagoEfec, setAbonoPagoEfec] = useState("");
-  const [abonoPagoTrans, setAbonoPagoTrans] = useState("");
   const [modalSaldoPendienteAlerta, setModalSaldoPendienteAlerta] = useState(false);
   const [montoAlertaSaldo, setMontoAlertaSaldo] = useState(0);
+
+  // Campos específicos de la ventana emergente ABONO_CLIENTE (WINDEV)
+  const [abonoNumero, setAbonoNumero] = useState(`AB-${Date.now().toString().slice(-4)}`);
+  const [abonoFecha, setAbonoFecha] = useState(fechaHoy);
+  const [abonoTipoEfec, setAbonoTipoEfec] = useState("EFECTIVO");
+  const [abonoPagoEfec, setAbonoPagoEfec] = useState("0");
+  const [abonoOtrasForma, setAbonoOtrasForma] = useState("DATAFONO");
+  const [abonoPagoTrans, setAbonoPagoTrans] = useState("0");
+  
+  // Modal de confirmación de salida de bodega & Tira 80mm
+  const [modalPreguntaSalida, setModalPreguntaSalida] = useState(false);
+  const [modalImprimirAbono80mm, setModalImprimirAbono80mm] = useState(false);
+  const [ticketAbonoData, setTicketAbonoData] = useState<any>(null);
 
   const apartadoTotalAbonado = useMemo(() => {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
@@ -167,6 +178,12 @@ export function PuntoDeVenta() {
   const apartadoSaldoRestante = useMemo(() => {
     return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
   }, [apartadoSaldoAnterior, apartadoTotalAbonado]);
+
+  // Cálculos dinámicos en ventana ABONO_CLIENTE
+  const abonoEfecNum = parseFloat(abonoPagoEfec) || 0;
+  const abonoTransNum = parseFloat(abonoPagoTrans) || 0;
+  const abonoTotalActual = abonoEfecNum + abonoTransNum;
+  const abonoTotalSaldoRestante = Math.max(0, apartadoSaldoRestante - abonoTotalActual);
 
   async function handleConsultarApartado() {
     if (!apartadoBusqFactura.trim()) {
@@ -200,38 +217,87 @@ export function PuntoDeVenta() {
     }
   }
 
+  // BOTÓN PAGAR EN VENTANA ABONO_CLIENTE (EXACTO A WINDEV)
   async function handleGuardarAbono() {
     if (!apartadoFactura) return;
-    const efec = parseFloat(abonoPagoEfec) || 0;
-    const trans = parseFloat(abonoPagoTrans) || 0;
-    const totalAbono = efec + trans;
-
-    if (totalAbono <= 0) {
-      toast.error("Ingresa un monto válido para el abono");
+    if (abonoTotalActual <= 0) {
+      toast.error("Coloque el monto del abono a pagar");
       return;
     }
 
-    const nuevoSaldo = Math.max(0, apartadoSaldoRestante - totalAbono);
+    const nuevoSaldo = abonoTotalSaldoRestante;
 
     const abonoGuardado = await registrarAbonoCliente({
       numeroFactura: apartadoFactura.NUMEROFACT,
       cliente: apartadoFactura.CCLIENTE,
-      pagoEfectivo: efec,
-      pagoTransferencia: trans,
+      pagoEfectivo: abonoEfecNum,
+      pagoTransferencia: abonoTransNum,
       saldoAnterior: apartadoSaldoRestante,
       saldoDeber: nuevoSaldo,
-      totalAbono,
+      totalAbono: abonoTotalActual,
+      fecha: abonoFecha,
     });
 
     if (abonoGuardado) {
-      toast.success("¡Abono registrado con éxito!");
+      toast.success("Abono Realizado");
       setApartadoAbonos((prev) => [...prev, abonoGuardado]);
       setModalSubAbonar(false);
-      setAbonoPagoEfec("");
-      setAbonoPagoTrans("");
+
+      // Preparar datos de la tira térmica 80mm (entregarvestido)
+      const dSalida = new Date();
+      const dEntrada = new Date();
+      dEntrada.setDate(dEntrada.getDate() + 3);
+
+      const ticket = {
+        caja: "SERVIDOR",
+        cliente: apartadoFactura.CCLIENTE,
+        cedula: apartadoFactura.CCEDULA || "",
+        direccion: apartadoFactura.CDIRECCION || "cra 23",
+        telefono1: apartadoFactura.CTELEFONO || "1",
+        telefono2: apartadoFactura.CTELEFONO1 || "1",
+        formaPago: abonoTransNum > 0 ? abonoOtrasForma : "EFECTIVO",
+        tipo: nuevoSaldo === 0 ? "EN ALQUILER" : "EN BODEGA",
+        cajero: cajero,
+        recibo: apartadoFactura.NUMEROFACT,
+        fecha: abonoFecha,
+        items: apartadoItems,
+        valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
+        deposito: apartadoFactura.FTOTALDEPOSITO || 0,
+        saldoAnterior: apartadoSaldoRestante,
+        recibiAbono: abonoTotalActual,
+        saldo: nuevoSaldo,
+        fechaSalida: dSalida.toLocaleDateString("es-CO"),
+        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+      };
+      setTicketAbonoData(ticket);
+
+      // Si el saldo restante es cero, preguntar salida de bodega
+      if (nuevoSaldo === 0) {
+        setModalPreguntaSalida(true);
+      } else {
+        // Registrar en bodega y abrir comprobante 80mm
+        await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
+        setModalImprimirAbono80mm(true);
+      }
+
+      setAbonoPagoEfec("0");
+      setAbonoPagoTrans("0");
     } else {
       toast.error("Error al registrar el abono");
     }
+  }
+
+  // Confirmar salida de traje de bodega al tener saldo 0
+  async function handleConfirmarSalidaBodega(darSalida: boolean) {
+    if (!apartadoFactura) return;
+    setModalPreguntaSalida(false);
+
+    if (darSalida) {
+      await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
+      toast.success(`YA PUEDE SALIR EL TRAJE DE LA TIENDA (FACTURA # ${apartadoFactura.NUMEROFACT})`);
+    }
+
+    setModalImprimirAbono80mm(true);
   }
 
   useEffect(() => {
@@ -2585,77 +2651,392 @@ export function PuntoDeVenta() {
         </DialogContent>
       </Dialog>
 
-      {/* SUB-MODAL DE REGISTRO DE ABONO */}
+      {/* =========================================================
+          VENTANA MODAL: ABONO_CLIENTE (PAGO SALDO DE APARTADOS - EXACTO A WINDEV)
+      ========================================================= */}
       <Dialog open={modalSubAbonar} onOpenChange={setModalSubAbonar}>
-        <DialogContent className="max-w-md bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl rounded-md overflow-hidden">
-          <div className="bg-[#B80036] px-4 py-2 text-white flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider">
-              REGISTRAR ABONO A FACTURA {apartadoFactura?.NUMEROFACT}
-            </h3>
-            <button onClick={() => setModalSubAbonar(false)} className="text-white hover:opacity-80">
-              <X className="h-4 w-4" />
-            </button>
+        <DialogContent className="max-w-3xl bg-[#EDEDED] p-0 border-2 border-slate-400 shadow-2xl rounded-md overflow-hidden z-[9999]">
+          {/* BARRA DE TÍTULO */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-white border-b border-slate-300 select-none">
+            <div className="flex items-center gap-1.5">
+              <span className="text-amber-500 font-bold text-xs">❖</span>
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                ABONO_CLIENTE
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500">
+              <Minus className="h-3.5 w-3.5 cursor-pointer hover:text-slate-800" />
+              <Square className="h-3 w-3 cursor-pointer hover:text-slate-800" />
+              <button
+                type="button"
+                onClick={() => setModalSubAbonar(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="p-4 space-y-3 text-xs font-bold">
-            <div>
-              <label className="block text-slate-800 uppercase mb-0.5">PAGO EN EFECTIVO ($):</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={abonoPagoEfec}
-                onChange={(e) => setAbonoPagoEfec(e.target.value)}
-                className="h-8 w-full rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-base font-black text-slate-900 shadow-inner"
-              />
+          <div className="p-5 space-y-3.5">
+            {/* ENCABEZADO: FECHA + PAGO SALDO DE APARTADOS */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-slate-800 uppercase">FECHA</span>
+                <input
+                  type="date"
+                  value={abonoFecha}
+                  onChange={(e) => setAbonoFecha(e.target.value)}
+                  className="h-7 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 shadow-inner"
+                />
+              </div>
+
+              <h2 className="text-xl font-black tracking-widest text-[#E60000] uppercase font-sans pr-8">
+                PAGO SALDO DE APARTADOS
+              </h2>
             </div>
 
-            <div>
-              <label className="block text-slate-800 uppercase mb-0.5">PAGO EN TRANSFERENCIA ($):</label>
-              <input
-                type="number"
-                min={0}
-                placeholder="0"
-                value={abonoPagoTrans}
-                onChange={(e) => setAbonoPagoTrans(e.target.value)}
-                className="h-8 w-full rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-base font-black text-slate-900 shadow-inner"
-              />
-            </div>
-
-            <div className="rounded border border-slate-300 bg-white p-2 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span>Saldo Anterior:</span>
-                <span className="font-mono font-bold">${apartadoSaldoRestante.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-emerald-800 font-bold">
-                <span>Total Abono Actual:</span>
-                <span className="font-mono">${((parseFloat(abonoPagoEfec) || 0) + (parseFloat(abonoPagoTrans) || 0)).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between border-t pt-1 font-black text-red-700">
-                <span>Nuevo Saldo Restante:</span>
-                <span className="font-mono">
-                  ${Math.max(0, apartadoSaldoRestante - ((parseFloat(abonoPagoEfec) || 0) + (parseFloat(abonoPagoTrans) || 0))).toLocaleString()}
+            {/* CUERPO DEL FORMULARIO Y BOTÓN PAGAR */}
+            <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-4 shadow-inner space-y-2.5">
+              {/* FILA 1: N.ABONO + ABONO A FACTURA */}
+              <div className="grid grid-cols-12 gap-2 items-center">
+                <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                  N.ABONO
                 </span>
+                <input
+                  type="text"
+                  value={abonoNumero}
+                  onChange={(e) => setAbonoNumero(e.target.value)}
+                  className="col-span-3 h-7 rounded border border-slate-400 bg-white px-2 text-xs font-mono font-bold text-slate-900 shadow-inner"
+                />
+
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                  ABONO A FACTURA
+                </span>
+                <input
+                  type="text"
+                  disabled
+                  value={apartadoFactura?.NUMEROFACT || ""}
+                  className="col-span-4 h-7 rounded border border-slate-400 bg-white px-2 text-xs font-mono font-black text-slate-900 shadow-inner"
+                />
+              </div>
+
+              {/* FILA 2: CLIENTE */}
+              <div className="grid grid-cols-12 gap-2 items-center">
+                <span className="col-span-2 text-xs font-black text-slate-800 uppercase">
+                  CLIENTE
+                </span>
+                <input
+                  type="text"
+                  disabled
+                  value={apartadoFactura?.CCLIENTE || ""}
+                  className="col-span-10 h-7 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 shadow-inner"
+                />
+              </div>
+
+              {/* FILA 3: PAGO CON EFECTIVO (DROPDOWN) + BOTÓN PAGAR AL LADO */}
+              <div className="grid grid-cols-12 gap-2 items-center pt-1">
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase">
+                  PAGO CON EFECTIVO
+                </span>
+                <select
+                  value={abonoTipoEfec}
+                  onChange={(e) => setAbonoTipoEfec(e.target.value)}
+                  className="col-span-5 h-7 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                >
+                  <option value="EFECTIVO">EFECTIVO</option>
+                </select>
+
+                {/* BOTÓN PAGAR EN MAGENTA */}
+                <div className="col-span-4 row-span-2 flex items-center justify-center pl-4">
+                  <button
+                    type="button"
+                    onClick={handleGuardarAbono}
+                    className="w-full h-12 rounded bg-gradient-to-r from-[#B80036] to-[#8A0028] text-sm font-black text-white shadow-lg hover:from-[#96002C] hover:to-[#6A001E] active:scale-95 uppercase tracking-widest transition-all"
+                  >
+                    PAGAR
+                  </button>
+                </div>
+              </div>
+
+              {/* FILA 4: SALDO A PAGAR EFECTIVO */}
+              <div className="grid grid-cols-12 gap-2 items-center">
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase">
+                  SALDO A PAGAR EFECTIVO
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={abonoPagoEfec}
+                  onChange={(e) => setAbonoPagoEfec(e.target.value)}
+                  className="col-span-5 h-7 rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-sm font-black text-slate-900 shadow-inner"
+                />
+              </div>
+
+              {/* FILA 5: OTRAS_F_PAGO (DROPDOWN) */}
+              <div className="grid grid-cols-12 gap-2 items-center pt-1">
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase">
+                  OTRAS_F_PAGO
+                </span>
+                <select
+                  value={abonoOtrasForma}
+                  onChange={(e) => setAbonoOtrasForma(e.target.value)}
+                  className="col-span-5 h-7 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 focus:outline-none shadow-inner"
+                >
+                  <option value="DATAFONO">DATAFONO</option>
+                  <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                  <option value="NEQUI">NEQUI</option>
+                  <option value="DAVIPLATA">DAVIPLATA</option>
+                  <option value="TARJETA DE CRÉDITO">TARJETA DE CRÉDITO</option>
+                  <option value="BONO">BONO</option>
+                </select>
+              </div>
+
+              {/* FILA 6: SALDO A PAGAR OTRAS F PAGO */}
+              <div className="grid grid-cols-12 gap-2 items-center">
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase">
+                  SALDO A PAGAR OTRAS F PAGO
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={abonoPagoTrans}
+                  onChange={(e) => setAbonoPagoTrans(e.target.value)}
+                  className="col-span-5 h-7 rounded border border-slate-400 bg-white px-2.5 text-right font-mono text-sm font-black text-slate-900 shadow-inner"
+                />
+              </div>
+
+              {/* FILA 7: SALDO A DEBER + TOTAL SALDO RESTANTE */}
+              <div className="grid grid-cols-12 gap-2 items-center pt-2 border-t border-slate-300">
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase">
+                  SALDO A DEBER
+                </span>
+                <input
+                  type="text"
+                  disabled
+                  value={`$ ${apartadoSaldoRestante.toLocaleString()}`}
+                  className="col-span-3 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-slate-900 shadow-inner"
+                />
+
+                <span className="col-span-3 text-xs font-black text-slate-800 uppercase text-right pr-2">
+                  TOTAL SALDO RESTANTE
+                </span>
+                <input
+                  type="text"
+                  disabled
+                  value={`$ ${abonoTotalSaldoRestante.toLocaleString()}`}
+                  className="col-span-3 h-7 rounded border border-slate-400 bg-white px-2 text-right font-mono text-xs font-black text-red-700 shadow-inner"
+                />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 p-3 bg-slate-200 border-t border-slate-300">
+          {/* FRANJA AZUL INFERIOR */}
+          <div className="h-3 bg-gradient-to-r from-[#003366] via-[#004B87] to-[#002244] w-full" />
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          DIALOGO DE CONFIRMACIÓN: ¿Desea Darle Salida AL Traje De bodega?
+      ========================================================= */}
+      <Dialog open={modalPreguntaSalida} onOpenChange={setModalPreguntaSalida}>
+        <DialogContent className="max-w-sm bg-white p-0 border-2 border-slate-400 shadow-2xl rounded-sm overflow-hidden z-[99999]">
+          <div className="flex items-center justify-between px-3 py-1 bg-[#F0F0F0] border-b border-slate-300 select-none">
+            <span className="text-xs font-bold text-slate-800">
+              ENTREGA VESTIDO APARTADO
+            </span>
             <button
               type="button"
-              onClick={() => setModalSubAbonar(false)}
-              className="rounded bg-slate-300 px-3 py-1.5 text-xs font-bold"
+              onClick={() => handleConfirmarSalidaBodega(false)}
+              className="text-slate-500 hover:text-slate-800"
             >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleGuardarAbono}
-              className="rounded bg-[#B80036] px-5 py-1.5 text-xs font-black text-white uppercase shadow hover:bg-[#96002C]"
-            >
-              Confirmar Abono
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
+
+          <div className="p-5 flex items-start gap-4 bg-white">
+            <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-[#0078D7] text-white shadow-sm">
+              <span className="font-serif font-black text-2xl italic leading-none">?</span>
+            </div>
+
+            <div className="space-y-1 pt-1 font-sans text-xs text-slate-800">
+              <p className="font-bold text-sm text-slate-900">
+                ¿Desea Darle Salida AL Traje De bodega?
+              </p>
+              <p className="text-[11px] text-slate-600 font-semibold">
+                El saldo restante es $0. Al confirmar, el estado cambiará a EN ALQUILER.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-3 bg-[#F0F0F0] border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => handleConfirmarSalidaBodega(false)}
+              className="min-w-[80px] rounded border border-slate-400 bg-white px-4 py-1 text-xs font-bold text-slate-800 hover:bg-slate-100 shadow-sm"
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={() => handleConfirmarSalidaBodega(true)}
+              className="min-w-[80px] rounded border border-[#0078D7] bg-[#0078D7] px-4 py-1 text-xs font-bold text-white hover:bg-[#005A9E] shadow-sm"
+            >
+              Sí
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          MODAL: TIRA DE ABONO 80mm (REPORTE entregarvestido EXACTO A WINDEV)
+      ========================================================= */}
+      <Dialog open={modalImprimirAbono80mm} onOpenChange={setModalImprimirAbono80mm}>
+        <DialogContent className="max-w-sm bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[90vh]">
+          {ticketAbonoData && (
+            <div className="font-mono text-xs text-slate-900 space-y-2 select-text">
+              {/* LOGO OFICIAL CENTRADO */}
+              <div className="flex flex-col items-center border-b border-dashed border-slate-400 pb-2">
+                <img
+                  src="/logo_casa_del_disfraz.jpg"
+                  alt="La Casa Del Disfraz"
+                  className="h-16 w-auto object-contain mb-1"
+                />
+                <p className="text-center font-bold text-[11px] leading-tight">
+                  CRA 23 #15-34<br />
+                  BUCARAMANGA - SANTANDER<br />
+                  6076963959 - 3202375610
+                </p>
+              </div>
+
+              {/* DATOS DE FACTURA Y CLIENTE */}
+              <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-semibold">
+                <div className="flex justify-between">
+                  <span>CAJA:</span>
+                  <span className="font-bold">{ticketAbonoData.caja}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>CLIENTE:</span>
+                  <span className="font-bold">{ticketAbonoData.cliente}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>CÉDULA:</span>
+                  <span>{ticketAbonoData.cedula}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>DIRECCIÓN:</span>
+                  <span>{ticketAbonoData.direccion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>TELÉFONO 1:</span>
+                  <span>{ticketAbonoData.telefono1}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>TELÉFONO 2:</span>
+                  <span>{ticketAbonoData.telefono2}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>F_PAGO:</span>
+                  <span>{ticketAbonoData.formaPago}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>TIPO:</span>
+                  <span className="font-black text-red-700">{ticketAbonoData.tipo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>CAJERO:</span>
+                  <span>{ticketAbonoData.cajero}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>RECIBO:</span>
+                  <span className="font-black">{ticketAbonoData.recibo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>FECHA:</span>
+                  <span>{ticketAbonoData.fecha}</span>
+                </div>
+              </div>
+
+              {/* TABLA DE ARTÍCULOS */}
+              <div className="border-b border-dashed border-slate-400 pb-2 text-[11px]">
+                <div className="flex justify-between font-black pb-1 border-b border-slate-300">
+                  <span className="w-1/2">DESCRIPCION</span>
+                  <span className="text-center w-12">CANT</span>
+                  <span className="text-right w-16">VALOR</span>
+                  <span className="text-right w-16">TOTAL</span>
+                </div>
+                {ticketAbonoData.items.map((it: any, i: number) => (
+                  <div key={i} className="flex justify-between py-0.5">
+                    <span className="w-1/2 truncate font-bold">{it.DESCRIPCION}</span>
+                    <span className="text-center w-12 font-bold">{it.CANTIDAD}</span>
+                    <span className="text-right w-16 font-mono">${Number(it.VALOR || 0).toLocaleString()}</span>
+                    <span className="text-right w-16 font-mono font-bold">${Number(it.TOTAL || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* TOTALES Y SALDOS */}
+              <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-bold text-right">
+                <div className="flex justify-between">
+                  <span>VALOR ALQUILER:</span>
+                  <span className="font-mono">${Number(ticketAbonoData.valorAlquiler).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>DEPOSITO:</span>
+                  <span className="font-mono">${Number(ticketAbonoData.deposito).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SALDO ANTERIOR:</span>
+                  <span className="font-mono">${Number(ticketAbonoData.saldoAnterior).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-emerald-800">
+                  <span>RECIBI ABONO:</span>
+                  <span className="font-mono font-black">${Number(ticketAbonoData.recibiAbono).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-700 text-xs border-t pt-1">
+                  <span>SALDO:</span>
+                  <span className="font-mono font-black">${Number(ticketAbonoData.saldo).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* FECHAS DE SALIDA Y DEVOLUCIÓN */}
+              <div className="text-[10px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-bold">
+                <div className="flex justify-between">
+                  <span>FECHA DE SALIDA DE TRAJE:</span>
+                  <span>{ticketAbonoData.fechaSalida}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>FECHA DE DEVOLUCION TRAJE:</span>
+                  <span>{ticketAbonoData.fechaDevolucion}</span>
+                </div>
+              </div>
+
+              {/* TÉRMINOS Y CONDICIONES EXACTOS */}
+              <div className="text-[9px] text-slate-700 leading-tight space-y-1 pt-1">
+                <p className="font-bold">Condiciones de servicio:</p>
+                <p>- Tiempo de alquiler 3 días hábiles. Por devoluciones hechas después de la fecha se cobrará un recargo de $5.000 por día.</p>
+                <p>- Favor conservar este recibo para efectuar la devolución de dinero que ha dejado como depósito.</p>
+                <p>- No se hace devolución de dinero una vez elaborado este RECIBO.</p>
+                <p className="font-black text-center pt-1">INSTAGRAM: @LACASADELDISFRAZOFICIAL</p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setModalImprimirAbono80mm(false)}
+                  className="rounded bg-slate-300 px-3 py-1 text-xs font-bold"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded bg-black px-4 py-1 text-xs font-black text-white flex items-center gap-1"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Imprimir 80mm
+                </button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
