@@ -534,8 +534,8 @@ export function PuntoDeVenta() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (articulosFiltrados.length > 0) {
-        const art = articulosFiltrados[sugerenciaIndex] || articulosFiltrados[0];
-        seleccionarArticulo(art);
+        const art = articulosFiltrados[sugerenciaIndex] ?? articulosFiltrados[0];
+        if (art) seleccionarArticulo(art);
       } else {
         toast.error("No se encontró ningún artículo coincidente");
       }

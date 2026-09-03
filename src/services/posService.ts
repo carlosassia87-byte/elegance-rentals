@@ -28,7 +28,7 @@ export async function buscarClientePorCedula(cedula: number | string): Promise<C
       console.warn("Error consultando cliente por cédula:", error.message);
       return null;
     }
-    return data as Cliente | null;
+    return data as unknown as Cliente | null;
   } catch (err) {
     console.error("Excepción en buscarClientePorCedula:", err);
     return null;
@@ -45,7 +45,7 @@ export async function buscarClientesPorNombre(query: string): Promise<Cliente[]>
       .limit(20);
 
     if (error) throw error;
-    return (data as Cliente[]) ?? [];
+    return (data as unknown as Cliente[]) ?? [];
   } catch (err) {
     console.error("Excepción en buscarClientesPorNombre:", err);
     return [];
@@ -72,7 +72,7 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
         .select()
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     } else {
       const { data, error } = await supabase
         .from("CLIENTES" as any)
@@ -90,11 +90,11 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
         .select()
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     }
   } catch (err) {
     console.error("Error guardando cliente:", err);
-    return cliente as Cliente;
+    return cliente as unknown as Cliente;
   }
 }
 
@@ -109,7 +109,7 @@ export async function listarArticulos(search = ""): Promise<Articulo[]> {
     }
     const { data, error } = await query.limit(100);
     if (error) throw error;
-    return (data as Articulo[]) ?? [];
+    return (data as unknown as Articulo[]) ?? [];
   } catch (err) {
     console.error("Error listando artículos:", err);
     return [];
@@ -124,7 +124,7 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
       .eq("CODBARRAS", codigo)
       .maybeSingle();
     if (error) throw error;
-    return data as Articulo | null;
+    return data as unknown as Articulo | null;
   } catch (err) {
     console.error("Error buscando por código de barras:", err);
     return null;
@@ -141,7 +141,7 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
         .select()
         .single();
       if (error) throw error;
-      return data as Articulo;
+      return data as unknown as Articulo;
     } else {
       const { data, error } = await supabase
         .from("ARTICULO" as any)
@@ -149,7 +149,7 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
         .select()
         .single();
       if (error) throw error;
-      return data as Articulo;
+      return data as unknown as Articulo;
     }
   } catch (err) {
     console.error("Error guardando artículo:", err);
@@ -174,12 +174,13 @@ export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
 export async function generarNumeroFactura(nombreCaja = "SERVIDOR"): Promise<string> {
   try {
     // 1. Consultar CAJAS para nombreCaja "SERVIDOR"
-    const { data: caja, error: errCaja } = await supabase
+    const { data: cajaRaw, error: errCaja } = await supabase
       .from("CAJAS" as any)
       .select("*")
       .eq("NOMBRECAJA", nombreCaja)
       .maybeSingle();
 
+    const caja = cajaRaw as any;
     if (!errCaja && caja) {
       const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
       return `G${nuevoNumero}`;
@@ -192,7 +193,7 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR"): Promise<str
       .order("IDFACTURA", { ascending: false })
       .limit(1);
 
-    const ultimoId = data && data.length > 0 ? Number(data[0].IDFACTURA) + 1 : 1;
+    const ultimoId = data && data.length > 0 ? Number((data[0] as any).IDFACTURA) + 1 : 1;
     return `G${ultimoId}`;
   } catch {
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -209,12 +210,13 @@ export async function registrarAlquilerFactura(
     // 1. Obtener y actualizar numeración de la caja "SERVIDOR"
     let sNumeroFactura = facturaData.NUMEROFACT;
     try {
-      const { data: caja } = await supabase
+      const { data: cajaRaw } = await supabase
         .from("CAJAS" as any)
         .select("*")
         .eq("NOMBRECAJA", nombreCaja)
         .maybeSingle();
 
+      const caja = cajaRaw as any;
       if (caja) {
         const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
         sNumeroFactura = `G${nuevoNumero}`;
@@ -233,13 +235,14 @@ export async function registrarAlquilerFactura(
     };
 
     // 2. Insertar en tabla FACTURA
-    const { data: factura, error: errorFactura } = await supabase
+    const { data: facturaRaw, error: errorFactura } = await supabase
       .from("FACTURA" as any)
       .insert(facturaFinalData)
       .select()
       .single();
 
     if (errorFactura) throw errorFactura;
+    const factura = facturaRaw as any;
 
     // 3. Insertar los ítems en CAMPOFACTURA vinculados con IDFACTURA y NUMEROFACT
     const camposConFactura = items.map((item) => ({
@@ -259,12 +262,13 @@ export async function registrarAlquilerFactura(
     for (const item of items) {
       if (item.DESCRIPCION) {
         try {
-          const { data: art } = await supabase
+          const { data: artRaw } = await supabase
             .from("ARTICULO" as any)
             .select("*")
             .eq("DESCRIPCION", item.DESCRIPCION)
             .maybeSingle();
 
+          const art = artRaw as any;
           if (art && art.STOCK > 0) {
             await supabase
               .from("ARTICULO" as any)
@@ -278,8 +282,8 @@ export async function registrarAlquilerFactura(
     }
 
     return {
-      factura: factura as Factura,
-      items: (camposInsertados as CampoFactura[]) ?? [],
+      factura: factura as unknown as Factura,
+      items: (camposInsertados as unknown as CampoFactura[]) ?? [],
     };
   } catch (err) {
     console.error("Error al registrar factura de alquiler:", err);
@@ -308,7 +312,7 @@ export async function registrarDevolucionVestido(params: {
       .single();
 
     if (error) throw error;
-    return data as DepositoEntregado;
+    return data as unknown as DepositoEntregado;
   } catch (err) {
     console.error("Error en registrarDevolucionVestido:", err);
     throw err;
@@ -324,12 +328,13 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
   abonos: AbonoCliente[];
 }> {
   try {
-    const { data: factura, error: errFactura } = await supabase
+    const { data: facturaRaw2, error: errFactura } = await supabase
       .from("FACTURA" as any)
       .select("*")
       .ilike("NUMEROFACT", `%${numeroFact.trim()}%`)
       .maybeSingle();
 
+    const factura = facturaRaw2 as any;
     if (errFactura || !factura) {
       return { factura: null, items: [], abonos: [] };
     }
@@ -346,9 +351,9 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
       .order("IDABONO_CLIENTE", { ascending: true });
 
     return {
-      factura: factura as Factura,
-      items: (items as CampoFactura[]) ?? [],
-      abonos: (abonos as AbonoCliente[]) ?? [],
+      factura: factura as unknown as Factura,
+      items: (items as unknown as CampoFactura[]) ?? [],
+      abonos: (abonos as unknown as AbonoCliente[]) ?? [],
     };
   } catch (err) {
     console.error("Error buscando factura de apartado:", err);
@@ -364,7 +369,7 @@ export async function registrarAbonoCliente(params: {
   saldoAnterior: number;
   saldoDeber: number;
   totalAbono: number;
-  fecha?: string;
+  fecha?: string | undefined;
 }): Promise<AbonoCliente | null> {
   try {
     const numeroAbono = `AB-${Date.now()}`;
@@ -396,7 +401,7 @@ export async function registrarAbonoCliente(params: {
       })
       .eq("NUMEROFACT", params.numeroFactura);
 
-    return abono as AbonoCliente;
+    return abono as unknown as AbonoCliente;
   } catch (err) {
     console.error("Error registrando abono cliente:", err);
     throw err;
@@ -420,3 +425,31 @@ export async function registrarSalidaVestidoApartado(numeroFactura: string): Pro
   }
 }
 
+
+// ==========================================
+// SERVICIO DE GASTOS
+// ==========================================
+export async function registrarGasto(params: {
+  descripcion: string;
+  valor: number | string;
+  numeroGasto?: string | undefined;
+  fecha?: string | undefined;
+}): Promise<Gasto | null> {
+  try {
+    const { data, error } = await supabase
+      .from("GASTOS" as any)
+      .insert({
+        DESCRIPCIONSALIDA: params.descripcion,
+        VALORSALIDA: String(params.valor),
+        NUMEROGASTO: params.numeroGasto || `GA-${Date.now()}`,
+        FECHA: params.fecha || new Date().toISOString().split("T")[0],
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as unknown as Gasto;
+  } catch (err) {
+    console.error("Error registrando gasto:", err);
+    return null;
+  }
+}
