@@ -6,6 +6,13 @@ import {
   ChevronDown,
   Check,
   AlertTriangle,
+  Plus,
+  Edit,
+  Package,
+  Barcode,
+  Search,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -15,6 +22,8 @@ import {
   buscarClientesPorNombre,
   guardarCliente,
   listarArticulos,
+  guardarArticulo,
+  eliminarArticulo,
   generarNumeroFactura,
   registrarAlquilerFactura,
   registrarDevolucionVestido,
@@ -62,12 +71,23 @@ export function PuntoDeVenta() {
   // Alerta de Nota del Cliente
   const [notaAlertaVisible, setNotaAlertaVisible] = useState(false);
 
-  // Autocomplete / Combobox de Artículo con Filtro en Vivo y Teclado
+  // Artículos y Autocomplete
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
   const [articuloTexto, setArticuloTexto] = useState<string>("");
   const [articuloSeleccionado, setArticuloSeleccionado] = useState<Articulo | null>(null);
   const [mostrarDropdownArt, setMostrarDropdownArt] = useState<boolean>(false);
   const [sugerenciaIndex, setSugerenciaIndex] = useState<number>(0);
+
+  // Formulario de ALTA_DE_ARTICULOS (Crear / Editar)
+  const [articuloForm, setArticuloForm] = useState<Partial<Articulo>>({
+    IDARTICULO: 0,
+    DESCRIPCION: "",
+    TALLA: "M",
+    STOCK: 1,
+    VALOR: 0,
+    VALORDEPOSITO: 0,
+    CODBARRAS: "",
+  });
 
   // Cantidad y Refs para Navegación por Teclado
   const [cantidad, setCantidad] = useState<number>(1);
@@ -87,13 +107,16 @@ export function PuntoDeVenta() {
   // Modales
   const [modalCliente, setModalCliente] = useState(false);
   const [modalBuscarCli, setModalBuscarCli] = useState(false);
+  const [modalArticuloAlta, setModalArticuloAlta] = useState(false);
+  const [modalArchivoArticulo, setModalArchivoArticulo] = useState(false);
   const [modalGasto, setModalGasto] = useState(false);
   const [modalDevolucion, setModalDevolucion] = useState(false);
   const [modalApartados, setModalApartados] = useState(false);
   const [modalImprimir, setModalImprimir] = useState(false);
 
-  // Formulario de búsqueda / gastos / devoluciones
+  // Formulario de búsqueda / gastos / devoluciones / catálogo
   const [busqClienteInput, setBusqClienteInput] = useState("");
+  const [busqArticuloCatalogo, setBusqArticuloCatalogo] = useState("");
   const [clientesEncontrados, setClientesEncontrados] = useState<Cliente[]>([]);
   const [gastoDesc, setGastoDesc] = useState("");
   const [gastoMonto, setGastoMonto] = useState("");
@@ -102,10 +125,15 @@ export function PuntoDeVenta() {
 
   useEffect(() => {
     generarNumeroFactura().then((num) => setNumeroRecibo(num));
-    listarArticulos().then((res) => {
-      if (res && res.length > 0) setArticulos(res);
-    });
+    cargarArticulos();
   }, []);
+
+  async function cargarArticulos() {
+    const res = await listarArticulos();
+    if (res && res.length > 0) {
+      setArticulos(res);
+    }
+  }
 
   // Filtrado de Artículos en Tiempo Real
   const articulosFiltrados = useMemo(() => {
@@ -114,10 +142,21 @@ export function PuntoDeVenta() {
     return articulos.filter(
       (a) =>
         a.DESCRIPCION.toLowerCase().includes(query) ||
-        a.CODBARRAS.toLowerCase().includes(query) ||
-        a.TALLA.toLowerCase().includes(query)
+        (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
+        (a.TALLA && a.TALLA.toLowerCase().includes(query))
     );
   }, [articulos, articuloTexto]);
+
+  const articulosCatalogoFiltrados = useMemo(() => {
+    if (!busqArticuloCatalogo.trim()) return articulos;
+    const query = busqArticuloCatalogo.toLowerCase().trim();
+    return articulos.filter(
+      (a) =>
+        a.DESCRIPCION.toLowerCase().includes(query) ||
+        (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
+        (a.TALLA && a.TALLA.toLowerCase().includes(query))
+    );
+  }, [articulos, busqArticuloCatalogo]);
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -164,7 +203,6 @@ export function PuntoDeVenta() {
     const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
       setClienteForm(cli);
-      // SI TIENE NOTA, MOSTRARLA INMEDIATAMENTE
       if (cli.NOTA && cli.NOTA.trim() !== "") {
         setNotaAlertaVisible(true);
         toast.warning(`⚠️ NOTA DEL CLIENTE: ${cli.NOTA}`, { duration: 7000 });
@@ -198,6 +236,84 @@ export function PuntoDeVenta() {
       toast.success("Cliente asignado localmente");
       setModalCliente(false);
       articuloInputRef.current?.focus();
+    }
+  }
+
+  // Abrir Modal de Crear Artículo
+  function abrirCrearArticulo() {
+    const randomBarcode = String(Math.floor(1000 + Math.random() * 9000));
+    setArticuloForm({
+      IDARTICULO: 0,
+      DESCRIPCION: "",
+      TALLA: "M",
+      STOCK: 1,
+      VALOR: 0,
+      VALORDEPOSITO: 0,
+      CODBARRAS: randomBarcode,
+    });
+    setModalArticuloAlta(true);
+  }
+
+  // Abrir Modal de Editar Artículo
+  function abrirEditarArticulo(art: Articulo) {
+    setArticuloForm({ ...art });
+    setModalArticuloAlta(true);
+  }
+
+  // Guardar Artículo en BD (ALTA_DE_ARTICULOS)
+  async function handleGuardarArticuloAlta(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!articuloForm.DESCRIPCION || !articuloForm.DESCRIPCION.trim()) {
+      toast.error("Ingresa la descripción del artículo");
+      return;
+    }
+
+    try {
+      const artGuardado = await guardarArticulo({
+        ...articuloForm,
+        VALOR: Number(articuloForm.VALOR) || 0,
+        VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
+        STOCK: Number(articuloForm.STOCK) || 1,
+      });
+
+      if (artGuardado) {
+        setArticulos((prev) => {
+          const index = prev.findIndex((a) => a.IDARTICULO === artGuardado.IDARTICULO);
+          if (index >= 0) {
+            const next = [...prev];
+            next[index] = artGuardado;
+            return next;
+          }
+          return [artGuardado, ...prev];
+        });
+      } else {
+        // Modo local
+        const nuevo: Articulo = {
+          IDARTICULO: articuloForm.IDARTICULO || Date.now(),
+          DESCRIPCION: articuloForm.DESCRIPCION,
+          TALLA: articuloForm.TALLA || "M",
+          STOCK: Number(articuloForm.STOCK) || 1,
+          VALOR: Number(articuloForm.VALOR) || 0,
+          VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
+          CODBARRAS: articuloForm.CODBARRAS || "1000",
+        };
+        setArticulos((prev) => [nuevo, ...prev]);
+      }
+
+      toast.success("¡Artículo guardado exitosamente!");
+      setModalArticuloAlta(false);
+      cargarArticulos();
+    } catch {
+      toast.error("Error guardando artículo");
+    }
+  }
+
+  // Eliminar Artículo
+  async function handleEliminarArticuloCatalogo(id: number) {
+    if (confirm("¿Estás seguro de eliminar este artículo del catálogo?")) {
+      await eliminarArticulo(id);
+      setArticulos((prev) => prev.filter((a) => a.IDARTICULO !== id));
+      toast.info("Artículo eliminado");
     }
   }
 
@@ -386,6 +502,12 @@ export function PuntoDeVenta() {
       <div className="flex items-center justify-between px-2 pb-1 border-b border-slate-300">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold text-slate-600">ALQUILER</span>
+          <button
+            onClick={() => setModalArchivoArticulo(true)}
+            className="flex items-center gap-1 rounded bg-slate-700 px-2 py-0.5 text-[9px] font-bold text-white hover:bg-slate-900"
+          >
+            <Package className="h-2.5 w-2.5" /> CATÁLOGO ARTÍCULOS
+          </button>
         </div>
 
         <div className="text-center">
@@ -544,7 +666,6 @@ export function PuntoDeVenta() {
                   onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
                   className="h-5 flex-1 rounded border border-slate-400 bg-white px-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none"
                 />
-                {/* BOTÓN "Mod" ROJO QUE ABRE ALTA_DE_CLIENTES */}
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
@@ -555,9 +676,7 @@ export function PuntoDeVenta() {
               </div>
             </div>
 
-            {/* =========================================================================
-                BANNER VISUAL DESTACADO SI EL CLIENTE TIENE NOTA
-            ========================================================================= */}
+            {/* BANNER DE NOTA */}
             {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
               <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-950 shadow-sm animate-pulse">
                 <div className="flex items-center gap-1.5 overflow-hidden">
@@ -650,6 +769,16 @@ export function PuntoDeVenta() {
           ========================================================================= */}
           <div className="relative flex items-center gap-1 py-0.5">
             <span className="text-[10px] font-bold text-slate-800 uppercase">ARTICULO</span>
+
+            {/* BOTÓN + PARA CREAR NUEVO ARTÍCULO RÁPIDO */}
+            <button
+              type="button"
+              onClick={abrirCrearArticulo}
+              title="Crear nuevo artículo en el catálogo"
+              className="flex items-center justify-center h-5 w-5 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
             
             {/* COMBOBOX DE BÚSQUEDA Y FILTRADO */}
             <div className="relative flex-1">
@@ -984,8 +1113,306 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================================
-          MODAL: ALTA_DE_CLIENTES (IDÉNTICO A LA CAPTURA WINDEV [ALTA_DE_CLIENTES])
+          MODAL: ALTA_DE_ARTICULOS (MODERNO, ELEGANTE Y FIEL A WINDEV)
       ========================================================================= */}
+      <Dialog open={modalArticuloAlta} onOpenChange={setModalArticuloAlta}>
+        <DialogContent className="max-w-xl bg-[#F4F6F9] p-0 border border-slate-300 shadow-2xl overflow-hidden rounded-xl">
+          {/* HEADER CON DEGRADADO ELEGANTE */}
+          <div className="bg-gradient-to-r from-[#002D62] via-[#004B87] to-[#0A192F] px-5 py-3 text-white flex items-center justify-between shadow">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 backdrop-blur text-yellow-300">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-sm font-black tracking-wider uppercase">
+                  {articuloForm.IDARTICULO ? "MODIFICAR ARTÍCULO" : "ALTA DE ARTÍCULOS"}
+                </h2>
+                <p className="text-[10px] text-blue-200">
+                  Sistema de Inventario y Control de Prendas
+                </p>
+              </div>
+            </div>
+            <span className="rounded-full bg-blue-900/60 px-2.5 py-0.5 text-[10px] font-mono font-bold text-cyan-300 border border-cyan-500/30">
+              ID: {articuloForm.IDARTICULO || "NUEVO"}
+            </span>
+          </div>
+
+          {/* CONTENIDO DEL FORMULARIO */}
+          <form onSubmit={handleGuardarArticuloAlta} className="p-5 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+              {/* 1. DESCRIPCIÓN DEL ARTÍCULO (TEXTAREA GRANDE) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-extrabold uppercase text-slate-800 tracking-wide flex items-center gap-1">
+                    <Package className="h-3.5 w-3.5 text-blue-600" /> ARTÍCULO / DESCRIPCIÓN *
+                  </label>
+                  <span className="text-[9px] text-slate-400 font-medium">Nombre, accesorios y piezas</span>
+                </div>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Ej. TRAJE DE SALSANIÑO: CAMISA, PANTALÓN, CINTURÓN"
+                  value={articuloForm.DESCRIPCION || ""}
+                  onChange={(e) => setArticuloForm((p) => ({ ...p, DESCRIPCION: e.target.value.toUpperCase() }))}
+                  className="w-full rounded-md border border-slate-300 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none uppercase transition-all shadow-inner resize-none"
+                />
+              </div>
+
+              {/* 2. VALOR ALQUILER + VALOR DEPÓSITO EN DOS COLUMNAS DESTACADAS */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="rounded-lg bg-emerald-50/60 border border-emerald-200 p-2.5 shadow-sm">
+                  <label className="text-[10px] font-extrabold uppercase text-emerald-900 block mb-1">
+                    VALOR ALQUILER ($) *
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-2 text-xs font-bold text-emerald-700">$</span>
+                    <input
+                      type="number"
+                      min={0}
+                      required
+                      placeholder="0"
+                      value={articuloForm.VALOR || ""}
+                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALOR: Number(e.target.value) || 0 }))}
+                      className="h-8 w-full rounded border border-emerald-300 bg-white pl-6 pr-2 text-right font-mono text-sm font-black text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-blue-50/60 border border-blue-200 p-2.5 shadow-sm">
+                  <label className="text-[10px] font-extrabold uppercase text-blue-900 block mb-1">
+                    VALOR DEPÓSITO / FIANZA ($)
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-2 text-xs font-bold text-blue-700">$</span>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                      value={articuloForm.VALORDEPOSITO || ""}
+                      onChange={(e) => setArticuloForm((p) => ({ ...p, VALORDEPOSITO: Number(e.target.value) || 0 }))}
+                      className="h-8 w-full rounded border border-blue-300 bg-white pl-6 pr-2 text-right font-mono text-sm font-black text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. TALLA, STOCK Y CÓDIGO DE BARRAS */}
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                {/* TALLA */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
+                    TALLA
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. 38R, M, L"
+                    value={articuloForm.TALLA || ""}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, TALLA: e.target.value.toUpperCase() }))}
+                    className="h-7 w-full rounded border border-slate-300 bg-white px-2 text-center text-xs font-bold uppercase text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                {/* STOCK */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase text-slate-700 block mb-1">
+                    STOCK / CANTIDAD
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={articuloForm.STOCK ?? 1}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
+                    className="h-7 w-full rounded border border-slate-300 bg-white text-center text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                {/* BARRAS / SKU */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-700">
+                      BARRAS
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setArticuloForm((p) => ({ ...p, CODBARRAS: String(Math.floor(1000 + Math.random() * 9000)) }))
+                      }
+                      title="Generar código aleatorio"
+                      className="text-[9px] text-blue-600 hover:underline flex items-center gap-0.5 font-bold"
+                    >
+                      <Barcode className="h-2.5 w-2.5" /> Auto
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="1538"
+                    value={articuloForm.CODBARRAS || ""}
+                    onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
+                    className="h-7 w-full rounded border border-slate-300 bg-white px-2 text-center font-mono text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* BOTONES DE ACCIÓN: GUARDAR ✔ / SALIR ✖ */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setModalArticuloAlta(false)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
+              >
+                SALIR <X className="h-4 w-4 text-slate-500" />
+              </button>
+
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#003366] to-[#005599] px-7 py-2 text-xs font-black text-white shadow-md hover:from-[#002244] hover:to-[#004488] active:scale-95 transition-all"
+              >
+                GUARDAR <Check className="h-4 w-4 text-emerald-300" />
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
+          MODAL: ARCHIVO ARTICULO / CATÁLOGO COMPLETO
+      ========================================================================= */}
+      <Dialog open={modalArchivoArticulo} onOpenChange={setModalArchivoArticulo}>
+        <DialogContent className="max-w-4xl bg-[#F8FAFC] p-4 border border-slate-300 shadow-2xl rounded-xl">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-700" />
+              <h2 className="text-base font-black tracking-wide text-slate-900 uppercase">
+                ARCHIVO ARTÍCULO — CATÁLOGO E INVENTARIO
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={abrirCrearArticulo}
+                className="flex items-center gap-1 rounded bg-[#004B87] px-3 py-1 text-xs font-bold text-white shadow hover:bg-[#003366]"
+              >
+                <Plus className="h-3.5 w-3.5" /> NUEVO ARTÍCULO
+              </button>
+              <button
+                onClick={cargarArticulos}
+                title="Refrescar catálogo"
+                className="rounded bg-slate-200 p-1 text-slate-700 hover:bg-slate-300"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="py-2 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Filtrar por nombre, descripción, talla o código de barras..."
+                value={busqArticuloCatalogo}
+                onChange={(e) => setBusqArticuloCatalogo(e.target.value)}
+                className="h-8 w-full rounded-md border border-slate-300 bg-white pl-8 pr-3 text-xs font-medium focus:outline-none focus:border-blue-600"
+              />
+            </div>
+            <span className="text-xs text-slate-500 font-semibold whitespace-nowrap">
+              {articulosCatalogoFiltrados.length} artículos
+            </span>
+          </div>
+
+          <div className="max-h-96 overflow-auto rounded-lg border border-slate-300 bg-white shadow-inner">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[#0A192F] text-white font-bold sticky top-0 uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="p-2 border-r border-slate-700 w-16 text-center">ID / CÓD</th>
+                  <th className="p-2 border-r border-slate-700">DESCRIPCIÓN DEL ARTÍCULO</th>
+                  <th className="p-2 border-r border-slate-700 text-center w-16">TALLA</th>
+                  <th className="p-2 border-r border-slate-700 text-center w-16">STOCK</th>
+                  <th className="p-2 border-r border-slate-700 text-right w-28">VALOR ALQUILER</th>
+                  <th className="p-2 border-r border-slate-700 text-right w-28">VALOR DEPÓSITO</th>
+                  <th className="p-2 text-center w-24">ACCIONES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {articulosCatalogoFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-400 text-xs font-semibold">
+                      No se encontraron artículos con ese criterio de búsqueda.
+                    </td>
+                  </tr>
+                ) : (
+                  articulosCatalogoFiltrados.map((art, idx) => (
+                    <tr
+                      key={art.IDARTICULO}
+                      className={`border-b border-slate-200 transition-colors ${
+                        idx % 2 === 0 ? "bg-white hover:bg-blue-50/40" : "bg-slate-50/80 hover:bg-blue-50/40"
+                      }`}
+                    >
+                      <td className="p-2 font-mono text-[10px] text-center font-bold text-slate-600 border-r border-slate-200">
+                        {art.CODBARRAS || `#${art.IDARTICULO}`}
+                      </td>
+                      <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">
+                        {art.DESCRIPCION}
+                      </td>
+                      <td className="p-2 text-center font-bold text-slate-700 border-r border-slate-200">
+                        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[9px]">
+                          {art.TALLA || "U"}
+                        </span>
+                      </td>
+                      <td className="p-2 text-center font-bold border-r border-slate-200">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[9px] ${
+                            (art.STOCK || 0) > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {art.STOCK}
+                        </span>
+                      </td>
+                      <td className="p-2 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                        ${Number(art.VALOR).toLocaleString()}
+                      </td>
+                      <td className="p-2 text-right font-mono font-bold text-blue-800 border-r border-slate-200">
+                        ${Number(art.VALORDEPOSITO).toLocaleString()}
+                      </td>
+                      <td className="p-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => abrirEditarArticulo(art)}
+                            title="Modificar"
+                            className="rounded p-1 text-blue-600 hover:bg-blue-100 transition-colors"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleEliminarArticuloCatalogo(art.IDARTICULO)}
+                            title="Eliminar"
+                            className="rounded p-1 text-red-600 hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end pt-3">
+            <button
+              onClick={() => setModalArchivoArticulo(false)}
+              className="rounded bg-slate-800 px-5 py-1.5 text-xs font-bold text-white hover:bg-black"
+            >
+              Cerrar Catálogo
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================
+          MODAL: ALTA_DE_CLIENTES (IDÉNTICO A LA CAPTURA WINDEV [ALTA_DE_CLIENTES])
+      ========================================================= */}
       <Dialog open={modalCliente} onOpenChange={setModalCliente}>
         <DialogContent className="max-w-2xl bg-[#E8E8E8] p-4 border-2 border-slate-400 shadow-2xl">
           <div className="flex items-center justify-between pb-1 border-b border-slate-300">

@@ -157,6 +157,17 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
   }
 }
 
+export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("ARTICULO" as any).delete().eq("IDARTICULO", idArticulo);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Error eliminando artículo:", err);
+    return false;
+  }
+}
+
 // ==========================================
 // SERVICIO DE FACTURACIÓN Y ALQUILERES (POS)
 // ==========================================
