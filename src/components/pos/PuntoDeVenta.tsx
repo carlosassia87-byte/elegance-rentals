@@ -198,6 +198,26 @@ export function PuntoDeVenta() {
   const [modalImprimirAbono80mm, setModalImprimirAbono80mm] = useState(false);
   const [ticketAbonoData, setTicketAbonoData] = useState<any>(null);
 
+  // Snapshot de datos de venta para comprobante / recibo
+  const [ticketReciboVenta, setTicketReciboVenta] = useState<{
+    numeroRecibo: string;
+    fechaHoy: string;
+    cajero: string;
+    cliente: {
+      nombre: string;
+      cedula: string | number;
+      telefono: string;
+      direccion?: string;
+    };
+    fechaSalida: string;
+    fechaEntrada: string;
+    items: ItemAlquilerCarrito[];
+    totalAlquiler: number;
+    totalDeposito: number;
+    totalGeneral: number;
+    cambio: number;
+  } | null>(null);
+
   // Estados del Menú Lateral Hamburguesa y Configuraciones
   const [sidebarAbierto, setSidebarAbierto] = useState(false);
   const [modalEmpresa, setModalEmpresa] = useState(false);
@@ -727,9 +747,11 @@ export function PuntoDeVenta() {
     toast.info("Artículo eliminado");
   }
 
-  // Limpiar / Nuevo Alquiler
-  function handleLimpiar() {
-    generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo).then(setNumeroRecibo);
+  // Limpiar / Nuevo Alquiler / Reset Completo del POS
+  function handleLimpiar(silencioso = false) {
+    generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo).then((nuevoNum) => {
+      setNumeroRecibo(nuevoNum);
+    });
     setClienteForm({
       IDCLIENTES: 0,
       CEDULA: 0,
@@ -753,8 +775,22 @@ export function PuntoDeVenta() {
     setNotaAlertaVisible(false);
     setModalOperacionVisible(false);
     setEstadoTraje("EN ALQUILER");
-    toast.info("Formulario reiniciado");
-    articuloInputRef.current?.focus();
+    setOperacionSeleccionada("ALQUILER");
+
+    const hoy = new Date().toISOString().split("T")[0];
+    setFechaHoy(hoy);
+    setFechaSalida(hoy);
+    const dEntrada = new Date();
+    dEntrada.setDate(dEntrada.getDate() + 3);
+    setFechaEntrada(dEntrada.toISOString().split("T")[0]);
+
+    cargarArticulos();
+    if (!silencioso) {
+      toast.info("Punto de Venta listo para una nueva venta");
+    }
+    setTimeout(() => {
+      articuloInputRef.current?.focus();
+    }, 100);
   }
 
   // Estado de bloqueo para prevenir doble clic (bGuardando)
@@ -841,18 +877,60 @@ export function PuntoDeVenta() {
         terminalConfig.prefijo
       );
       
-      if (resultado && resultado.factura) {
-        setNumeroRecibo(resultado.factura.NUMEROFACT);
-      }
+      const numFacturaFinal = (resultado && resultado.factura) ? resultado.factura.NUMEROFACT : numeroRecibo;
+
+      // Guardar snapshot de los datos de la venta para el recibo de impresión
+      setTicketReciboVenta({
+        numeroRecibo: numFacturaFinal,
+        fechaHoy: fechaHoy,
+        cajero: cajero,
+        cliente: {
+          nombre: clienteForm.NOMBRE || "GENERAL",
+          cedula: clienteForm.CEDULA || "N/A",
+          telefono: clienteForm.TELEFONO || "N/A",
+          direccion: clienteForm.DIRECCION || "",
+        },
+        fechaSalida: fechaSalida || fechaHoy,
+        fechaEntrada: fechaEntrada || fechaHoy,
+        items: [...gridItems],
+        totalAlquiler: totalAlquilerConDesc,
+        totalDeposito: totalDeposito,
+        totalGeneral: totalDepositoMasAlquiler,
+        cambio: Math.max(0, cambioVSaldo),
+      });
 
       setModalCobroDetalle(false);
       setModalImprimir(true);
-      toast.success("¡Alquiler procesado y factura generada con éxito!");
+      toast.success("¡Venta/Alquiler procesado exitosamente!");
+
+      // Limpiar automáticamente el Punto de Venta y generar nuevo consecutivo para la siguiente venta
+      handleLimpiar(true);
     } catch (err: any) {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
+
+      setTicketReciboVenta({
+        numeroRecibo: numeroRecibo,
+        fechaHoy: fechaHoy,
+        cajero: cajero,
+        cliente: {
+          nombre: clienteForm.NOMBRE || "GENERAL",
+          cedula: clienteForm.CEDULA || "N/A",
+          telefono: clienteForm.TELEFONO || "N/A",
+          direccion: clienteForm.DIRECCION || "",
+        },
+        fechaSalida: fechaSalida || fechaHoy,
+        fechaEntrada: fechaEntrada || fechaHoy,
+        items: [...gridItems],
+        totalAlquiler: totalAlquilerConDesc,
+        totalDeposito: totalDeposito,
+        totalGeneral: totalDepositoMasAlquiler,
+        cambio: Math.max(0, cambioVSaldo),
+      });
+
       setModalCobroDetalle(false);
       setModalImprimir(true);
+      handleLimpiar(true);
     } finally {
       setBGuardando(false);
     }
@@ -2409,10 +2487,11 @@ export function PuntoDeVenta() {
                     numeroFactura: devFactura,
                     montoDevuelto: devMonto,
                   });
-                  toast.success("Entrada de vestido procesada");
+                  toast.success("Entrada de vestido procesada con éxito");
                   setModalDevolucion(false);
                   setDevFactura("");
                   setDevMonto(0);
+                  handleLimpiar(true);
                 }}
                 className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 py-1.5 text-xs font-black text-white shadow-sm transition-all"
               >
@@ -3063,14 +3142,21 @@ export function PuntoDeVenta() {
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setModalImprimirAbono80mm(false)}
+                  onClick={() => {
+                    setModalImprimirAbono80mm(false);
+                    handleLimpiar(true);
+                  }}
                   className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 transition-all"
                 >
                   Cerrar
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    window.print();
+                    setModalImprimirAbono80mm(false);
+                    handleLimpiar(true);
+                  }}
                   className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm transition-all"
                 >
                   <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
@@ -3082,24 +3168,46 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================
-          MODAL: COMPROBANTE DE ALQUILER
+          MODAL: COMPROBANTE DE ALQUILER / VENTA
       ========================================================= */}
-      <Dialog open={modalImprimir} onOpenChange={setModalImprimir}>
+      <Dialog
+        open={modalImprimir}
+        onOpenChange={(open) => {
+          setModalImprimir(open);
+          if (!open) {
+            handleLimpiar(true);
+          }
+        }}
+      >
         <DialogContent className="max-w-md bg-white p-6 border border-slate-200/90 shadow-2xl rounded-2xl">
           <div className="font-mono text-xs text-slate-900">
             <div className="border-b border-dashed border-slate-400 pb-3 text-center">
               <h2 className="text-base font-black uppercase tracking-wider text-slate-900">LA CASA DEL DISFRAZ</h2>
               <p className="text-xs font-semibold text-emerald-800">Elegance Rentals</p>
               <p className="text-[10px] text-slate-500">Para toda ocasión sin importar tu edad</p>
-              <p className="mt-2 font-black text-sm text-slate-900">RECIBO N° {numeroRecibo}</p>
-              <p className="text-[10px] text-slate-500">Fecha: {fechaHoy} · Cajero: {cajero}</p>
+              <p className="mt-2 font-black text-sm text-slate-900">
+                RECIBO N° {ticketReciboVenta?.numeroRecibo || numeroRecibo}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Fecha: {ticketReciboVenta?.fechaHoy || fechaHoy} · Cajero: {ticketReciboVenta?.cajero || cajero}
+              </p>
             </div>
 
             <div className="py-2.5 text-xs space-y-1 border-b border-dashed border-slate-400 font-semibold">
-              <p><strong>CLIENTE:</strong> {clienteForm.NOMBRE?.toUpperCase() || "GENERAL"}</p>
-              <p><strong>CÉDULA:</strong> {clienteForm.CEDULA || "N/A"}</p>
-              <p><strong>TELÉFONO:</strong> {clienteForm.TELEFONO || "N/A"}</p>
-              <p><strong>SALIDA:</strong> {fechaSalida} | <strong>ENTRADA:</strong> {fechaEntrada}</p>
+              <p>
+                <strong>CLIENTE:</strong>{" "}
+                {(ticketReciboVenta?.cliente?.nombre || clienteForm.NOMBRE)?.toUpperCase() || "GENERAL"}
+              </p>
+              <p>
+                <strong>CÉDULA:</strong> {ticketReciboVenta?.cliente?.cedula || clienteForm.CEDULA || "N/A"}
+              </p>
+              <p>
+                <strong>TELÉFONO:</strong> {ticketReciboVenta?.cliente?.telefono || clienteForm.TELEFONO || "N/A"}
+              </p>
+              <p>
+                <strong>SALIDA:</strong> {ticketReciboVenta?.fechaSalida || fechaSalida} |{" "}
+                <strong>ENTRADA:</strong> {ticketReciboVenta?.fechaEntrada || fechaEntrada}
+              </p>
             </div>
 
             <div className="py-2.5 border-b border-dashed border-slate-400">
@@ -3107,21 +3215,29 @@ export function PuntoDeVenta() {
                 <span>ARTÍCULO</span>
                 <span>VALOR</span>
               </div>
-              {gridItems.map((it, i) => (
+              {(ticketReciboVenta?.items || gridItems).map((it, i) => (
                 <div key={i} className="flex justify-between py-0.5 text-xs font-bold">
-                  <span>{it.cantidad}x {it.descripcion} ({it.talla})</span>
+                  <span>
+                    {it.cantidad}x {it.descripcion} ({it.talla})
+                  </span>
                   <span>${it.totalAlquiler.toLocaleString()}</span>
                 </div>
               ))}
             </div>
 
             <div className="py-2.5 space-y-1 text-right text-xs font-bold">
-              <p>Total Alquiler: ${totalAlquilerConDesc.toLocaleString()}</p>
-              <p className="font-black text-blue-900">Total Depósito (Fianza): ${totalDeposito.toLocaleString()}</p>
-              <p className="text-sm font-black border-t pt-1.5 text-slate-900">
-                TOTAL COBRADO: ${totalDepositoMasAlquiler.toLocaleString()}
+              <p>
+                Total Alquiler: ${(ticketReciboVenta?.totalAlquiler ?? totalAlquilerConDesc).toLocaleString()}
               </p>
-              <p className="text-emerald-800 font-black">Cambio / Vuelto: ${Math.max(0, cambioVSaldo).toLocaleString()}</p>
+              <p className="font-black text-blue-900">
+                Total Depósito (Fianza): ${(ticketReciboVenta?.totalDeposito ?? totalDeposito).toLocaleString()}
+              </p>
+              <p className="text-sm font-black border-t pt-1.5 text-slate-900">
+                TOTAL COBRADO: ${(ticketReciboVenta?.totalGeneral ?? totalDepositoMasAlquiler).toLocaleString()}
+              </p>
+              <p className="text-emerald-800 font-black">
+                Cambio / Vuelto: ${(ticketReciboVenta?.cambio ?? Math.max(0, cambioVSaldo)).toLocaleString()}
+              </p>
             </div>
 
             <p className="mt-2 text-center text-[10px] text-slate-500 italic font-semibold">
@@ -3130,7 +3246,10 @@ export function PuntoDeVenta() {
           </div>
           <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200">
             <button
-              onClick={() => setModalImprimir(false)}
+              onClick={() => {
+                setModalImprimir(false);
+                handleLimpiar(true);
+              }}
               className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300"
             >
               Cerrar
@@ -3139,6 +3258,7 @@ export function PuntoDeVenta() {
               onClick={() => {
                 window.print();
                 setModalImprimir(false);
+                handleLimpiar(true);
               }}
               className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm"
             >

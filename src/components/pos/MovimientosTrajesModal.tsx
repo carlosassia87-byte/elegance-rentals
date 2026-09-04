@@ -360,71 +360,63 @@ export function MovimientosTrajesModal({
         </div>
 
         {/* =========================================================================
-            3. TARJETAS DE MÉTRICAS / KPIS RESUMEN
+            3. TARJETAS DE MÉTRICAS / KPIS RESUMEN COMPACTAS
         ========================================================================= */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 p-4 shrink-0 bg-slate-100/60 border-b border-slate-200">
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xs">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Operaciones / Clientes</div>
-            <div className="text-xl font-black text-slate-900 mt-0.5">{metricas.totalOperaciones}</div>
-            <div className="text-[10px] font-semibold text-slate-500 mt-0.5">En el rango seleccionado</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 px-4 py-2 shrink-0 bg-slate-100/80 border-b border-slate-200">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-extrabold text-slate-500 uppercase">Clientes / Ops</span>
+            <span className="text-sm font-black text-slate-900">{metricas.totalOperaciones}</span>
           </div>
 
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-2.5 shadow-2xs">
-            <div className="text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center justify-between">
-              <span>En Alquiler</span>
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            </div>
-            <div className="text-xl font-black text-amber-800 mt-0.5">{metricas.totalPrendasEnAlquiler}</div>
-            <div className="text-[10px] font-bold text-amber-700 mt-0.5">Trajes en poder del cliente</div>
+          <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-black text-amber-900 uppercase flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" /> En Alquiler
+            </span>
+            <span className="text-sm font-black text-amber-800">{metricas.totalPrendasEnAlquiler}</span>
           </div>
 
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 shadow-2xs">
-            <div className="text-[10px] font-black text-emerald-900 uppercase tracking-wider flex items-center justify-between">
-              <span>Devueltos</span>
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-            </div>
-            <div className="text-xl font-black text-emerald-800 mt-0.5">{metricas.totalPrendasDevueltas}</div>
-            <div className="text-[10px] font-bold text-emerald-700 mt-0.5">Entregados a tienda</div>
+          <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-black text-emerald-900 uppercase flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Devueltos
+            </span>
+            <span className="text-sm font-black text-emerald-800">{metricas.totalPrendasDevueltas}</span>
           </div>
 
-          <div className="rounded-xl border border-orange-200 bg-orange-50/70 p-2.5 shadow-2xs">
-            <div className="text-[10px] font-black text-orange-900 uppercase tracking-wider">Apartados / Abonos</div>
-            <div className="text-xl font-black text-orange-800 mt-0.5">{metricas.totalPrendasApartadas}</div>
-            <div className="text-[10px] font-bold text-orange-700 mt-0.5">Pendientes por entrega</div>
+          <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50/80 px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-black text-orange-900 uppercase">Apartados</span>
+            <span className="text-sm font-black text-orange-800">{metricas.totalPrendasApartadas}</span>
           </div>
 
-          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-2.5 shadow-2xs">
-            <div className="text-[10px] font-black text-blue-900 uppercase tracking-wider">Dinero Alquileres</div>
-            <div className="text-lg font-black text-blue-800 mt-0.5">
+          <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50/80 px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-black text-blue-900 uppercase">Alquileres</span>
+            <span className="text-xs font-black text-blue-800 font-mono">
               ${metricas.totalDineroAlquiler.toLocaleString("es-CO")}
-            </div>
-            <div className="text-[10px] font-bold text-blue-700 mt-0.5">Total recaudado / facturado</div>
+            </span>
           </div>
 
-          <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-2.5 shadow-2xs">
-            <div className="text-[10px] font-black text-rose-900 uppercase tracking-wider">Saldos por Cobrar</div>
-            <div className="text-lg font-black text-rose-700 mt-0.5">
+          <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-1.5 shadow-2xs">
+            <span className="text-[10px] font-black text-rose-900 uppercase">Por Cobrar</span>
+            <span className="text-xs font-black text-rose-700 font-mono">
               ${metricas.totalSaldoPorCobrar.toLocaleString("es-CO")}
-            </div>
-            <div className="text-[10px] font-bold text-rose-600 mt-0.5">Saldo pendiente clientes</div>
+            </span>
           </div>
         </div>
 
         {/* =========================================================================
             4. VISTA DUAL MASTER-DETAIL: TABLA 1 (CLIENTES) & TABLA 2 (TRAJES)
         ========================================================================= */}
-        <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0 overflow-hidden">
-          {/* TABLA 1: LISTADO DE CLIENTES Y FACTURAS (COL-SPAN-6 O 7) */}
-          <div className="col-span-12 lg:col-span-6 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white shrink-0">
+        <div className="flex-1 grid grid-cols-12 gap-3 p-3 min-h-0 overflow-hidden">
+          {/* TABLA 1: LISTADO DE CLIENTES Y FACTURAS (COL-SPAN-5) */}
+          <div className="col-span-12 lg:col-span-5 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div className="flex items-center justify-between bg-slate-900 px-4 py-2.5 text-white shrink-0">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-emerald-400" />
                 <h3 className="text-xs font-black uppercase tracking-wider">
-                  Tabla 1: Clientes y Operaciones ({operaciones.length})
+                  Tabla 1: Clientes ({operaciones.length})
                 </h3>
               </div>
               <span className="text-[10px] text-slate-300 font-semibold">
-                Haz clic en una fila para ver sus trajes
+                Clic para ver prendas
               </span>
             </div>
 
@@ -439,13 +431,12 @@ export function MovimientosTrajesModal({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black uppercase text-[10px] border-b border-slate-200">
                     <tr>
-                      <th className="p-2.5">Factura #</th>
-                      <th className="p-2.5">Fecha Salida</th>
-                      <th className="p-2.5">Cliente</th>
-                      <th className="p-2.5">Tipo</th>
-                      <th className="p-2.5 text-center">Trajes</th>
-                      <th className="p-2.5 text-right">Total</th>
-                      <th className="p-2.5 text-right">Saldo</th>
+                      <th className="p-2">Factura</th>
+                      <th className="p-2">Fecha</th>
+                      <th className="p-2">Cliente</th>
+                      <th className="p-2 text-center">Prendas</th>
+                      <th className="p-2 text-right">Total</th>
+                      <th className="p-2 text-right">Saldo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -464,17 +455,17 @@ export function MovimientosTrajesModal({
                               : "hover:bg-slate-50"
                           }`}
                         >
-                          <td className="p-2.5">
-                            <span className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200 text-[11px]">
+                          <td className="p-2">
+                            <span className="font-black text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">
                               {op.numeroFact}
                             </span>
                           </td>
-                          <td className="p-2.5 text-slate-600 font-semibold whitespace-nowrap">
+                          <td className="p-2 text-slate-600 font-semibold whitespace-nowrap text-[11px]">
                             {op.fechaSalida}
                           </td>
-                          <td className="p-2.5">
-                            <div className="font-black text-slate-900 uppercase line-clamp-1">{op.clienteNombre}</div>
-                            <div className="text-[10px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
+                          <td className="p-2">
+                            <div className="font-black text-slate-900 uppercase line-clamp-1 text-[11px]">{op.clienteNombre}</div>
+                            <div className="text-[9px] text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
                               <span>CC: {op.clienteCedula}</span>
                               {op.clienteTelefono && op.clienteTelefono !== "—" && (
                                 <>
@@ -484,34 +475,21 @@ export function MovimientosTrajesModal({
                               )}
                             </div>
                           </td>
-                          <td className="p-2.5">
-                            <span
-                              className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${
-                                op.tipoOperacion === "VENTA"
-                                  ? "bg-purple-100 text-purple-800"
-                                  : op.tipoOperacion === "APARTADO / ABONO"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}
-                            >
-                              {op.tipoOperacion}
-                            </span>
-                          </td>
-                          <td className="p-2.5 text-center">
+                          <td className="p-2 text-center">
                             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-200 text-slate-800 font-black text-[10px]">
                               {cantPrendas}
                             </span>
                           </td>
-                          <td className="p-2.5 text-right font-black text-slate-900">
+                          <td className="p-2 text-right font-black text-slate-900 text-[11px]">
                             ${op.totalAlquiler.toLocaleString("es-CO")}
                           </td>
-                          <td className="p-2.5 text-right">
+                          <td className="p-2 text-right">
                             {tieneSaldo ? (
-                              <span className="font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 text-[10px]">
+                              <span className="font-black text-rose-600 bg-rose-50 px-1 py-0.5 rounded border border-rose-200 text-[9px] whitespace-nowrap">
                                 Debe ${op.saldoPendiente.toLocaleString("es-CO")}
                               </span>
                             ) : (
-                              <span className="font-bold text-emerald-700 text-[10px]">Al día</span>
+                              <span className="font-bold text-emerald-700 text-[9px]">Al día</span>
                             )}
                           </td>
                         </tr>
@@ -523,9 +501,9 @@ export function MovimientosTrajesModal({
             </div>
           </div>
 
-          {/* TABLA 2: DETALLE DE TRAJES QUE LLEVA EL CLIENTE SELECCIONADO (COL-SPAN-6 O 5) */}
-          <div className="col-span-12 lg:col-span-6 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="bg-slate-900 px-4 py-3 text-white shrink-0">
+          {/* TABLA 2: DETALLE DE TRAJES QUE LLEVA EL CLIENTE SELECCIONADO EN TABLA CON OPCIONES (COL-SPAN-7) */}
+          <div className="col-span-12 lg:col-span-7 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div className="bg-slate-900 px-4 py-2.5 text-white shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shirt className="h-4 w-4 text-emerald-400" />
@@ -541,7 +519,7 @@ export function MovimientosTrajesModal({
               </div>
 
               {clienteSeleccionado && (
-                <div className="mt-2 pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="mt-1.5 pt-1.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div>
                     <span className="font-bold text-slate-300">Cliente: </span>
                     <strong className="text-white uppercase">{clienteSeleccionado.clienteNombre}</strong>
@@ -562,7 +540,7 @@ export function MovimientosTrajesModal({
                         <MessageCircle className="h-3 w-3" /> WhatsApp
                       </button>
                     )}
-                    <span className="text-[11px] text-slate-300">
+                    <span className="text-[10px] text-slate-300">
                       Fecha Entrega: <strong className="text-white">{clienteSeleccionado.fechaEntregaPactada}</strong>
                     </span>
                   </div>
@@ -575,7 +553,7 @@ export function MovimientosTrajesModal({
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-400">
                   <Package className="h-12 w-12 text-slate-300 mb-2" />
                   <p className="font-bold text-sm text-slate-600">Selecciona un cliente a la izquierda</p>
-                  <p className="text-xs text-slate-400 mt-1">Verás todos los trajes que lleva y su estado actual</p>
+                  <p className="text-xs text-slate-400 mt-1">Verás la tabla completa de trajes con opciones de gestión</p>
                 </div>
               ) : clienteSeleccionado.items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center text-slate-400">
@@ -583,98 +561,118 @@ export function MovimientosTrajesModal({
                   <p className="font-bold text-sm text-slate-700">Sin prendas detalladas registradas</p>
                 </div>
               ) : (
-                <div className="p-3 space-y-3">
-                  {clienteSeleccionado.items.map((item, idx) => {
-                    const estaEnAlquiler = item.estadoPrenda === "EN ALQUILER";
-                    const estaDevuelto = item.estadoPrenda === "DEVUELTO A TIENDA";
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black uppercase text-[10px] border-b border-slate-200">
+                    <tr>
+                      <th className="p-2">Cód</th>
+                      <th className="p-2">Descripción de la Prenda</th>
+                      <th className="p-2 text-center">Talla</th>
+                      <th className="p-2 text-center">Cant</th>
+                      <th className="p-2 text-right">Alquiler</th>
+                      <th className="p-2 text-right">Depósito</th>
+                      <th className="p-2 text-center">Estado Prenda</th>
+                      <th className="p-2 text-right">Opciones / Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {clienteSeleccionado.items.map((item, idx) => {
+                      const estaEnAlquiler = item.estadoPrenda === "EN ALQUILER";
 
-                    return (
-                      <div
-                        key={item.id || idx}
-                        className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 shadow-2xs hover:bg-white hover:border-slate-300 transition-all space-y-2.5"
-                      >
-                        {/* Cabecera del Item */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                Cód: {item.codigoBarras || "S/C"}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                Talla: <strong className="text-slate-900">{item.talla}</strong>
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                Cant: <strong className="text-slate-900">{item.cantidad}</strong>
-                              </span>
-                            </div>
-                            <h4 className="font-black text-slate-900 text-xs mt-1 uppercase line-clamp-2">
+                      return (
+                        <tr
+                          key={item.id || idx}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="p-2 font-mono text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                            {item.codigoBarras || "S/C"}
+                          </td>
+                          <td className="p-2 max-w-[220px]">
+                            <div className="font-black text-slate-900 uppercase text-[11px] line-clamp-2">
                               {item.descripcion}
-                            </h4>
-                          </div>
-
-                          {/* Badge de Estado del Traje */}
-                          <div className="shrink-0 flex flex-col items-end">
+                            </div>
+                            {item.fechaDevolucionReal && (
+                              <div className="text-[9px] text-emerald-700 font-semibold mt-0.5">
+                                Devuelto: {new Date(item.fechaDevolucionReal).toLocaleDateString("es-CO")}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2 text-center font-black text-slate-800">
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[9px]">
+                              {item.talla}
+                            </span>
+                          </td>
+                          <td className="p-2 text-center font-black text-slate-900">
+                            {item.cantidad}
+                          </td>
+                          <td className="p-2 text-right font-black text-slate-900 font-mono text-[11px]">
+                            ${item.valorAlquiler.toLocaleString("es-CO")}
+                          </td>
+                          <td className="p-2 text-right font-black text-emerald-800 font-mono text-[11px]">
+                            ${item.valorDeposito.toLocaleString("es-CO")}
+                          </td>
+                          <td className="p-2 text-center whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] ${getBadgeEstadoPrenda(
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] ${getBadgeEstadoPrenda(
                                 item.estadoPrenda
                               )}`}
                             >
                               <span className="h-1.5 w-1.5 rounded-full bg-current" />
                               {item.estadoPrenda}
                             </span>
-                            {item.fechaDevolucionReal && (
-                              <span className="text-[9px] text-emerald-700 font-semibold mt-0.5">
-                                Devuelto: {new Date(item.fechaDevolucionReal).toLocaleDateString("es-CO")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                          </td>
+                          <td className="p-2 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {estaEnAlquiler && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDevolverTraje(item)}
+                                  title="Marcar como Devuelto a Tienda"
+                                  className="flex items-center gap-1 h-6.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-2 text-[10px] font-black text-white shadow-2xs transition-all active:scale-95"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" /> Devolver
+                                </button>
+                              )}
 
-                        {/* Desglose de Valores y Acciones */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 text-xs">
-                          <div className="flex items-center gap-3">
-                            <span className="text-slate-600 font-medium">
-                              Alquiler: <strong className="text-slate-900">${item.valorAlquiler.toLocaleString("es-CO")}</strong>
-                            </span>
-                            {item.valorDeposito > 0 && (
-                              <span className="text-slate-600 font-medium">
-                                Depósito: <strong className="text-emerald-700">${item.valorDeposito.toLocaleString("es-CO")}</strong>
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Botón de Acción Rápida */}
-                          <div className="flex items-center gap-1.5">
-                            {estaEnAlquiler && (
-                              <button
-                                type="button"
-                                onClick={() => handleDevolverTraje(item)}
-                                className="flex items-center gap-1 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-2.5 text-[11px] font-black text-white shadow-xs transition-all active:scale-95"
+                              <select
+                                value={item.estadoPrenda}
+                                onChange={(e) =>
+                                  handleCambiarEstadoPrenda(item, e.target.value as EstadoPrenda)
+                                }
+                                title="Cambiar estado de la prenda"
+                                className="h-6.5 rounded-lg border border-slate-300 bg-white px-1.5 text-[9px] font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                               >
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Marcar como Devuelto
-                              </button>
-                            )}
-
-                            {/* Selector para forzar otro estado */}
-                            <select
-                              value={item.estadoPrenda}
-                              onChange={(e) =>
-                                handleCambiarEstadoPrenda(item, e.target.value as EstadoPrenda)
-                              }
-                              className="h-7 rounded-lg border border-slate-300 bg-white px-2 text-[10px] font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            >
-                              <option value="EN ALQUILER">EN ALQUILER</option>
-                              <option value="DEVUELTO A TIENDA">DEVUELTO A TIENDA</option>
-                              <option value="EN BODEGA">EN BODEGA</option>
-                              <option value="VENTA">VENTA</option>
-                              <option value="ABONO / APARTADO">ABONO / APARTADO</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                                <option value="EN ALQUILER">EN ALQUILER</option>
+                                <option value="DEVUELTO A TIENDA">DEVUELTO A TIENDA</option>
+                                <option value="EN BODEGA">EN BODEGA</option>
+                                <option value="VENTA">VENTA</option>
+                                <option value="ABONO / APARTADO">ABONO / APARTADO</option>
+                              </select>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {clienteSeleccionado.items.length > 1 && (
+                    <tfoot className="bg-slate-50 border-t border-slate-200 font-black text-slate-800 text-[10px]">
+                      <tr>
+                        <td colSpan={3} className="p-2 text-right uppercase text-slate-500">
+                          Totales de esta Factura:
+                        </td>
+                        <td className="p-2 text-center">
+                          {clienteSeleccionado.items.reduce((a, b) => a + b.cantidad, 0)}
+                        </td>
+                        <td className="p-2 text-right font-mono">
+                          ${clienteSeleccionado.items.reduce((a, b) => a + b.valorAlquiler * b.cantidad, 0).toLocaleString("es-CO")}
+                        </td>
+                        <td className="p-2 text-right font-mono text-emerald-800">
+                          ${clienteSeleccionado.items.reduce((a, b) => a + b.valorDeposito * b.cantidad, 0).toLocaleString("es-CO")}
+                        </td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
               )}
             </div>
           </div>
