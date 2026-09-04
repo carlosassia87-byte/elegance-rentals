@@ -24,6 +24,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -43,15 +44,32 @@ function AuthPage() {
     navigate({ to: "/admin" });
   }
 
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({ email, password });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Usuario creado. Ahora avísanos para asignarle el rol de administrador.");
+    setMode("login");
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Panel de administración</CardTitle>
-          <CardDescription>Ingresa tus credenciales para continuar.</CardDescription>
+          <CardTitle>{mode === "login" ? "Panel de administración" : "Crear usuario"}</CardTitle>
+          <CardDescription>
+            {mode === "login"
+              ? "Ingresa tus credenciales para continuar."
+              : "Crea la cuenta principal del negocio."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo electrónico</Label>
               <Input
@@ -73,7 +91,19 @@ function AuthPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Ingresando..." : "Ingresar"}
+              {loading
+                ? "Procesando..."
+                : mode === "login"
+                  ? "Ingresar"
+                  : "Crear cuenta"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+            >
+              {mode === "login" ? "Crear una cuenta nueva" : "Ya tengo cuenta"}
             </Button>
           </form>
         </CardContent>
