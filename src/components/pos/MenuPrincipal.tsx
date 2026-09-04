@@ -28,6 +28,7 @@ import {
   Store,
   Layers,
   Activity,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -260,15 +261,15 @@ export function MenuPrincipal({
 
             {permisos.devoluciones && (
               <button
-                onClick={() => handleAccionConPermiso("entrada_vestido", true, "Devolución")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
+                onClick={() => handleAccionConPermiso("entrada_vestido", true, "Devolución & Depósito")}
+                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-all group ${
                   sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
                 }`}
-                title="Entrada de Vestidos / Reintegro de Depósito"
+                title="Devolución de Trajes / Reintegro de Depósito"
               >
                 <div className="flex items-center gap-3">
-                  <ArrowUpRight className="h-4 w-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
-                  {sidebarExpandido && <span>Entrada de Vestidos</span>}
+                  <RotateCcw className="h-4 w-4 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  {sidebarExpandido && <span>Devolución & Depósito</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
               </button>

@@ -70,6 +70,7 @@ import { MenuPrincipal } from "./MenuPrincipal";
 import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
+import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -1279,7 +1280,7 @@ export function PuntoDeVenta() {
           onClick={() => setModalDevolucion(true)}
           className="h-8.5 rounded-xl bg-teal-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
-          ENTRADA VESTIDO
+          DEVOLUCIÓN & DEPÓSITO
         </button>
       </div>
 
@@ -2432,75 +2433,17 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================
-          MODAL: ENTRADA VESTIDO / DEVOLUCIÓN
+          MODAL: DEVOLUCIÓN DE TRAJES & REINTEGRO DE DEPÓSITOS
       ========================================================= */}
-      <Dialog open={modalDevolucion} onOpenChange={setModalDevolucion}>
-        <DialogContent className="max-w-md bg-white p-0 border border-slate-200/90 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 bg-slate-900 text-white">
-            <span className="font-black text-emerald-400 uppercase text-xs tracking-wider">
-              Entrada de Prenda & Devolución de Depósito
-            </span>
-            <button
-              onClick={() => setModalDevolucion(false)}
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="p-5 space-y-3 text-xs font-bold bg-slate-50/50">
-            <div>
-              <label className="block mb-1 text-slate-700">N° Factura / Recibo de Alquiler</label>
-              <input
-                type="text"
-                placeholder="Ej. ALQ-000124"
-                value={devFactura}
-                onChange={(e) => setDevFactura(e.target.value)}
-                className="h-8 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 font-black text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none shadow-2xs"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-slate-700">Monto de Depósito a Devolver ($)</label>
-              <input
-                type="number"
-                placeholder="0"
-                value={devMonto || ""}
-                onChange={(e) => setDevMonto(Number(e.target.value) || 0)}
-                className="h-10 w-full rounded-xl border border-emerald-300 bg-emerald-50/70 px-3 font-mono text-lg font-black text-emerald-900 focus:bg-white focus:border-emerald-500 focus:outline-none shadow-2xs"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setModalDevolucion(false)}
-                className="rounded-xl bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 text-xs font-bold text-slate-700 border border-slate-300 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  if (!devFactura) {
-                    toast.error("Ingresa el número de factura");
-                    return;
-                  }
-                  await registrarDevolucionVestido({
-                    numeroFactura: devFactura,
-                    montoDevuelto: devMonto,
-                  });
-                  toast.success("Entrada de vestido procesada con éxito");
-                  setModalDevolucion(false);
-                  setDevFactura("");
-                  setDevMonto(0);
-                  handleLimpiar(true);
-                }}
-                className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 py-1.5 text-xs font-black text-white shadow-sm transition-all"
-              >
-                Confirmar Devolución
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DevolucionTrajesModal
+        open={modalDevolucion}
+        onOpenChange={setModalDevolucion}
+        empresa={empresaConfig}
+        cajeroNombre={cajero}
+        onDevolucionExitosa={() => {
+          handleLimpiar(true);
+        }}
+      />
 
       {/* =========================================================
           MODAL: ENTREGA VESTIDO APARTADO (IDÉNTICO A LA CAPTURA WINDEV)
@@ -3371,6 +3314,7 @@ export function PuntoDeVenta() {
         open={modalMovimientosTrajes}
         onOpenChange={setModalMovimientosTrajes}
         empresa={empresaConfig}
+        cajeroNombre={cajero}
       />
 
       {/* =========================================================

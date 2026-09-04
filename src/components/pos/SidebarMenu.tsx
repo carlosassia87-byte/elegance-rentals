@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Laptop,
   Activity,
+  RotateCcw,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -209,11 +210,11 @@ export function SidebarMenu({
             {permisos.devoluciones && (
               <button
                 onClick={() => handleItemClick("entrada_vestido")}
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all group"
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-800 transition-all group"
               >
                 <div className="flex items-center gap-2.5">
-                  <ArrowUpRight className="h-4 w-4 text-emerald-600 group-hover:scale-110 transition-transform" />
-                  <span>Entrada Traje / Devolución</span>
+                  <RotateCcw className="h-4 w-4 text-teal-600 group-hover:scale-110 transition-transform" />
+                  <span>Devolución de Traje & Depósito</span>
                 </div>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
               </button>
