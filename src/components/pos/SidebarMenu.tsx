@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Laptop,
+  Activity,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -180,6 +181,21 @@ export function SidebarMenu({
             <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
               Operaciones y Devoluciones
             </div>
+
+            {permisos.movimientosTrajes !== false && (
+              <button
+                onClick={() => handleItemClick("movimientos_trajes")}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-black text-emerald-900 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/90 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Activity className="h-4 w-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                  <span>Control de Movimientos & Estados</span>
+                </div>
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-black">
+                  AUDITORÍA
+                </span>
+              </button>
+            )}
 
             {permisos.apartadosAbonos && (
               <button

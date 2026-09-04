@@ -301,6 +301,7 @@ export function GestionUsuariosModal({
                     { key: "crearModificarClientes", label: "Registrar/Editar Clientes" },
                     { key: "apartadosAbonos", label: "Apartados y Abonos" },
                     { key: "devolucionVestidos", label: "Devolución / Entrada Vestido" },
+                    { key: "movimientosTrajes", label: "Control de Movimientos y Trajes" },
                     { key: "gastosSalidas", label: "Registrar Gastos de Caja" },
                     { key: "reimpresion", label: "Reimprimir Recibos" },
                     { key: "cierreCaja", label: "Arqueo y Cierre de Caja" },

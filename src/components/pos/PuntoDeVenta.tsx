@@ -66,6 +66,7 @@ import { CierreCajaModal } from "./CierreCajaModal";
 import { PosLogin } from "./PosLogin";
 import { MenuPrincipal } from "./MenuPrincipal";
 import { GestionUsuariosModal } from "./GestionUsuariosModal";
+import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -200,6 +201,7 @@ export function PuntoDeVenta() {
   const [modalCajasConfig, setModalCajasConfig] = useState(false);
   const [modalCierreCaja, setModalCierreCaja] = useState(false);
   const [modalUsuarios, setModalUsuarios] = useState(false);
+  const [modalMovimientosTrajes, setModalMovimientosTrajes] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -406,6 +408,9 @@ export function PuntoDeVenta() {
         break;
       case "cierre_caja":
         setModalCierreCaja(true);
+        break;
+      case "movimientos_trajes":
+        setModalMovimientosTrajes(true);
         break;
       case "config_empresa":
         setModalEmpresa(true);
@@ -912,6 +917,15 @@ export function PuntoDeVenta() {
                     className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
                   >
                     <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalMovimientosTrajes(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95"
+                    title="Control de Movimientos y Estado de Trajes por Rango de Fechas"
+                  >
+                    <Activity className="h-3.5 w-3.5" /> MOVIMIENTOS & ESTADOS
                   </button>
                 </div>
 
@@ -3214,6 +3228,15 @@ export function PuntoDeVenta() {
         open={modalUsuarios}
         onOpenChange={setModalUsuarios}
         usuarioActual={usuarioActivo}
+      />
+
+      {/* =========================================================
+          MODAL: CONTROL DE MOVIMIENTOS Y ESTADO DE TRAJES
+      ========================================================= */}
+      <MovimientosTrajesModal
+        open={modalMovimientosTrajes}
+        onOpenChange={setModalMovimientosTrajes}
+        empresa={empresaConfig}
       />
     </div>
   );

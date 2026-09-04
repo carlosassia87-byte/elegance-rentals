@@ -12,6 +12,7 @@ export interface PermisosUsuario {
   crearModificarClientes: boolean;
   apartadosAbonos: boolean;
   devolucionVestidos: boolean;
+  movimientosTrajes: boolean;
   gastosSalidas: boolean;
   reimpresion: boolean;
   cierreCaja: boolean;
@@ -51,6 +52,7 @@ export const PERMISOS_SUPER_ADMIN: PermisosUsuario = {
   crearModificarClientes: true,
   apartadosAbonos: true,
   devolucionVestidos: true,
+  movimientosTrajes: true,
   gastosSalidas: true,
   reimpresion: true,
   cierreCaja: true,
@@ -71,6 +73,7 @@ export const PERMISOS_ADMIN: PermisosUsuario = {
   crearModificarClientes: true,
   apartadosAbonos: true,
   devolucionVestidos: true,
+  movimientosTrajes: true,
   gastosSalidas: true,
   reimpresion: true,
   cierreCaja: true,
@@ -91,6 +94,7 @@ export const PERMISOS_CAJERO: PermisosUsuario = {
   crearModificarClientes: true,
   apartadosAbonos: true,
   devolucionVestidos: true,
+  movimientosTrajes: true,
   gastosSalidas: true,
   reimpresion: true,
   cierreCaja: true,

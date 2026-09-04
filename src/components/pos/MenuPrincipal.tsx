@@ -27,6 +27,7 @@ import {
   ArrowRight,
   Store,
   Layers,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -223,8 +224,26 @@ export function MenuPrincipal({
           <div className="space-y-1">
             {sidebarExpandido && (
               <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                Operaciones & Caja
+                Operaciones & Auditoría
               </div>
+            )}
+
+            {permisos.movimientosTrajes !== false && (
+              <button
+                onClick={() => handleAccionConPermiso("movimientos_trajes", true, "Control de Movimientos")}
+                className={`flex w-full items-center rounded-xl py-2 font-black text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                }`}
+                title="Control de Movimientos y Estado de Trajes"
+              >
+                <div className="flex items-center gap-3">
+                  <Activity className="h-4 w-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  {sidebarExpandido && <span>Movimientos & Trajes</span>}
+                </div>
+                {sidebarExpandido && (
+                  <span className="text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.2 rounded">AUDITORÍA</span>
+                )}
+              </button>
             )}
 
             {permisos.apartadosAbonos && (
