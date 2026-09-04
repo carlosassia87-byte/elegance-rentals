@@ -23,6 +23,7 @@ import {
   Wallet,
   Settings,
   LogOut,
+  Activity,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
