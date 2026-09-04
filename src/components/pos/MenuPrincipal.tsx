@@ -178,47 +178,43 @@ export function MenuPrincipal({
           </div>
 
           {/* SECCIÓN 2: CLIENTES */}
-          {(permisos.buscarClientes || permisos.crearClientes) && (
-            <div className="space-y-1">
-              {sidebarExpandido && (
-                <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Clientes
+          <div className="space-y-1">
+            {sidebarExpandido && (
+              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Clientes
+              </div>
+            )}
+
+            <button
+              onClick={() => handleAccionConPermiso("catalogo_clientes", true, "Catálogo de Clientes")}
+              className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-800 hover:bg-sky-50 hover:text-sky-900 transition-all group ${
+                sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+              }`}
+              title="Catálogo y Directorio General de Clientes"
+            >
+              <div className="flex items-center gap-3">
+                <Users className="h-4 w-4 text-sky-600 shrink-0 group-hover:scale-110 transition-transform" />
+                {sidebarExpandido && <span>Catálogo de Clientes</span>}
+              </div>
+              {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+
+            {permisos.crearModificarClientes !== false && (
+              <button
+                onClick={() => handleAccionConPermiso("nuevo_cliente", true, "Registrar Cliente")}
+                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                }`}
+                title="Registrar Nuevo Cliente"
+              >
+                <div className="flex items-center gap-3">
+                  <UserCheck className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  {sidebarExpandido && <span>Registrar Cliente</span>}
                 </div>
-              )}
-
-              {permisos.buscarClientes && (
-                <button
-                  onClick={() => handleAccionConPermiso("buscar_cliente", true, "Buscar Cliente")}
-                  className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                    sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
-                  }`}
-                  title="Directorio de Clientes"
-                >
-                  <div className="flex items-center gap-3">
-                    <Search className="h-4 w-4 text-sky-600 shrink-0 group-hover:scale-110 transition-transform" />
-                    {sidebarExpandido && <span>Buscar Clientes</span>}
-                  </div>
-                  {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-                </button>
-              )}
-
-              {permisos.crearClientes && (
-                <button
-                  onClick={() => handleAccionConPermiso("nuevo_cliente", true, "Registrar Cliente")}
-                  className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                    sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
-                  }`}
-                  title="Registrar / Modificar Cliente"
-                >
-                  <div className="flex items-center gap-3">
-                    <Users className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
-                    {sidebarExpandido && <span>Registrar Cliente</span>}
-                  </div>
-                  {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
-                </button>
-              )}
-            </div>
-          )}
+                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+              </button>
+            )}
+          </div>
 
           {/* SECCIÓN 3: OPERACIONES & CAJA */}
           <div className="space-y-1">

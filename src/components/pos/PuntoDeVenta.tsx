@@ -24,6 +24,7 @@ import {
   Settings,
   LogOut,
   Activity,
+  Users,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ import { PosLogin } from "./PosLogin";
 import { MenuPrincipal } from "./MenuPrincipal";
 import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
+import { CatalogoClientesModal } from "./CatalogoClientesModal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -203,6 +205,7 @@ export function PuntoDeVenta() {
   const [modalCierreCaja, setModalCierreCaja] = useState(false);
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [modalMovimientosTrajes, setModalMovimientosTrajes] = useState(false);
+  const [modalCatalogoClientes, setModalCatalogoClientes] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -390,7 +393,8 @@ export function PuntoDeVenta() {
         abrirCrearArticulo();
         break;
       case "buscar_cliente":
-        setModalBuscarCli(true);
+      case "catalogo_clientes":
+        setModalCatalogoClientes(true);
         break;
       case "nuevo_cliente":
         setModalCliente(true);
@@ -918,6 +922,15 @@ export function PuntoDeVenta() {
                     className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
                   >
                     <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalCatalogoClientes(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
+                    title="Directorio y Catálogo General de Clientes"
+                  >
+                    <Users className="h-3.5 w-3.5" /> CATÁLOGO CLIENTES
                   </button>
 
                   <button
@@ -3237,6 +3250,25 @@ export function PuntoDeVenta() {
       <MovimientosTrajesModal
         open={modalMovimientosTrajes}
         onOpenChange={setModalMovimientosTrajes}
+        empresa={empresaConfig}
+      />
+
+      {/* =========================================================
+          MODAL: DIRECTORIO Y CATÁLOGO GENERAL DE CLIENTES
+      ========================================================= */}
+      <CatalogoClientesModal
+        open={modalCatalogoClientes}
+        onOpenChange={setModalCatalogoClientes}
+        onSeleccionarCliente={(cli) => {
+          setClienteForm(cli);
+          if (cli.NOTA && cli.NOTA.trim() !== "") {
+            setNotaAlertaVisible(true);
+            toast.warning(`⚠️ NOTA: ${cli.NOTA}`);
+          } else {
+            toast.success(`Cliente cargado: ${cli.NOMBRE}`);
+            setModalOperacionVisible(true);
+          }
+        }}
         empresa={empresaConfig}
       />
     </div>

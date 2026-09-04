@@ -142,39 +142,35 @@ export function SidebarMenu({
           </div>
 
           {/* SECCIÓN 2: CLIENTES */}
-          {(permisos.buscarClientes || permisos.crearClientes) && (
-            <div className="space-y-1">
-              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                Gestión de Clientes
-              </div>
-
-              {permisos.buscarClientes && (
-                <button
-                  onClick={() => handleItemClick("buscar_cliente")}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-all group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Search className="h-4 w-4 text-sky-600 group-hover:scale-110 transition-transform" />
-                    <span>Buscar Cliente / Directorio</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
-                </button>
-              )}
-
-              {permisos.crearClientes && (
-                <button
-                  onClick={() => handleItemClick("nuevo_cliente")}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 transition-all group"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <UserPlus className="h-4 w-4 text-indigo-600 group-hover:scale-110 transition-transform" />
-                    <span>Registrar / Modificar Cliente</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
-                </button>
-              )}
+          <div className="space-y-1">
+            <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Gestión de Clientes
             </div>
-          )}
+
+            <button
+              onClick={() => handleItemClick("catalogo_clientes")}
+              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-800 hover:bg-sky-50 hover:text-sky-800 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <Users className="h-4 w-4 text-sky-600 group-hover:scale-110 transition-transform" />
+                <span>Catálogo / Directorio de Clientes</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
+            </button>
+
+            {permisos.crearModificarClientes !== false && (
+              <button
+                onClick={() => handleItemClick("nuevo_cliente")}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <UserPlus className="h-4 w-4 text-indigo-600 group-hover:scale-110 transition-transform" />
+                  <span>Registrar Nuevo Cliente</span>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
+              </button>
+            )}
+          </div>
 
           {/* SECCIÓN 3: OPERACIONES POS */}
           <div className="space-y-1">

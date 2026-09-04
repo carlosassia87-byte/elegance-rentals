@@ -98,6 +98,37 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
   }
 }
 
+export async function listarTodosLosClientes(search = ""): Promise<Cliente[]> {
+  try {
+    let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE");
+    if (search.trim()) {
+      const isNum = !isNaN(Number(search));
+      if (isNum) {
+        query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,CEDULA.eq.${Number(search)}`);
+      } else {
+        query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
+      }
+    }
+    const { data, error } = await query.limit(300);
+    if (error) throw error;
+    return (data as unknown as Cliente[]) ?? [];
+  } catch (err) {
+    console.error("Error listando clientes:", err);
+    return [];
+  }
+}
+
+export async function eliminarCliente(id: number): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("CLIENTES" as any).delete().eq("IDCLIENTES", id);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Error eliminando cliente:", err);
+    return false;
+  }
+}
+
 // ==========================================
 // SERVICIO DE ARTÍCULOS / TRAJES / DISFRACES
 // ==========================================
