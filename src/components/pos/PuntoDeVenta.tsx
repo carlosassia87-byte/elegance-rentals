@@ -878,20 +878,20 @@ export function PuntoDeVenta() {
           onLogout={handleLogout}
         />
       ) : (
-        <div className="flex h-screen w-full flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-2">
+        <div className="flex h-screen w-full flex-col bg-[#F8FAFC] font-sans text-slate-800 select-none overflow-hidden p-3 gap-2.5">
           {/* =========================================================================
               1. SECCIÓN SUPERIOR: FORMULARIO RECOGIDO A LA IZQUIERDA + LOGO A LA DERECHA
           ========================================================================= */}
-          <div className="flex items-start gap-3 pb-1">
+          <div className="flex items-start gap-3">
             {/* LADO IZQUIERDO: TÍTULO "PUNTO DE VENTA" + FORMULARIO COMPACTO DE 3 COLUMNAS */}
             <div className="flex-1 flex flex-col min-w-0">
               {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
-              <div className="flex items-center justify-between px-1 pb-1">
+              <div className="flex items-center justify-between px-1 pb-1.5">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setSidebarAbierto(true)}
-                    className="flex items-center justify-center rounded bg-red-600 px-2.5 py-1 text-xs font-black text-white hover:bg-red-700 shadow-md transition-all active:scale-95"
+                    className="flex items-center justify-center rounded-xl bg-slate-900 hover:bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
                     title="Abrir Menú Lateral de Opciones"
                   >
                     <Menu className="h-4 w-4" />
@@ -900,33 +900,36 @@ export function PuntoDeVenta() {
                   <button
                     type="button"
                     onClick={() => setVistaActiva("menu")}
-                    className="flex items-center gap-1.5 rounded bg-slate-900 px-3.5 py-1 text-xs font-black text-white hover:bg-black shadow-md border border-slate-700 transition-all active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl bg-slate-800 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-900 shadow-xs border border-slate-700 transition-all active:scale-95"
                     title="Regresar a la Pantalla de Menú Principal"
                   >
-                    <ChevronLeft className="h-4 w-4 text-amber-400" />
+                    <ChevronLeft className="h-4 w-4 text-emerald-400" />
                     <span className="tracking-wide uppercase">MENÚ PRINCIPAL</span>
                   </button>
 
                   <button
                     onClick={() => setModalArchivoArticulo(true)}
-                    className="flex items-center gap-1.5 rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
+                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
                   >
                     <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
                   </button>
                 </div>
 
-                <h1 className="text-2xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
-                  PUNTO DE VENTA
-                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase font-sans leading-none">
+                    PUNTO DE VENTA & ALQUILER
+                  </h1>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setModalCajasConfig(true)}
-                    className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-black text-slate-800 border border-slate-400 shadow-sm hover:bg-slate-100 transition-all"
+                    className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-[11px] font-bold text-slate-700 border border-slate-200 shadow-xs hover:bg-slate-50 transition-all"
                     title="Configuración de Caja, Terminal y Pantalla"
                   >
-                    <Monitor className="h-3.5 w-3.5 text-red-600" />
+                    <Monitor className="h-3.5 w-3.5 text-emerald-600" />
                     <span>{terminalConfig.nombreCaja}</span>
                     <span className="text-[10px] text-slate-400">({terminalConfig.prefijo})</span>
                   </button>
@@ -934,7 +937,7 @@ export function PuntoDeVenta() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-1 rounded bg-slate-200 hover:bg-red-100 hover:text-red-700 px-2 py-1 text-[11px] font-bold text-slate-700 border border-slate-400"
+                    className="flex items-center gap-1 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-700 px-2.5 py-1.5 text-[11px] font-bold text-slate-600 border border-slate-200 transition-all"
                     title="Cerrar Turno de Cajero"
                   >
                     <LogOut className="h-3.5 w-3.5" />
@@ -942,16 +945,16 @@ export function PuntoDeVenta() {
                 </div>
               </div>
 
-          {/* FORMULARIO DE CABECERA COMPACTO */}
-          <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-2 shadow-inner space-y-1.5">
+          {/* FORMULARIO DE CABECERA COMPACTO CON ESTILO LIMPIO */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs space-y-1.5">
             <div className="grid grid-cols-12 gap-x-2.5 gap-y-1.5 text-xs">
               {/* FILA 1 */}
               <div className="col-span-3 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">ESTADO</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">ESTADO</span>
                 <select
                   value={estadoCli}
                   onChange={(e) => setEstadoCli(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-600 shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
                 >
                   <option value="ACTIVO">ACTIVO</option>
                   <option value="PENDIENTE">PENDIENTE</option>
@@ -960,7 +963,7 @@ export function PuntoDeVenta() {
               </div>
 
               <div className="col-span-5 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-800 text-xs uppercase">CEDULA</span>
+                <span className="w-16 font-extrabold text-slate-700 text-xs uppercase">CEDULA</span>
                 <input
                   type="text"
                   placeholder="Ingresa cédula y Enter"
@@ -969,129 +972,129 @@ export function PuntoDeVenta() {
                     setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
                   }
                   onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta()}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1.5">
-                <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA SALIDA</span>
+                <span className="w-24 font-extrabold text-slate-700 text-xs uppercase">FECHA SALIDA</span>
                 <input
                   type="date"
                   value={fechaSalida}
                   onChange={(e) => setFechaSalida(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               {/* FILA 2 */}
               <div className="col-span-3 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">FECHA</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">FECHA</span>
                 <input
                   type="date"
                   value={fechaHoy}
                   onChange={(e) => setFechaHoy(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-800 text-xs uppercase">NOMBRE</span>
+                <span className="w-16 font-extrabold text-slate-700 text-xs uppercase">NOMBRE</span>
                 <input
                   type="text"
-                  placeholder="Nombre completo"
+                  placeholder="Nombre completo del cliente"
                   value={clienteForm.NOMBRE || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, NOMBRE: e.target.value }))}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-3 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1.5">
-                <span className="w-24 font-black text-slate-800 text-xs uppercase">FECHA ENTRADA</span>
+                <span className="w-24 font-extrabold text-slate-700 text-xs uppercase">FECHA ENTRADA</span>
                 <input
                   type="date"
                   value={fechaEntrada}
                   onChange={(e) => setFechaEntrada(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-800 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-2.5 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               {/* FILA 3 */}
               <div className="col-span-3 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">N.RECIBO</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">N.RECIBO</span>
                 <input
                   type="text"
                   value={numeroRecibo}
                   onChange={(e) => setNumeroRecibo(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black text-red-700 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-emerald-50/60 px-2.5 text-xs font-black text-emerald-800 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">DIRECCION</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">DIRECCION</span>
                 <input
                   type="text"
                   placeholder="Dirección"
                   value={clienteForm.DIRECCION || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, DIRECCION: e.target.value }))}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-3 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div className="col-span-4 flex items-center gap-1.5">
-                <span className="w-24 font-black text-slate-800 text-xs uppercase">ESTADO TRAJE</span>
+                <span className="w-24 font-extrabold text-slate-700 text-xs uppercase">ESTADO TRAJE</span>
                 <button
                   type="button"
                   onClick={() => setModalOperacionVisible(true)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-xs font-black uppercase text-left text-slate-900 hover:bg-slate-100 flex items-center justify-between shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-3 text-xs font-bold uppercase text-left text-slate-800 hover:bg-white flex items-center justify-between shadow-2xs"
                 >
-                  <span className="truncate text-red-700">{estadoTraje}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                  <span className="truncate text-emerald-700 font-extrabold">{estadoTraje}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </button>
               </div>
 
               {/* FILA 4 */}
               <div className="col-span-3 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">CAJERO</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">CAJERO</span>
                 <input
                   type="text"
                   value={cajero}
                   onChange={(e) => setCajero(e.target.value)}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2 text-[10px] font-black uppercase text-slate-700 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-2.5 text-[10px] font-bold uppercase text-slate-700 focus:bg-white focus:outline-none shadow-2xs"
                 />
               </div>
 
               <div className="col-span-5 flex items-center gap-1.5">
-                <span className="w-16 font-black text-slate-700 text-xs uppercase">TELEFONO</span>
+                <span className="w-16 font-extrabold text-slate-600 text-xs uppercase">TELEFONO</span>
                 <input
                   type="text"
-                  placeholder="Teléfono"
+                  placeholder="Teléfono de contacto"
                   value={clienteForm.TELEFONO || ""}
                   onChange={(e) => setClienteForm((p) => ({ ...p, TELEFONO: e.target.value }))}
-                  className="h-7 flex-1 rounded border border-slate-400 bg-white px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none shadow-inner"
+                  className="h-7.5 flex-1 rounded-xl border border-slate-300 bg-slate-50/60 px-3 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setModalCliente(true)}
-                  className="h-7 rounded bg-[#B82E1F] px-3 text-xs font-black text-white shadow hover:bg-red-800 active:scale-95 whitespace-nowrap"
+                  className="h-7.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 whitespace-nowrap transition-all"
                 >
-                  Mod
+                  Modificar
                 </button>
               </div>
             </div>
 
             {/* BANNER DE NOTA */}
             {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
-              <div className="flex items-center justify-between rounded border-2 border-amber-500 bg-amber-100 px-3 py-1 text-xs font-black text-amber-950 shadow-sm animate-pulse">
+              <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-950 shadow-xs animate-pulse">
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="flex items-center gap-1 rounded bg-amber-700 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide">
-                    <AlertTriangle className="h-3 w-3" /> NOTA CLIENTE:
+                  <span className="flex items-center gap-1 rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide">
+                    <AlertTriangle className="h-3 w-3" /> NOTA:
                   </span>
-                  <span className="truncate text-xs font-bold">{clienteForm.NOTA}</span>
+                  <span className="truncate text-xs font-semibold">{clienteForm.NOTA}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setNotaAlertaVisible(true)}
-                  className="ml-2 text-blue-800 underline hover:text-blue-950 whitespace-nowrap text-xs font-black"
+                  className="ml-2 text-emerald-800 underline hover:text-emerald-950 whitespace-nowrap text-xs font-bold"
                 >
                   [Ver Completa]
                 </button>
@@ -1100,92 +1103,92 @@ export function PuntoDeVenta() {
           </div>
         </div>
 
-        {/* LADO DERECHO SUPERIOR: LOGO ORIGINAL "LA CASA DEL DISFRAZ" + "SERVIDOR" */}
-        <div className="w-64 flex flex-col items-center justify-center p-2 border-2 border-slate-300 rounded bg-white shadow-sm self-stretch">
+        {/* LADO DERECHO SUPERIOR: LOGO "LA CASA DEL DISFRAZ" */}
+        <div className="w-64 flex flex-col items-center justify-center p-3 border border-slate-200/90 rounded-2xl bg-white shadow-xs self-stretch">
           <LogoCasaDelDisfraz />
         </div>
       </div>
 
       {/* =========================================================================
-          2. BARRA DE LOS 9 BOTONES PRINCIPALES EN ROJO/MAGENTA (MÁS GRANDES Y CÓMODOS)
+          2. BARRA DE BOTONES DE ACCIÓN RÁPIDA CON PALETA MODERNA
       ========================================================================= */}
-      <div className="flex items-center gap-2 overflow-x-auto py-1.5">
+      <div className="flex items-center gap-2 overflow-x-auto py-1">
         <button
           onClick={() => setModalCliente(true)}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-sky-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-sky-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           NUEVO CLIENTE
         </button>
 
         <button
           onClick={() => setModalCliente(true)}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-indigo-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           MODIFICAR
         </button>
 
         <button
           onClick={() => setModalBuscarCli(true)}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           BUSCAR CLIENTE
         </button>
 
         <button
           onClick={handleLimpiar}
-          className="h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-slate-800 px-4 text-xs font-bold text-white shadow-xs hover:bg-slate-900 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
-          NUEVO
+          LIMPIAR / NUEVO
         </button>
 
         <button
           onClick={handleLimpiar}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           NUEVO ALQUILER
         </button>
 
         <button
           onClick={() => setModalGasto(true)}
-          className="flex items-center gap-1.5 h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="flex items-center gap-1.5 h-8.5 rounded-xl bg-rose-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-rose-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
-          <span className="text-[10px] text-white">▶</span> GASTO(SALIDA)
+          <span>▶</span> GASTO(SALIDA)
         </button>
 
         <button
           onClick={() => setModalImprimir(true)}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-cyan-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-cyan-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           REIMPRIMIR
         </button>
 
         <button
           onClick={() => setModalApartados(true)}
-          className="h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-purple-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-purple-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
-          APARTADOS
+          APARTADOS / ABONOS
         </button>
 
         <button
           onClick={() => setModalDevolucion(true)}
-          className="h-8 rounded bg-[#B80036] px-3.5 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          className="h-8.5 rounded-xl bg-teal-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           ENTRADA VESTIDO
         </button>
       </div>
 
       {/* =========================================================================
-          3. LÍNEA DE ARTÍCULO: AUTOCOMPLETE CON FILTRADO + 1 ENTER A CANTIDAD + ENTER A TABLA
+          3. LÍNEA DE ARTÍCULO: AUTOCOMPLETE + CANTIDAD + BOTONES DE ACCIÓN
       ========================================================================= */}
-      <div className="relative flex items-center gap-2 py-1">
-        <span className="text-xs font-black text-slate-800 uppercase tracking-wide">ARTICULO</span>
+      <div className="relative flex items-center gap-2 py-1 bg-white p-2 rounded-2xl border border-slate-200/90 shadow-xs">
+        <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide pl-1">ARTÍCULO</span>
 
         {/* BOTÓN + PARA CREAR NUEVO ARTÍCULO RÁPIDO */}
         <button
           type="button"
           onClick={abrirCrearArticulo}
           title="Crear nuevo artículo en el catálogo"
-          className="flex items-center justify-center h-8 w-8 rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
+          className="flex items-center justify-center h-8.5 w-8.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs"
         >
           <Plus className="h-4.5 w-4.5" />
         </button>
@@ -1206,7 +1209,7 @@ export function PuntoDeVenta() {
               }}
               onFocus={() => setMostrarDropdownArt(true)}
               onKeyDown={handleKeyDownArticulo}
-              className="h-8 w-full rounded border border-slate-400 bg-white pr-8 pl-3 text-xs font-black text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-500 shadow-inner"
+              className="h-8.5 w-full rounded-xl border border-slate-300 bg-slate-50/60 pr-8 pl-3.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
             />
             <button
               type="button"
@@ -1215,7 +1218,7 @@ export function PuntoDeVenta() {
                 setMostrarDropdownArt((p) => !p);
                 articuloInputRef.current?.focus();
               }}
-              className="absolute right-2 text-slate-500 hover:text-slate-800"
+              className="absolute right-2 text-slate-400 hover:text-slate-700"
             >
               <ChevronDown className="h-4 w-4" />
             </button>
@@ -1225,7 +1228,7 @@ export function PuntoDeVenta() {
           {mostrarDropdownArt && articulosFiltrados.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute left-0 top-9 z-50 max-h-64 w-full overflow-auto rounded border border-slate-400 bg-white shadow-xl"
+              className="absolute left-0 top-10 z-50 max-h-64 w-full overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xl"
             >
               {articulosFiltrados.map((art, idx) => {
                 const isHovered = sugerenciaIndex === idx;
@@ -1234,21 +1237,21 @@ export function PuntoDeVenta() {
                     key={art.IDARTICULO}
                     onMouseEnter={() => setSugerenciaIndex(idx)}
                     onClick={() => seleccionarArticulo(art)}
-                    className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-3 py-2 text-xs transition-colors ${
-                      isHovered ? "bg-[#B80036] font-bold text-white" : "hover:bg-slate-100 text-slate-800 font-semibold"
+                    className={`flex cursor-pointer items-center justify-between border-b border-slate-100 px-3.5 py-2.5 text-xs transition-colors ${
+                      isHovered ? "bg-emerald-600 font-bold text-white" : "hover:bg-slate-50 text-slate-800 font-medium"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[10px] opacity-75">[{art.CODBARRAS}]</span>
                       <span>{art.DESCRIPCION}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${isHovered ? "bg-white/20" : "bg-slate-200"}`}>
+                      <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${isHovered ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
                         Talla: {art.TALLA}
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
                       <span>Alq: ${art.VALOR.toLocaleString()}</span>
                       <span className="opacity-90">Dep: ${art.VALORDEPOSITO.toLocaleString()}</span>
-                      <span className={`font-mono font-black ${isHovered ? "text-yellow-200" : "text-emerald-700"}`}>
+                      <span className={`font-mono font-black ${isHovered ? "text-amber-200" : "text-emerald-700"}`}>
                         Stock: {art.STOCK}
                       </span>
                     </div>
@@ -1260,8 +1263,8 @@ export function PuntoDeVenta() {
         </div>
 
         {/* CAMPO CANTIDAD */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-black text-red-700 uppercase">▸CANTIDAD</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-extrabold text-emerald-800 uppercase">CANTIDAD</span>
           <input
             ref={cantidadInputRef}
             type="number"
@@ -1269,16 +1272,15 @@ export function PuntoDeVenta() {
             value={cantidad}
             onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
             onKeyDown={handleKeyDownCantidad}
-            className="h-8 w-14 rounded border-2 border-red-500 bg-white text-center text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-600 shadow-sm"
+            className="h-8.5 w-14 rounded-xl border-2 border-emerald-500 bg-white text-center text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-xs"
           />
-          <span className="text-xs font-black text-red-700">▸</span>
         </div>
 
         {/* BOTÓN + AGREGAR */}
         <button
           onClick={handleAgregarItem}
           title="Bajar artículo a la tabla (Enter en cantidad)"
-          className="h-8 rounded bg-slate-700 px-3 text-sm font-black text-white hover:bg-slate-900 shadow-md"
+          className="h-8.5 rounded-xl bg-slate-900 px-3.5 text-sm font-black text-white hover:bg-black shadow-xs transition-all"
         >
           +
         </button>
@@ -1286,15 +1288,15 @@ export function PuntoDeVenta() {
         {/* BOTÓN ELIMINAR */}
         <button
           onClick={handleEliminarFila}
-          className="flex items-center gap-1.5 h-8 rounded bg-[#B80036] px-4 text-xs font-black text-white shadow-md hover:bg-[#96002C] active:scale-95 uppercase tracking-wider"
+          className="flex items-center gap-1.5 h-8.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 px-3.5 text-xs font-bold shadow-xs hover:bg-rose-600 hover:text-white active:scale-95 uppercase tracking-wider transition-all"
         >
-          ELIMINAR <Trash2 className="h-4 w-4" />
+          ELIMINAR <Trash2 className="h-3.5 w-3.5" />
         </button>
 
-        {/* BOTÓN PAGAR (LINEA SUPERIOR DE ARTICULO) */}
+        {/* BOTÓN PAGAR */}
         <button
           onClick={handleIniciarCobro}
-          className="h-8 rounded bg-[#111111] px-5 text-xs font-black text-white shadow-md hover:bg-black active:scale-95 uppercase tracking-wider"
+          className="h-8.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 px-6 text-xs font-black text-white shadow-md shadow-emerald-600/20 hover:from-emerald-700 hover:to-teal-700 active:scale-95 uppercase tracking-wider transition-all"
         >
           PAGAR
         </button>
@@ -1302,33 +1304,33 @@ export function PuntoDeVenta() {
         {/* BOTÓN SALIR X */}
         <button
           onClick={handleLimpiar}
-          className="flex items-center gap-1.5 h-8 rounded bg-[#992222] px-4 text-xs font-black text-white shadow-md hover:bg-[#771111] active:scale-95 uppercase tracking-wider"
+          className="flex items-center gap-1 h-8.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 px-3 text-xs font-bold border border-slate-200 shadow-xs active:scale-95 uppercase tracking-wider transition-all"
         >
-          SALIR <X className="h-4 w-4" />
+          LIMPIAR <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* =========================================================================
-          4. TABLA PRINCIPAL DE ALQUILER (ANCHO COMPLETO)
+          4. TABLA PRINCIPAL DE ALQUILER (ANCHO COMPLETO Y MODERNA)
       ========================================================================= */}
-      <div className="flex-1 rounded border border-slate-400 bg-white overflow-hidden shadow-inner flex flex-col min-h-0 my-1">
+      <div className="flex-1 rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs flex flex-col min-h-0 my-0.5">
         <div className="overflow-auto flex-1">
           <table className="w-full border-collapse text-left text-xs">
             <thead>
-              <tr className="bg-[#000000] text-white font-black uppercase text-xs tracking-wider sticky top-0">
-                <th className="border-r border-slate-700 px-3 py-2">DESCRIPCION</th>
-                <th className="border-r border-slate-700 px-2 py-2 text-center w-20">CANTIDAD</th>
-                <th className="border-r border-slate-700 px-3 py-2 text-right w-36">VALOR ALQUILER</th>
-                <th className="border-r border-slate-700 px-3 py-2 text-right w-36">TOTAL ALQUILER</th>
-                <th className="border-r border-slate-700 px-3 py-2 text-right w-32">DEPOSITO</th>
-                <th className="border-r border-slate-700 px-3 py-2 text-right w-36">TOTAL DEPOSITO</th>
-                <th className="px-3 py-2 text-right w-36">TOT DEP+ALQUILER</th>
+              <tr className="bg-slate-900 text-white font-extrabold uppercase text-xs tracking-wider sticky top-0">
+                <th className="px-3.5 py-2.5">DESCRIPCION</th>
+                <th className="px-2 py-2.5 text-center w-20">CANTIDAD</th>
+                <th className="px-3 py-2.5 text-right w-36">VALOR ALQUILER</th>
+                <th className="px-3 py-2.5 text-right w-36">TOTAL ALQUILER</th>
+                <th className="px-3 py-2.5 text-right w-32">DEPOSITO</th>
+                <th className="px-3 py-2.5 text-right w-36">TOTAL DEPOSITO</th>
+                <th className="px-3.5 py-2.5 text-right w-36 text-emerald-300">TOT DEP+ALQUILER</th>
               </tr>
             </thead>
             <tbody>
               {gridItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center text-slate-400 text-xs font-bold">
+                  <td colSpan={7} className="py-20 text-center text-slate-400 text-xs font-medium">
                     (Escribe o escanea un artículo arriba, presiona Enter para pasar a Cantidad, y Enter para bajarlo a la tabla)
                   </td>
                 </tr>
@@ -1340,33 +1342,33 @@ export function PuntoDeVenta() {
                     <tr
                       key={item.idTemp}
                       onClick={() => setFilaSeleccionada(index)}
-                      className={`cursor-pointer border-b border-slate-200 text-xs ${
+                      className={`cursor-pointer border-b border-slate-100 text-xs transition-colors ${
                         isSelected
-                          ? "bg-[#FFE066] font-black text-slate-900"
+                          ? "bg-emerald-100/80 font-bold text-emerald-950"
                           : isEven
-                          ? "bg-white font-semibold"
-                          : "bg-[#D6E6F2] font-semibold"
+                          ? "bg-white font-medium hover:bg-slate-50"
+                          : "bg-slate-50/50 font-medium hover:bg-slate-50"
                       }`}
                     >
-                      <td className="px-3 py-1.5 text-slate-900 border-r border-slate-200 font-bold">
-                        {item.descripcion} <span className="text-[10px] text-slate-600 font-normal">(TALLA: {item.talla})</span>
+                      <td className="px-3.5 py-2 text-slate-900 font-bold">
+                        {item.descripcion} <span className="text-[10px] text-slate-500 font-normal">(TALLA: {item.talla})</span>
                       </td>
-                      <td className="px-2 py-1.5 text-center font-black border-r border-slate-200">
+                      <td className="px-2 py-2 text-center font-black">
                         {item.cantidad}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono font-bold border-r border-slate-200">
+                      <td className="px-3 py-2 text-right font-mono font-bold text-slate-700">
                         ${item.valorAlquiler.toLocaleString()}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono font-black text-slate-900 border-r border-slate-200">
+                      <td className="px-3 py-2 text-right font-mono font-black text-slate-900">
                         ${item.totalAlquiler.toLocaleString()}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono font-bold border-r border-slate-200">
+                      <td className="px-3 py-2 text-right font-mono font-bold text-slate-600">
                         ${item.valorDeposito.toLocaleString()}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono font-black text-blue-900 border-r border-slate-200">
+                      <td className="px-3 py-2 text-right font-mono font-black text-blue-700">
                         ${item.totalDeposito.toLocaleString()}
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono font-black text-emerald-800">
+                      <td className="px-3.5 py-2 text-right font-mono font-black text-emerald-700">
                         ${item.totalGeneral.toLocaleString()}
                       </td>
                     </tr>
@@ -1379,22 +1381,22 @@ export function PuntoDeVenta() {
       </div>
 
       {/* =========================================================================
-          5. BARRA INFERIOR DE TARJETAS DE TOTALES (MÁS GRANDES, ALTAS Y NÚMEROS VISIBLES)
+          5. BARRA INFERIOR DE TARJETAS DE TOTALES CON PALETA MODERNA
       ========================================================================= */}
-      <div className="grid grid-cols-12 gap-3 bg-[#E2E8F0] p-2.5 rounded-lg border-2 border-slate-400 shadow-md items-center">
+      <div className="grid grid-cols-12 gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs items-center">
         {/* TARJETA 1: TOTAL DEPOSITO */}
-        <div className="col-span-3 h-18 rounded-lg border-2 border-slate-400 bg-white p-2.5 shadow-inner flex flex-col justify-between">
-          <span className="text-xs font-black uppercase text-slate-700 tracking-wider block">
+        <div className="col-span-3 h-18 rounded-xl border border-blue-200/80 bg-blue-50/50 p-2.5 flex flex-col justify-between">
+          <span className="text-[11px] font-black uppercase text-blue-900 tracking-wider block">
             TOTAL DEPOSITO:
           </span>
-          <div className="font-mono text-2xl font-black text-blue-900 text-right leading-none">
+          <div className="font-mono text-2xl font-black text-blue-800 text-right leading-none">
             ${totalDeposito.toLocaleString()}
           </div>
         </div>
 
         {/* TARJETA 2: TOTAL ALQUILER */}
-        <div className="col-span-3 h-18 rounded-lg border-2 border-slate-400 bg-white p-2.5 shadow-inner flex flex-col justify-between">
-          <span className="text-xs font-black uppercase text-slate-700 tracking-wider block">
+        <div className="col-span-3 h-18 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 flex flex-col justify-between">
+          <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider block">
             TOTAL ALQUILER:
           </span>
           <div className="font-mono text-2xl font-black text-slate-900 text-right leading-none">
@@ -1403,9 +1405,9 @@ export function PuntoDeVenta() {
         </div>
 
         {/* TARJETA 3: DESCUENTO_ALQUILER */}
-        <div className="col-span-2 h-18 rounded-lg border-2 border-slate-400 bg-white p-2 shadow-inner flex flex-col justify-between">
-          <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider block">
-            DESCUENTO_ALQUILER:
+        <div className="col-span-2 h-18 rounded-xl border border-amber-200 bg-amber-50/50 p-2 flex flex-col justify-between">
+          <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
+            DESCUENTO ALQUILER:
           </span>
           <input
             type="number"
@@ -1413,16 +1415,16 @@ export function PuntoDeVenta() {
             placeholder="0"
             value={descuentoAlquiler}
             onChange={(e) => setDescuentoAlquiler(e.target.value)}
-            className="w-full font-mono text-lg font-black text-red-700 text-right focus:outline-none bg-slate-50 rounded border border-slate-300 px-2 py-0.5 shadow-inner"
+            className="w-full font-mono text-lg font-black text-amber-800 text-right focus:outline-none bg-white rounded-lg border border-amber-300 px-2 py-0.5 shadow-2xs"
           />
         </div>
 
         {/* TARJETA 4: TOTAL DEPOSITO + ALQUILER (GRAN TOTAL DESTACADO) */}
-        <div className="col-span-4 h-18 rounded-lg border-2 border-red-600 bg-red-50 p-2.5 shadow-lg flex flex-col justify-between">
-          <span className="text-xs font-black uppercase text-red-900 tracking-wider block">
+        <div className="col-span-4 h-18 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 p-2.5 shadow-md flex flex-col justify-between text-white">
+          <span className="text-xs font-black uppercase text-emerald-100 tracking-wider block">
             TOTAL DEP + ALQUILER:
           </span>
-          <div className="font-mono text-3xl font-black text-red-700 text-right leading-none drop-shadow-sm">
+          <div className="font-mono text-3xl font-black text-white text-right leading-none drop-shadow-xs">
             ${totalDepositoMasAlquiler.toLocaleString()}
           </div>
         </div>

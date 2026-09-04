@@ -117,15 +117,15 @@ export function ConfiguracionCajasModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#F4F4F5] p-0 border-2 border-slate-400 shadow-2xl rounded-lg overflow-hidden text-slate-900">
+      <DialogContent className="max-w-4xl bg-[#F8FAFC] p-0 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden text-slate-900">
         {/* Cabecera */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-3 text-white">
+        <div className="flex items-center justify-between bg-slate-900 px-5 py-4 text-white">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-red-600 text-white font-black shadow">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white font-black shadow-xs">
               <Monitor className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-black tracking-wider uppercase">
+              <h2 className="text-base font-black tracking-wide uppercase">
                 ADMINISTRACIÓN MULTI-CAJAS, TERMINALES Y PANTALLAS
               </h2>
               <p className="text-[11px] text-slate-300">
