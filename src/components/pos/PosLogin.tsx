@@ -101,16 +101,18 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
 
           {/* Contraseña / PIN */}
           <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5 text-amber-500" /> Contraseña / PIN
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5 text-amber-500" /> Contraseña / PIN
+              </label>
+              <span className="text-[10px] text-emerald-600 font-bold">Por defecto: 123</span>
+            </div>
             <input
               type="password"
-              required
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              placeholder="••••••••"
-              className="h-10 w-full rounded-xl border border-slate-300 bg-slate-50/60 px-3.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-xs transition-all"
+              placeholder="123 (opcional)"
+              className="h-10 w-full rounded-xl border border-slate-300 bg-slate-50/60 px-3.5 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-xs transition-all placeholder:text-slate-400"
             />
           </div>
 
