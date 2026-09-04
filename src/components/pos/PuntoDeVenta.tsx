@@ -16,6 +16,11 @@ import {
   Upload,
   Minus,
   Square,
+  Menu,
+  Building2,
+  Monitor,
+  Wallet,
+  Settings,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -35,7 +40,22 @@ import {
   registrarAbonoCliente,
   registrarSalidaVestidoApartado,
 } from "@/services/posService";
+import {
+  obtenerTerminalConfig,
+  guardarTerminalConfig,
+  obtenerConfiguracionEmpresa,
+  obtenerResolucionConfig,
+  aplicarEscalaResolucion,
+  type TerminalConfig,
+  type EmpresaConfig,
+  EMPRESA_DEFAULT,
+  TERMINAL_DEFAULT,
+} from "@/services/empresaCajaService";
 import { LogoCasaDelDisfraz } from "./LogoCasaDelDisfraz";
+import { SidebarMenu } from "./SidebarMenu";
+import { ConfiguracionEmpresaModal } from "./ConfiguracionEmpresaModal";
+import { ConfiguracionCajasModal } from "./ConfiguracionCajasModal";
+import { CierreCajaModal } from "./CierreCajaModal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -163,6 +183,14 @@ export function PuntoDeVenta() {
   const [modalPreguntaSalida, setModalPreguntaSalida] = useState(false);
   const [modalImprimirAbono80mm, setModalImprimirAbono80mm] = useState(false);
   const [ticketAbonoData, setTicketAbonoData] = useState<any>(null);
+
+  // Estados del Menú Lateral Hamburguesa y Configuraciones
+  const [sidebarAbierto, setSidebarAbierto] = useState(false);
+  const [modalEmpresa, setModalEmpresa] = useState(false);
+  const [modalCajasConfig, setModalCajasConfig] = useState(false);
+  const [modalCierreCaja, setModalCierreCaja] = useState(false);
+  const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
+  const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
   const apartadoTotalAbonado = useMemo(() => {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
@@ -301,9 +329,62 @@ export function PuntoDeVenta() {
   }
 
   useEffect(() => {
-    generarNumeroFactura().then((num) => setNumeroRecibo(num));
+    // Aplicar escala visual guardada
+    aplicarEscalaResolucion(obtenerResolucionConfig());
+
+    // Cargar empresa y terminal
+    obtenerConfiguracionEmpresa().then(setEmpresaConfig);
+    const term = obtenerTerminalConfig();
+    setTerminalConfig(term);
+
+    // Consecutivo según la caja configurada
+    generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
     cargarArticulos();
   }, []);
+
+  function handleMenuAccion(accion: string) {
+    switch (accion) {
+      case "pos_nuevo":
+        handleLimpiar();
+        break;
+      case "catalogo_articulos":
+        setModalArchivoArticulo(true);
+        break;
+      case "nuevo_articulo":
+        abrirCrearArticulo();
+        break;
+      case "buscar_cliente":
+        setModalBuscarCli(true);
+        break;
+      case "nuevo_cliente":
+        setModalCliente(true);
+        break;
+      case "apartados":
+        setModalApartados(true);
+        break;
+      case "entrada_vestido":
+        setModalDevolucion(true);
+        break;
+      case "gasto_salida":
+        setModalGasto(true);
+        break;
+      case "reimprimir":
+        setModalImprimir(true);
+        break;
+      case "cierre_caja":
+        setModalCierreCaja(true);
+        break;
+      case "config_empresa":
+        setModalEmpresa(true);
+        break;
+      case "config_cajas":
+      case "config_resoluciones":
+        setModalCajasConfig(true);
+        break;
+      default:
+        break;
+    }
+  }
 
   async function cargarArticulos() {
     const res = await listarArticulos();
@@ -602,7 +683,7 @@ export function PuntoDeVenta() {
 
   // Limpiar / Nuevo Alquiler
   function handleLimpiar() {
-    generarNumeroFactura().then(setNumeroRecibo);
+    generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo).then(setNumeroRecibo);
     setClienteForm({
       IDCLIENTES: 0,
       CEDULA: 0,
@@ -651,64 +732,26 @@ export function PuntoDeVenta() {
       toast.error("DEBE SELECCIONAR FECHA DE ENTRADA");
       return;
     }
-    if (gridItems.length === 0 || totalDepositoMasAlquiler <= 0) {
-      toast.error("DEBE REGITRAR UN PRODUCTO");
+    if (gridItems.length === 0) {
+      toast.error("NO HAY ARTÍCULOS EN LA LISTA");
       return;
     }
 
-    setCobroEfectivo(String(totalDepositoMasAlquiler));
+    setCobroEfectivo(totalDepositoMasAlquiler.toString());
     setCobroTransferencia("0");
     setModalCobroDetalle(true);
   }
 
-  // Confirmar y Procesar Factura (BOTÓN ACEPTAR EN PAGAR - EXACTO A WINDEV)
-  async function handleConfirmarPagoFinal() {
-    // 1. Validaciones principales de cabecera
-    if (!estadoTraje || estadoTraje.trim() === "") {
-      toast.error("DEBE SELECCIONAR EL ESTADO");
-      return;
-    }
-    if (!clienteForm.CEDULA || clienteForm.CEDULA === 0) {
-      toast.error("DEBE SELECCIONAR EL CLIENTE");
-      return;
-    }
-    if (!fechaSalida || fechaSalida.trim() === "") {
-      toast.error("DEBE SELECCIONAR FECHA DE SALIDA");
-      return;
-    }
-    if (!fechaEntrada || fechaEntrada.trim() === "") {
-      toast.error("DEBE SELECCIONAR FECHA DE ENTRADA");
-      return;
-    }
-    if (gridItems.length === 0 || totalDepositoMasAlquiler <= 0) {
-      toast.error("DEBE REGITRAR UN PRODUCTO");
-      return;
-    }
-
-    // 2. Validaciones de Medios de Pago
-    if (totalDepositoMasAlquiler > 0) {
-      if (!tipoPagoEfectivo && !formaDePago) {
-        toast.error("DEBE SELECCIONAR UN MEDIO DE PAGO");
-        return;
-      }
-      if (efecNum === 0 && transNum === 0 && operacionSeleccionada !== "BONO" && operacionSeleccionada !== "APARTADO") {
-        toast.error("coloque el monto total a pagar o de lo contrario es un bono o un apartado");
-        return;
-      }
-    }
-
-    // 3. Prevenir ejecuciones múltiples (bGuardando)
-    if (bGuardando) {
-      toast.error("La factura ya se está procesando. Espere un momento.");
-      return;
-    }
+  // Confirmar y Registrar Factura Final
+  async function handleConfirmarCobro() {
+    if (bGuardando) return;
     setBGuardando(true);
 
     try {
       const factura: Omit<Factura, "IDFACTURA"> = {
         NUMEROFACT: numeroRecibo,
-        FECHASALIDA: fechaSalida,
-        FECHAENTRADA: fechaEntrada,
+        FECHASALIDA: fechaSalida || new Date().toISOString().split("T")[0],
+        FECHAENTRADA: fechaEntrada || new Date().toISOString().split("T")[0],
         FORMAPAGO: tipoPagoEfectivo || "EFECTIVO",
         FPAGOTRANS: formaDePago || "DATAFONO",
         MODO: operacionSeleccionada,
@@ -745,7 +788,12 @@ export function PuntoDeVenta() {
       }));
 
       await guardarCliente(clienteForm);
-      const resultado = await registrarAlquilerFactura(factura, campos, "SERVIDOR");
+      const resultado = await registrarAlquilerFactura(
+        factura,
+        campos,
+        terminalConfig.nombreCaja,
+        terminalConfig.prefijo
+      );
       
       if (resultado && resultado.factura) {
         setNumeroRecibo(resultado.factura.NUMEROFACT);
@@ -775,7 +823,16 @@ export function PuntoDeVenta() {
           {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
           <div className="flex items-center justify-between px-1 pb-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black tracking-wider text-slate-700 uppercase">ALQUILER</span>
+              <button
+                type="button"
+                onClick={() => setSidebarAbierto(true)}
+                className="flex items-center gap-1.5 rounded bg-[#161920] px-3 py-1 text-xs font-black text-white hover:bg-black shadow-md border border-slate-700 transition-all active:scale-95"
+                title="Abrir Menú Lateral con todas las funciones"
+              >
+                <Menu className="h-4 w-4 text-amber-400" />
+                <span className="tracking-wide uppercase">MENÚ</span>
+              </button>
+
               <button
                 onClick={() => setModalArchivoArticulo(true)}
                 className="flex items-center gap-1.5 rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
@@ -788,7 +845,18 @@ export function PuntoDeVenta() {
               PUNTO DE VENTA
             </h1>
 
-            <div className="w-16" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalCajasConfig(true)}
+                className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-black text-slate-800 border border-slate-400 shadow-sm hover:bg-slate-100 transition-all"
+                title="Configuración de Caja, Terminal y Pantalla"
+              >
+                <Monitor className="h-3.5 w-3.5 text-red-600" />
+                <span>{terminalConfig.nombreCaja}</span>
+                <span className="text-[10px] text-slate-400">({terminalConfig.prefijo})</span>
+              </button>
+            </div>
           </div>
 
           {/* FORMULARIO DE CABECERA COMPACTO */}
@@ -1426,7 +1494,7 @@ export function PuntoDeVenta() {
 
                     <button
                       type="button"
-                      onClick={handleConfirmarPagoFinal}
+                      onClick={handleConfirmarCobro}
                       className="rounded bg-[#B82E1F] px-7 py-2 text-xs font-black text-white shadow-md hover:bg-red-900 active:scale-95 uppercase tracking-wide transition-all"
                     >
                       Aceptar
@@ -2266,7 +2334,7 @@ export function PuntoDeVenta() {
                 }
                 await registrarDevolucionVestido({
                   numeroFactura: devFactura,
-                  valorDepositoDevuelto: devMonto,
+                  montoDevuelto: devMonto,
                 });
                 toast.success("Entrada de vestido procesada");
                 setModalDevolucion(false);
@@ -3140,6 +3208,47 @@ export function PuntoDeVenta() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* =========================================================
+          MENÚ LATERAL HAMBURGUESA (DRAWER MODERNO)
+      ========================================================= */}
+      <SidebarMenu
+        isOpen={sidebarAbierto}
+        onClose={() => setSidebarAbierto(false)}
+        terminal={terminalConfig}
+        empresa={empresaConfig}
+        onAccion={handleMenuAccion}
+      />
+
+      {/* =========================================================
+          MODAL: CONFIGURACIÓN DE EMPRESA
+      ========================================================= */}
+      <ConfiguracionEmpresaModal
+        open={modalEmpresa}
+        onOpenChange={setModalEmpresa}
+        onGuardadoExitoso={(cfg) => setEmpresaConfig(cfg)}
+      />
+
+      {/* =========================================================
+          MODAL: CONFIGURACIÓN MULTI-CAJAS, TERMINALES Y RESOLUCIONES
+      ========================================================= */}
+      <ConfiguracionCajasModal
+        open={modalCajasConfig}
+        onOpenChange={setModalCajasConfig}
+        onCajaCambiada={(term) => {
+          setTerminalConfig(term);
+          generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
+        }}
+      />
+
+      {/* =========================================================
+          MODAL: ARQUEO Y CIERRE DE CAJA DEL DÍA
+      ========================================================= */}
+      <CierreCajaModal
+        open={modalCierreCaja}
+        onOpenChange={setModalCierreCaja}
+        cajeroNombre={cajero}
+      />
     </div>
   );
 }

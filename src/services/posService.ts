@@ -225,22 +225,41 @@ function saveLocalAbono(abono: AbonoCliente) {
 // ==========================================
 // SERVICIO DE FACTURACIÓN Y CAJAS (EXACTO A WINDEV)
 // ==========================================
-export async function generarNumeroFactura(nombreCaja = "SERVIDOR"): Promise<string> {
+export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefault = "G"): Promise<string> {
   try {
-    // 1. Consultar CAJAS para nombreCaja "SERVIDOR"
-    const { data: cajaRaw, error: errCaja } = await supabase
-      .from("CAJAS" as any)
-      .select("*")
-      .eq("NOMBRECAJA", nombreCaja)
-      .maybeSingle();
+    // 1. Consultar CAJAS para nombreCaja en Supabase o Local
+    try {
+      const { data: cajaRaw, error: errCaja } = await supabase
+        .from("CAJAS" as any)
+        .select("*")
+        .eq("NOMBRECAJA", nombreCaja)
+        .maybeSingle();
 
-    const caja = cajaRaw as any;
-    if (!errCaja && caja && caja.NUMERACION) {
-      const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
-      return `G${nuevoNumero}`;
+      const caja = cajaRaw as any;
+      if (!errCaja && caja && caja.NUMERACION) {
+        const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
+        const pfx = caja.PREFIJO || prefijoDefault;
+        return `${pfx}${nuevoNumero}`;
+      }
+    } catch (e) {
+      console.warn("Error consultando caja en Supabase:", e);
     }
 
-    // 2. Fallback con última factura en Supabase
+    // 2. Fallback con Cajas de LocalStorage
+    try {
+      const rawCajas = localStorage.getItem("elegance_lista_cajas");
+      if (rawCajas) {
+        const list: any[] = JSON.parse(rawCajas);
+        const cajaLocal = list.find((c) => c.NOMBRECAJA === nombreCaja);
+        if (cajaLocal && cajaLocal.NUMERACION) {
+          const nuevoNumero = (Number(cajaLocal.NUMERACION) || 0) + 1;
+          const pfx = cajaLocal.PREFIJO || prefijoDefault;
+          return `${pfx}${nuevoNumero}`;
+        }
+      }
+    } catch {}
+
+    // 3. Fallback con última factura en Supabase
     const { data } = await supabase
       .from("FACTURA" as any)
       .select("IDFACTURA, NUMEROFACT")
@@ -251,32 +270,33 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR"): Promise<str
       const lastFact = data[0] as any;
       const numMatch = String(lastFact.NUMEROFACT || "").match(/\d+/);
       const ultimoNum = numMatch ? parseInt(numMatch[0], 10) + 1 : Number(lastFact.IDFACTURA) + 1;
-      return `G${ultimoNum}`;
+      return `${prefijoDefault}${ultimoNum}`;
     }
 
-    // 3. Fallback con local facturas
+    // 4. Fallback con local facturas
     const localFacts = getLocalFacturas();
     if (localFacts.length > 0) {
       const nextId = localFacts.length + 1;
-      return `G${nextId}`;
+      return `${prefijoDefault}${nextId}`;
     }
 
-    return `G1`;
+    return `${prefijoDefault}1`;
   } catch {
     const localFacts = getLocalFacturas();
-    return `G${localFacts.length + 1}`;
+    return `${prefijoDefault}${localFacts.length + 1}`;
   }
 }
 
 export async function registrarAlquilerFactura(
   facturaData: Omit<Factura, "IDFACTURA">,
   items: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[],
-  nombreCaja = "SERVIDOR"
+  nombreCaja = "SERVIDOR",
+  prefijoDefault = "G"
 ): Promise<{ factura: Factura; items: CampoFactura[] }> {
-  let sNumeroFactura = facturaData.NUMEROFACT || "G1";
+  let sNumeroFactura = facturaData.NUMEROFACT || `${prefijoDefault}1`;
   
   try {
-    // 1. Obtener y actualizar numeración de la caja "SERVIDOR" en Supabase
+    // 1. Obtener y actualizar numeración de la caja en Supabase y Local
     try {
       const { data: cajaRaw } = await supabase
         .from("CAJAS" as any)
@@ -287,15 +307,30 @@ export async function registrarAlquilerFactura(
       const caja = cajaRaw as any;
       if (caja) {
         const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
-        sNumeroFactura = `G${nuevoNumero}`;
+        const pfx = caja.PREFIJO || prefijoDefault;
+        sNumeroFactura = `${pfx}${nuevoNumero}`;
         await supabase
           .from("CAJAS" as any)
           .update({ NUMERACION: nuevoNumero })
-          .eq("IDCAJA", caja.IDCAJA);
+          .eq("IDCAJA", caja.IDCAJA || caja.IDCAJAS);
       }
     } catch (e) {
       console.warn("No se pudo actualizar CAJAS, usando número propuesto:", e);
     }
+
+    // Actualizar también en LocalStorage
+    try {
+      const rawCajas = localStorage.getItem("elegance_lista_cajas");
+      if (rawCajas) {
+        const list: any[] = JSON.parse(rawCajas);
+        const idx = list.findIndex((c) => c.NOMBRECAJA === nombreCaja);
+        if (idx >= 0) {
+          const nuevoNumero = (Number(list[idx].NUMERACION) || 0) + 1;
+          list[idx].NUMERACION = nuevoNumero;
+          localStorage.setItem("elegance_lista_cajas", JSON.stringify(list));
+        }
+      }
+    } catch {}
 
     const facturaFinalData = {
       ...facturaData,
@@ -538,8 +573,8 @@ export async function registrarAbonoCliente(params: {
     // Actualizar factura local
     const facts = getLocalFacturas();
     const factIdx = facts.findIndex((f) => f.NUMEROFACT === params.numeroFactura);
-    if (factIdx >= 0) {
-      facts[factIdx].TOTAL_SALDO = params.saldoDeber;
+    if (factIdx >= 0 && facts[factIdx]) {
+      facts[factIdx]!.TOTAL_SALDO = params.saldoDeber;
       localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
     }
 
@@ -564,8 +599,8 @@ export async function registrarSalidaVestidoApartado(numeroFactura: string): Pro
     // Actualizar local
     const facts = getLocalFacturas();
     const factIdx = facts.findIndex((f) => f.NUMEROFACT === numeroFactura);
-    if (factIdx >= 0) {
-      facts[factIdx].ESTADOCLIENTE = "ENTREGADO";
+    if (factIdx >= 0 && facts[factIdx]) {
+      facts[factIdx]!.ESTADOCLIENTE = "ENTREGADO";
       localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
     }
 
@@ -576,6 +611,42 @@ export async function registrarSalidaVestidoApartado(numeroFactura: string): Pro
   }
 }
 
+// ==========================================
+// SERVICIO DE DEVOLUCIÓN DE VESTIDOS (DEPÓSITOS)
+// ==========================================
+export async function registrarDevolucionVestido(params: {
+  numeroFactura: string;
+  montoDevuelto: number;
+  fecha?: string | undefined;
+  observaciones?: string | undefined;
+}): Promise<DepositoEntregado | null> {
+  try {
+    const fecha = params.fecha || new Date().toISOString().split("T")[0];
+    const depData: DepositoEntregado = {
+      NUMEROFACTURA: params.numeroFactura,
+      VALOR: params.montoDevuelto,
+      FECHA: fecha,
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from("DEPOSITOENTREGADO" as any)
+        .insert(depData)
+        .select()
+        .single();
+      if (!error && data) {
+        return data as unknown as DepositoEntregado;
+      }
+    } catch (e) {
+      console.warn("Error guardando devolución en Supabase:", e);
+    }
+
+    return depData;
+  } catch (err) {
+    console.error("Error en registrarDevolucionVestido:", err);
+    return null;
+  }
+}
 
 // ==========================================
 // SERVICIO DE GASTOS

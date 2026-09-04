@@ -27,8 +27,8 @@ export interface Cliente {
 export interface Factura {
   IDFACTURA: number;
   NUMEROFACT: string;
-  FECHASALIDA: string; // YYYY-MM-DD
-  FECHAENTRADA: string; // YYYY-MM-DD
+  FECHASALIDA?: string | undefined; // YYYY-MM-DD
+  FECHAENTRADA?: string | undefined; // YYYY-MM-DD
   FTOTALDEPOSITO: number;
   FTOTALVENTADEPOSITO: number;
   FORMAPAGO: string;
@@ -81,7 +81,7 @@ export interface AbonoCliente {
   AFACTURA: string;
   PAGOEFECTIVO: number;
   PAGOTRANFE: number;
-  FECHAABONO: string;
+  FECHAABONO?: string | undefined;
   SALDOANTERIOR: number;
   SALDODEBER: number;
   TOTAL_ABONO: number;
@@ -91,13 +91,13 @@ export interface DepositoEntregado {
   IDdepositoentregado?: number | undefined;
   NUMEROFACTURA: string;
   VALOR: number;
-  FECHA: string;
+  FECHA?: string | undefined;
 }
 
 export interface Gasto {
   IDgastos?: number | undefined;
   DESCRIPCIONSALIDA: string;
-  FECHA: string;
+  FECHA?: string | undefined;
   VALORSALIDA: string;
   NUMEROGASTO: string;
 }
