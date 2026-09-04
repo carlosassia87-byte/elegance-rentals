@@ -4,6 +4,7 @@ import {
   X,
   Printer,
   ChevronDown,
+  ChevronLeft,
   Check,
   AlertTriangle,
   Plus,
@@ -21,6 +22,7 @@ import {
   Monitor,
   Wallet,
   Settings,
+  LogOut,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -51,11 +53,18 @@ import {
   EMPRESA_DEFAULT,
   TERMINAL_DEFAULT,
 } from "@/services/empresaCajaService";
+import {
+  obtenerSesionPos,
+  logoutPos,
+  type UsuarioPos,
+} from "@/services/authPosService";
 import { LogoCasaDelDisfraz } from "./LogoCasaDelDisfraz";
 import { SidebarMenu } from "./SidebarMenu";
 import { ConfiguracionEmpresaModal } from "./ConfiguracionEmpresaModal";
 import { ConfiguracionCajasModal } from "./ConfiguracionCajasModal";
 import { CierreCajaModal } from "./CierreCajaModal";
+import { PosLogin } from "./PosLogin";
+import { MenuPrincipal } from "./MenuPrincipal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -191,6 +200,11 @@ export function PuntoDeVenta() {
   const [modalCierreCaja, setModalCierreCaja] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
+
+  // Estados de Navegación de Pantalla y Sesión de Cajero
+  const sesionInicial = obtenerSesionPos();
+  const [vistaActiva, setVistaActiva] = useState<"login" | "menu" | "pos">(sesionInicial ? "menu" : "login");
+  const [usuarioActivo, setUsuarioActivo] = useState<UsuarioPos | null>(sesionInicial?.usuario || null);
 
   const apartadoTotalAbonado = useMemo(() => {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
@@ -340,12 +354,29 @@ export function PuntoDeVenta() {
     // Consecutivo según la caja configurada
     generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
     cargarArticulos();
+
+    const sesion = obtenerSesionPos();
+    if (sesion && sesion.usuario) {
+      setUsuarioActivo(sesion.usuario);
+      setCajero(sesion.usuario.nombre);
+    }
   }, []);
+
+  function handleLogout() {
+    logoutPos();
+    setUsuarioActivo(null);
+    setVistaActiva("login");
+    toast.info("Sesión cerrada con éxito");
+  }
 
   function handleMenuAccion(accion: string) {
     switch (accion) {
+      case "pos":
+        setVistaActiva("pos");
+        break;
       case "pos_nuevo":
         handleLimpiar();
+        setVistaActiva("pos");
         break;
       case "catalogo_articulos":
         setModalArchivoArticulo(true);
@@ -812,52 +843,90 @@ export function PuntoDeVenta() {
     }
   }
 
+  // 1. Si no hay sesión de cajero activa, mostrar Pantalla de Login del POS
+  if (vistaActiva === "login" || !usuarioActivo) {
+    return (
+      <PosLogin
+        onLoginSuccess={(user) => {
+          setUsuarioActivo(user);
+          setCajero(user.nombre);
+          setVistaActiva("menu");
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="flex h-screen w-full flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-2">
-      {/* =========================================================================
-          1. SECCIÓN SUPERIOR: FORMULARIO RECOGIDO A LA IZQUIERDA + LOGO A LA DERECHA
-      ========================================================================= */}
-      <div className="flex items-start gap-3 pb-1">
-        {/* LADO IZQUIERDO: TÍTULO "PUNTO DE VENTA" + FORMULARIO COMPACTO DE 3 COLUMNAS */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
-          <div className="flex items-center justify-between px-1 pb-1">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSidebarAbierto(true)}
-                className="flex items-center gap-1.5 rounded bg-[#161920] px-3 py-1 text-xs font-black text-white hover:bg-black shadow-md border border-slate-700 transition-all active:scale-95"
-                title="Abrir Menú Lateral con todas las funciones"
-              >
-                <Menu className="h-4 w-4 text-amber-400" />
-                <span className="tracking-wide uppercase">MENÚ</span>
-              </button>
+    <div className="relative h-screen w-screen overflow-hidden">
+      {vistaActiva === "menu" ? (
+        <MenuPrincipal
+          usuario={usuarioActivo}
+          terminal={terminalConfig}
+          empresa={empresaConfig}
+          onNavegar={(modulo) => {
+            if (modulo === "pos") {
+              setVistaActiva("pos");
+            } else {
+              handleMenuAccion(modulo);
+            }
+          }}
+          onLogout={handleLogout}
+        />
+      ) : (
+        <div className="flex h-screen w-full flex-col bg-[#EDEDED] font-sans text-slate-900 select-none overflow-hidden p-2">
+          {/* =========================================================================
+              1. SECCIÓN SUPERIOR: FORMULARIO RECOGIDO A LA IZQUIERDA + LOGO A LA DERECHA
+          ========================================================================= */}
+          <div className="flex items-start gap-3 pb-1">
+            {/* LADO IZQUIERDO: TÍTULO "PUNTO DE VENTA" + FORMULARIO COMPACTO DE 3 COLUMNAS */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
+              <div className="flex items-center justify-between px-1 pb-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVistaActiva("menu")}
+                    className="flex items-center gap-1.5 rounded bg-slate-900 px-3.5 py-1 text-xs font-black text-white hover:bg-black shadow-md border border-slate-700 transition-all active:scale-95"
+                    title="Regresar a la Pantalla de Menú Principal"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-amber-400" />
+                    <span className="tracking-wide uppercase">MENÚ PRINCIPAL</span>
+                  </button>
 
-              <button
-                onClick={() => setModalArchivoArticulo(true)}
-                className="flex items-center gap-1.5 rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
-              >
-                <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
-              </button>
-            </div>
+                  <button
+                    onClick={() => setModalArchivoArticulo(true)}
+                    className="flex items-center gap-1.5 rounded bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-black shadow-sm"
+                  >
+                    <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
+                  </button>
+                </div>
 
-            <h1 className="text-2xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
-              PUNTO DE VENTA
-            </h1>
+                <h1 className="text-2xl font-black tracking-widest text-[#E60000] uppercase font-sans leading-none drop-shadow-sm">
+                  PUNTO DE VENTA
+                </h1>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setModalCajasConfig(true)}
-                className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-black text-slate-800 border border-slate-400 shadow-sm hover:bg-slate-100 transition-all"
-                title="Configuración de Caja, Terminal y Pantalla"
-              >
-                <Monitor className="h-3.5 w-3.5 text-red-600" />
-                <span>{terminalConfig.nombreCaja}</span>
-                <span className="text-[10px] text-slate-400">({terminalConfig.prefijo})</span>
-              </button>
-            </div>
-          </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalCajasConfig(true)}
+                    className="flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-black text-slate-800 border border-slate-400 shadow-sm hover:bg-slate-100 transition-all"
+                    title="Configuración de Caja, Terminal y Pantalla"
+                  >
+                    <Monitor className="h-3.5 w-3.5 text-red-600" />
+                    <span>{terminalConfig.nombreCaja}</span>
+                    <span className="text-[10px] text-slate-400">({terminalConfig.prefijo})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-1 rounded bg-slate-200 hover:bg-red-100 hover:text-red-700 px-2 py-1 text-[11px] font-bold text-slate-700 border border-slate-400"
+                    title="Cerrar Turno de Cajero"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
 
           {/* FORMULARIO DE CABECERA COMPACTO */}
           <div className="rounded border-2 border-slate-400 bg-[#E8E8E8] p-2 shadow-inner space-y-1.5">
@@ -1344,6 +1413,8 @@ export function PuntoDeVenta() {
           </div>
         </div>
       </div>
+      </div>
+      )}
 
       {/* =========================================================================
           MODAL: PAGAR (IDÉNTICO A LA CAPTURA WINDEV [PAGAR])
