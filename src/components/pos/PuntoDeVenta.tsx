@@ -65,6 +65,7 @@ import { ConfiguracionCajasModal } from "./ConfiguracionCajasModal";
 import { CierreCajaModal } from "./CierreCajaModal";
 import { PosLogin } from "./PosLogin";
 import { MenuPrincipal } from "./MenuPrincipal";
+import { GestionUsuariosModal } from "./GestionUsuariosModal";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -198,6 +199,7 @@ export function PuntoDeVenta() {
   const [modalEmpresa, setModalEmpresa] = useState(false);
   const [modalCajasConfig, setModalCajasConfig] = useState(false);
   const [modalCierreCaja, setModalCierreCaja] = useState(false);
+  const [modalUsuarios, setModalUsuarios] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -411,6 +413,9 @@ export function PuntoDeVenta() {
       case "config_cajas":
       case "config_resoluciones":
         setModalCajasConfig(true);
+        break;
+      case "gestion_usuarios":
+        setModalUsuarios(true);
         break;
       default:
         break;
@@ -883,6 +888,15 @@ export function PuntoDeVenta() {
               {/* TÍTULO PUNTO DE VENTA CENTRADO SOBRE EL FORMULARIO */}
               <div className="flex items-center justify-between px-1 pb-1">
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarAbierto(true)}
+                    className="flex items-center justify-center rounded bg-red-600 px-2.5 py-1 text-xs font-black text-white hover:bg-red-700 shadow-md transition-all active:scale-95"
+                    title="Abrir Menú Lateral de Opciones"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setVistaActiva("menu")}
@@ -3288,6 +3302,7 @@ export function PuntoDeVenta() {
         onClose={() => setSidebarAbierto(false)}
         terminal={terminalConfig}
         empresa={empresaConfig}
+        usuario={usuarioActivo}
         onAccion={handleMenuAccion}
       />
 
@@ -3319,6 +3334,15 @@ export function PuntoDeVenta() {
         open={modalCierreCaja}
         onOpenChange={setModalCierreCaja}
         cajeroNombre={cajero}
+      />
+
+      {/* =========================================================
+          MODAL: GESTIÓN DE USUARIOS, CAJEROS, ADMINS Y PERMISOS
+      ========================================================= */}
+      <GestionUsuariosModal
+        open={modalUsuarios}
+        onOpenChange={setModalUsuarios}
+        usuarioActual={usuarioActivo}
       />
     </div>
   );

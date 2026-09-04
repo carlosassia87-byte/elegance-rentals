@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Lock, User, KeyRound, Monitor, Sparkles, LogIn, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { User, KeyRound, Monitor, LogIn, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { loginPos, listarUsuariosPos, type UsuarioPos } from "@/services/authPosService";
+import { loginPos, type UsuarioPos } from "@/services/authPosService";
 import { obtenerTerminalConfig, type TerminalConfig } from "@/services/empresaCajaService";
 import logoAsset from "@/assets/logo.asset.json";
 
@@ -10,40 +10,37 @@ interface PosLoginProps {
 }
 
 export function PosLogin({ onLoginSuccess }: PosLoginProps) {
-  const [usuarios, setUsuarios] = useState<UsuarioPos[]>([]);
-  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("");
-  const [password, setPassword] = useState("");
+  const [usuarioInput, setUsuarioInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [cargando, setCargando] = useState(false);
   const [terminal, setTerminal] = useState<TerminalConfig>(obtenerTerminalConfig());
 
   useEffect(() => {
-    listarUsuariosPos().then((list) => {
-      setUsuarios(list);
-      if (list.length > 0 && list[0]) {
-        setUsuarioSeleccionado(list[0].nombre);
-      }
-    });
     setTerminal(obtenerTerminalConfig());
   }, []);
 
   const handleIngresar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usuarioSeleccionado.trim()) {
-      toast.error("Selecciona o escribe el nombre del cajero");
+    if (!usuarioInput.trim()) {
+      toast.error("Ingresa tu usuario o código de acceso");
+      return;
+    }
+    if (!passwordInput.trim()) {
+      toast.error("Ingresa tu contraseña o PIN de seguridad");
       return;
     }
 
     setCargando(true);
     try {
-      const user = await loginPos(usuarioSeleccionado, password);
+      const user = await loginPos(usuarioInput, passwordInput);
       if (user) {
-        toast.success(`¡Bienvenido al sistema, ${user.nombre}!`);
+        toast.success(`¡Bienvenido, ${user.nombre} (${user.rol})!`);
         onLoginSuccess(user);
       } else {
-        toast.error("Contraseña incorrecta o usuario no autorizado");
+        toast.error("Credenciales incorrectas. Verifica tu usuario y contraseña.");
       }
     } catch (err) {
-      toast.error("Error al iniciar sesión en el POS");
+      toast.error("Error al autenticar usuario");
     } finally {
       setCargando(false);
     }
@@ -66,7 +63,7 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
             PUNTO DE VENTA Y ALQUILER
           </h1>
           <p className="text-xs text-slate-400 font-semibold mt-0.5">
-            Ingreso de Cajero y Control de Turnos
+            Ingreso Seguro de Cajeros y Personal Autorizado
           </p>
 
           {/* Badge de Terminal / PC Actual */}
@@ -78,56 +75,35 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
           </div>
         </div>
 
-        {/* Formulario de Login */}
+        {/* Formulario de Login Limpio */}
         <form onSubmit={handleIngresar} className="p-6 space-y-4">
-          {/* Selector de Usuario / Cajero */}
+          {/* Campo Usuario / Código */}
           <div className="space-y-1.5">
             <label className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-red-500" /> Cajero / Usuario
+              <User className="h-3.5 w-3.5 text-red-500" /> Usuario o Código de Acceso
             </label>
-            <div className="relative">
-              <select
-                value={usuarioSeleccionado}
-                onChange={(e) => setUsuarioSeleccionado(e.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 text-xs font-black text-white focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 uppercase"
-              >
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.nombre}>
-                    {u.nombre} {u.apellido} — ({u.rol})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={usuarioInput}
+              onChange={(e) => setUsuarioInput(e.target.value)}
+              placeholder="Ej. ADMIN, SUPERADMIN o CAJA1"
+              className="h-10 w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 text-xs font-black text-white focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600 uppercase placeholder:text-slate-500"
+            />
           </div>
 
-          {/* Botones de Acceso Rápido */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            {usuarios.slice(0, 3).map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => setUsuarioSeleccionado(u.nombre)}
-                className={`h-8 rounded border px-2 text-[10px] font-black uppercase tracking-wider transition-all ${
-                  usuarioSeleccionado === u.nombre
-                    ? "border-red-600 bg-red-600/20 text-red-400 font-bold"
-                    : "border-slate-800 bg-slate-800/40 text-slate-400 hover:bg-slate-800 hover:text-white"
-                }`}
-              >
-                {u.nombre}
-              </button>
-            ))}
-          </div>
-
-          {/* Contraseña / PIN (Opcional) */}
-          <div className="space-y-1.5 pt-1">
+          {/* Contraseña / PIN */}
+          <div className="space-y-1.5">
             <label className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
               <KeyRound className="h-3.5 w-3.5 text-amber-500" /> Contraseña / PIN
             </label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Ingresa PIN (opcional)"
+              required
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="••••••••"
               className="h-10 w-full rounded-lg border border-slate-700 bg-slate-900/90 px-3 text-xs font-bold text-white focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-600"
             />
           </div>
@@ -136,17 +112,17 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
           <button
             type="submit"
             disabled={cargando}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 font-black uppercase tracking-wider text-white shadow-lg shadow-red-900/30 hover:from-red-700 hover:to-red-800 active:scale-98 transition-all disabled:opacity-50 mt-2"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-red-600 to-red-700 font-black uppercase tracking-wider text-white shadow-lg shadow-red-900/30 hover:from-red-700 hover:to-red-800 active:scale-98 transition-all disabled:opacity-50 mt-4"
           >
             <LogIn className="h-4 w-4" />
-            {cargando ? "Iniciando Turno..." : "INICIAR TURNO / INGRESAR"}
+            {cargando ? "Validando Credenciales..." : "INGRESAR AL SISTEMA"}
           </button>
         </form>
 
-        {/* Pie con información de seguridad */}
+        {/* Pie de seguridad */}
         <div className="border-t border-slate-800/80 bg-[#12141C] p-3 text-center text-[10px] font-semibold text-slate-500 flex items-center justify-center gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-          Sistema Protegido • Modo Local & Sincronización en Nube
+          Control de Acceso por Roles (Super Admin, Admin, Cajero)
         </div>
       </div>
     </div>
