@@ -135,20 +135,20 @@ export function ConfiguracionCajasModal({
           </div>
           <button
             onClick={() => onOpenChange(false)}
-            className="flex h-7 w-7 items-center justify-center rounded hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Pestañas de Navegación */}
-        <div className="flex border-b border-slate-300 bg-slate-200 px-4 pt-2 gap-2">
+        <div className="flex border-b border-slate-200 bg-slate-100/70 px-4 pt-2.5 gap-2">
           <button
             onClick={() => setTabActiva("terminal")}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-t-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-t-xl transition-all ${
               tabActiva === "terminal"
-                ? "bg-white text-red-700 border-t-2 border-x border-slate-300 shadow-sm"
-                : "text-slate-600 hover:bg-slate-300/60"
+                ? "bg-white text-emerald-700 border-t-2 border-x border-slate-200 shadow-xs"
+                : "text-slate-600 hover:bg-slate-200/60"
             }`}
           >
             <Laptop className="h-4 w-4" /> Asignar Esta PC / Terminal
@@ -156,10 +156,10 @@ export function ConfiguracionCajasModal({
 
           <button
             onClick={() => setTabActiva("cajas")}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-t-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-t-xl transition-all ${
               tabActiva === "cajas"
-                ? "bg-white text-red-700 border-t-2 border-x border-slate-300 shadow-sm"
-                : "text-slate-600 hover:bg-slate-300/60"
+                ? "bg-white text-emerald-700 border-t-2 border-x border-slate-200 shadow-xs"
+                : "text-slate-600 hover:bg-slate-200/60"
             }`}
           >
             <Layers className="h-4 w-4" /> Gestión de Multi-Cajas ({cajas.length})
@@ -167,10 +167,10 @@ export function ConfiguracionCajasModal({
 
           <button
             onClick={() => setTabActiva("resolucion")}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-t-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-t-xl transition-all ${
               tabActiva === "resolucion"
-                ? "bg-white text-red-700 border-t-2 border-x border-slate-300 shadow-sm"
-                : "text-slate-600 hover:bg-slate-300/60"
+                ? "bg-white text-emerald-700 border-t-2 border-x border-slate-200 shadow-xs"
+                : "text-slate-600 hover:bg-slate-200/60"
             }`}
           >
             <Maximize2 className="h-4 w-4" /> Resoluciones y Escala UI
@@ -182,16 +182,16 @@ export function ConfiguracionCajasModal({
           {/* TAB 1: ASIGNAR ESTA PC */}
           {tabActiva === "terminal" && (
             <div className="space-y-4">
-              <div className="rounded-lg border-2 border-blue-200 bg-blue-50/70 p-4 shadow-sm">
+              <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50/40 p-4 shadow-xs">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-full bg-blue-600 p-2 text-white">
-                    <Laptop className="h-6 w-6" />
+                  <div className="rounded-xl bg-emerald-600 p-2.5 text-white shadow-xs">
+                    <Laptop className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-blue-950 uppercase">
+                    <h3 className="text-sm font-black text-emerald-950 uppercase">
                       Configuración de Este Dispositivo / Computador
                     </h3>
-                    <p className="text-xs text-blue-800 mt-0.5">
+                    <p className="text-xs text-emerald-800 mt-0.5">
                       Esta configuración se guarda exclusivamente en la memoria de este navegador. Te permite
                       determinar qué Caja atiende este equipo físico para generar sus propias facturas y prefijos.
                     </p>
@@ -199,7 +199,7 @@ export function ConfiguracionCajasModal({
                 </div>
               </div>
 
-              <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm space-y-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-4">
                 <div className="grid grid-cols-12 gap-4">
                   <div className="col-span-12 md:col-span-6">
                     <label className="text-xs font-black text-slate-800 uppercase tracking-wide">
@@ -210,9 +210,9 @@ export function ConfiguracionCajasModal({
                       value={terminal.nombreEquipo}
                       onChange={(e) => setTerminal((p) => ({ ...p, nombreEquipo: e.target.value }))}
                       placeholder="Ej. PC-MOSTRADOR-01"
-                      className="mt-1.5 h-9 w-full rounded border border-slate-400 bg-slate-50 px-3 text-xs font-black text-slate-900 uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                      className="mt-1.5 h-9 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-900 uppercase focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">Nombre para identificar este puesto en la red</p>
+                    <p className="text-[10px] text-slate-500 mt-1 font-medium">Nombre para identificar este puesto en la red</p>
                   </div>
 
                   <div className="col-span-12 md:col-span-6">
@@ -233,7 +233,7 @@ export function ConfiguracionCajasModal({
                           }));
                         }
                       }}
-                      className="mt-1.5 h-9 w-full rounded border border-slate-400 bg-slate-50 px-3 text-xs font-black text-red-700 uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                      className="mt-1.5 h-9 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-emerald-700 uppercase focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
                     >
                       {cajas.map((c) => (
                         <option key={c.IDCAJAS} value={c.IDCAJAS}>
@@ -241,7 +241,7 @@ export function ConfiguracionCajasModal({
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-slate-500 mt-1 font-medium">
                       Todas las facturas de este equipo usarán esta caja y su prefijo
                     </p>
                   </div>
@@ -255,7 +255,7 @@ export function ConfiguracionCajasModal({
                       onChange={(e) =>
                         setTerminal((p) => ({ ...p, tamanoPapel: e.target.value as any }))
                       }
-                      className="mt-1.5 h-9 w-full rounded border border-slate-400 bg-slate-50 px-3 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                      className="mt-1.5 h-9 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-bold text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
                     >
                       <option value="80mm">Ticket Térmico 80mm (Estándar POS)</option>
                       <option value="58mm">Ticket Térmico 58mm (Portátil / Mini POS)</option>
@@ -264,9 +264,9 @@ export function ConfiguracionCajasModal({
                   </div>
 
                   <div className="col-span-12 md:col-span-6 flex flex-col justify-end">
-                    <div className="rounded bg-slate-100 p-2 border border-slate-300 text-xs flex items-center justify-between">
+                    <div className="rounded-xl bg-slate-100/80 p-2.5 border border-slate-200 text-xs flex items-center justify-between">
                       <span className="font-bold text-slate-700">Estado de Vinculación:</span>
-                      <span className="inline-flex items-center gap-1 font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                      <span className="inline-flex items-center gap-1 font-black text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Vinculado a {terminal.nombreCaja}
                       </span>
                     </div>
@@ -277,7 +277,7 @@ export function ConfiguracionCajasModal({
                   <button
                     type="button"
                     onClick={handleGuardarTerminal}
-                    className="flex items-center gap-2 h-9 rounded bg-[#B80036] px-6 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-[#96002C] active:scale-95"
+                    className="flex items-center gap-2 h-9 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 px-6 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 active:scale-95 transition-all"
                   >
                     <Save className="h-4 w-4" /> Guardar Asignación en Esta PC
                   </button>
@@ -294,7 +294,7 @@ export function ConfiguracionCajasModal({
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
                     Catálogo de Cajas y Puntos de Cobro
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 font-medium">
                     Define las cajas activas, su prefijo de facturación y el último consecutivo
                   </p>
                 </div>
@@ -311,7 +311,7 @@ export function ConfiguracionCajasModal({
                       DESCRIPCION_UBICACION: "Mostrador",
                     })
                   }
-                  className="flex items-center gap-1.5 h-8 rounded bg-emerald-600 px-3 text-xs font-black text-white hover:bg-emerald-700 shadow"
+                  className="flex items-center gap-1.5 h-8 rounded-xl bg-emerald-600 px-3.5 text-xs font-black text-white hover:bg-emerald-700 shadow-xs transition-all active:scale-95"
                 >
                   <Plus className="h-4 w-4" /> NUEVA CAJA
                 </button>
@@ -321,17 +321,17 @@ export function ConfiguracionCajasModal({
               {cajaEditando && (
                 <form
                   onSubmit={handleGuardarCaja}
-                  className="rounded-lg border-2 border-amber-400 bg-amber-50/80 p-4 shadow-md space-y-3 animate-in fade-in"
+                  className="rounded-2xl border border-emerald-300 bg-emerald-50/50 p-4 shadow-sm space-y-3 animate-in fade-in"
                 >
-                  <div className="flex items-center justify-between border-b border-amber-300 pb-2">
-                    <h4 className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
-                      <Settings2 className="h-4 w-4 text-amber-700" />
+                  <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                    <h4 className="text-xs font-black text-emerald-950 uppercase flex items-center gap-1.5">
+                      <Settings2 className="h-4 w-4 text-emerald-700" />
                       {cajaEditando.IDCAJAS ? `Editar ${cajaEditando.NOMBRECAJA}` : "Crear Nueva Caja"}
                     </h4>
                     <button
                       type="button"
                       onClick={() => setCajaEditando(null)}
-                      className="text-amber-800 hover:text-black text-xs font-bold"
+                      className="text-slate-500 hover:text-slate-800 text-xs font-bold"
                     >
                       Cancelar
                     </button>
@@ -348,7 +348,7 @@ export function ConfiguracionCajasModal({
                           setCajaEditando((p) => ({ ...p, NOMBRECAJA: e.target.value }))
                         }
                         placeholder="Ej. CAJA 2 / SERVIDOR"
-                        className="mt-1 h-8 w-full rounded border border-slate-400 bg-white px-2 text-xs font-bold text-slate-900 uppercase"
+                        className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-bold text-slate-900 uppercase focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
 
@@ -361,7 +361,7 @@ export function ConfiguracionCajasModal({
                           setCajaEditando((p) => ({ ...p, PREFIJO: e.target.value }))
                         }
                         placeholder="Ej. G o POS2-"
-                        className="mt-1 h-8 w-full rounded border border-slate-400 bg-white px-2 text-xs font-black text-red-700 uppercase"
+                        className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-black text-emerald-700 uppercase focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
 
@@ -377,7 +377,7 @@ export function ConfiguracionCajasModal({
                             NUMERACION: Number(e.target.value) || 1,
                           }))
                         }
-                        className="mt-1 h-8 w-full rounded border border-slate-400 bg-white px-2 text-xs font-black text-slate-900"
+                        className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-black text-slate-900 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
 
@@ -393,7 +393,7 @@ export function ConfiguracionCajasModal({
                           }))
                         }
                         placeholder="Ej. Piso 1 / Entrada"
-                        className="mt-1 h-8 w-full rounded border border-slate-400 bg-white px-2 text-xs font-semibold text-slate-900"
+                        className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
@@ -401,7 +401,7 @@ export function ConfiguracionCajasModal({
                   <div className="flex justify-end gap-2 pt-2">
                     <button
                       type="submit"
-                      className="flex items-center gap-1.5 h-8 rounded bg-amber-600 px-4 text-xs font-black text-white hover:bg-amber-700 shadow"
+                      className="flex items-center gap-1.5 h-8 rounded-xl bg-emerald-600 px-4 text-xs font-black text-white hover:bg-emerald-700 shadow-xs transition-all active:scale-95"
                     >
                       <Save className="h-3.5 w-3.5" /> Guardar Caja
                     </button>
@@ -410,44 +410,44 @@ export function ConfiguracionCajasModal({
               )}
 
               {/* Tabla de Cajas */}
-              <div className="rounded-md border border-slate-300 bg-white shadow-sm overflow-hidden">
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-800 text-white font-black uppercase text-[11px]">
-                      <th className="p-2.5">ID</th>
-                      <th className="p-2.5">Nombre de Caja</th>
-                      <th className="p-2.5">Prefijo</th>
-                      <th className="p-2.5">Consecutivo</th>
-                      <th className="p-2.5">Ubicación</th>
-                      <th className="p-2.5 text-center">Acciones</th>
+                    <tr className="bg-slate-900 text-white font-black uppercase text-[11px]">
+                      <th className="p-3">ID</th>
+                      <th className="p-3">Nombre de Caja</th>
+                      <th className="p-3">Prefijo</th>
+                      <th className="p-3">Consecutivo</th>
+                      <th className="p-3">Ubicación</th>
+                      <th className="p-3 text-center">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-slate-100">
                     {cajas.map((c) => {
                       const esEstaPC = terminal.idCajaAsignada === c.IDCAJAS;
                       return (
-                        <tr key={c.IDCAJAS} className={`hover:bg-slate-50 ${esEstaPC ? "bg-red-50/50" : ""}`}>
-                          <td className="p-2.5 font-bold text-slate-600">#{c.IDCAJAS}</td>
-                          <td className="p-2.5 font-black text-slate-900 uppercase flex items-center gap-2">
+                        <tr key={c.IDCAJAS} className={`hover:bg-slate-50 ${esEstaPC ? "bg-emerald-50/40" : ""}`}>
+                          <td className="p-3 font-bold text-slate-500">#{c.IDCAJAS}</td>
+                          <td className="p-3 font-black text-slate-900 uppercase flex items-center gap-2">
                             {c.NOMBRECAJA}
                             {esEstaPC && (
-                              <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.2 rounded font-black">
+                              <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-black">
                                 Esta PC
                               </span>
                             )}
                           </td>
-                          <td className="p-2.5 font-black text-red-700 uppercase">{c.PREFIJO}</td>
-                          <td className="p-2.5 font-bold text-slate-800">
+                          <td className="p-3 font-black text-emerald-700 uppercase">{c.PREFIJO}</td>
+                          <td className="p-3 font-bold text-slate-800">
                             {c.PREFIJO}{c.NUMERACION}
                           </td>
-                          <td className="p-2.5 text-slate-600 font-semibold">{c.DESCRIPCION_UBICACION || "—"}</td>
-                          <td className="p-2.5 text-center">
+                          <td className="p-3 text-slate-600 font-semibold">{c.DESCRIPCION_UBICACION || "—"}</td>
+                          <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => setCajaEditando(c)}
                                 title="Editar Caja"
-                                className="p-1 rounded text-blue-700 hover:bg-blue-100"
+                                className="p-1.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
                               >
                                 <Edit2 className="h-4 w-4" />
                               </button>
@@ -455,7 +455,7 @@ export function ConfiguracionCajasModal({
                                 type="button"
                                 onClick={() => handleEliminarCaja(c.IDCAJAS)}
                                 title="Eliminar Caja"
-                                className="p-1 rounded text-red-600 hover:bg-red-100"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -473,16 +473,16 @@ export function ConfiguracionCajasModal({
           {/* TAB 3: RESOLUCIONES Y ESCALADO UI */}
           {tabActiva === "resolucion" && (
             <div className="space-y-4">
-              <div className="rounded-lg border-2 border-purple-200 bg-purple-50/70 p-4 shadow-sm">
+              <div className="rounded-2xl border border-teal-200 bg-teal-50/50 p-4 shadow-xs">
                 <div className="flex items-start gap-3">
-                  <div className="rounded-full bg-purple-600 p-2 text-white">
-                    <Maximize2 className="h-6 w-6" />
+                  <div className="rounded-xl bg-teal-600 p-2.5 text-white shadow-xs">
+                    <Maximize2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-purple-950 uppercase">
+                    <h3 className="text-sm font-black text-teal-950 uppercase">
                       Adaptación de Resolución y Escala Visual
                     </h3>
-                    <p className="text-xs text-purple-800 mt-0.5">
+                    <p className="text-xs text-teal-800 mt-0.5">
                       Elige el ajuste óptimo para el monitor de este equipo. Puedes agrandar o compactar toda la
                       interfaz para que encaje al 100% en pantallas táctiles, laptops o monitores gigantes.
                     </p>
@@ -500,10 +500,10 @@ export function ConfiguracionCajasModal({
                       forzarPantallaCompleta: false,
                     })
                   }
-                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-lg border-2 p-3.5 cursor-pointer transition-all ${
+                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-2xl border-2 p-4 cursor-pointer transition-all ${
                     resolucion.modo === "compacta"
-                      ? "border-red-600 bg-red-50/80 shadow-md ring-2 ring-red-400"
-                      : "border-slate-300 bg-white hover:border-slate-400"
+                      ? "border-emerald-600 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-400/30"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="font-black text-xs text-slate-900 uppercase">Pantalla Compacta</div>
@@ -511,7 +511,7 @@ export function ConfiguracionCajasModal({
                   <div className="mt-2 text-[10px] text-slate-600 leading-tight">
                     Escala al 85% para ver todo el formulario sin scroll en pantallas pequeñas.
                   </div>
-                  <div className="mt-3 font-black text-xs text-red-700">Zoom: 85%</div>
+                  <div className="mt-3 font-black text-xs text-emerald-700">Zoom: 85%</div>
                 </div>
 
                 {/* PRESET 2: ESTÁNDAR */}
@@ -523,10 +523,10 @@ export function ConfiguracionCajasModal({
                       forzarPantallaCompleta: false,
                     })
                   }
-                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-lg border-2 p-3.5 cursor-pointer transition-all ${
+                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-2xl border-2 p-4 cursor-pointer transition-all ${
                     resolucion.modo === "estandar"
-                      ? "border-red-600 bg-red-50/80 shadow-md ring-2 ring-red-400"
-                      : "border-slate-300 bg-white hover:border-slate-400"
+                      ? "border-emerald-600 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-400/30"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="font-black text-xs text-slate-900 uppercase">Resolución Estándar</div>
@@ -534,7 +534,7 @@ export function ConfiguracionCajasModal({
                   <div className="mt-2 text-[10px] text-slate-600 leading-tight">
                     Tamaño nativo del 100%. Ideal para la mayoría de monitores comerciales.
                   </div>
-                  <div className="mt-3 font-black text-xs text-red-700">Zoom: 100%</div>
+                  <div className="mt-3 font-black text-xs text-emerald-700">Zoom: 100%</div>
                 </div>
 
                 {/* PRESET 3: HD / MONITORES GRANDES */}
@@ -546,10 +546,10 @@ export function ConfiguracionCajasModal({
                       forzarPantallaCompleta: false,
                     })
                   }
-                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-lg border-2 p-3.5 cursor-pointer transition-all ${
+                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-2xl border-2 p-4 cursor-pointer transition-all ${
                     resolucion.modo === "hd"
-                      ? "border-red-600 bg-red-50/80 shadow-md ring-2 ring-red-400"
-                      : "border-slate-300 bg-white hover:border-slate-400"
+                      ? "border-emerald-600 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-400/30"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="font-black text-xs text-slate-900 uppercase">Monitores Grandes HD</div>
@@ -557,7 +557,7 @@ export function ConfiguracionCajasModal({
                   <div className="mt-2 text-[10px] text-slate-600 leading-tight">
                     Escala al 115% para que los textos y botones se lean con total claridad a distancia.
                   </div>
-                  <div className="mt-3 font-black text-xs text-red-700">Zoom: 115%</div>
+                  <div className="mt-3 font-black text-xs text-emerald-700">Zoom: 115%</div>
                 </div>
 
                 {/* PRESET 4: MODO TÁCTIL */}
@@ -569,10 +569,10 @@ export function ConfiguracionCajasModal({
                       forzarPantallaCompleta: false,
                     })
                   }
-                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-lg border-2 p-3.5 cursor-pointer transition-all ${
+                  className={`col-span-12 sm:col-span-6 md:col-span-3 rounded-2xl border-2 p-4 cursor-pointer transition-all ${
                     resolucion.modo === "tactil"
-                      ? "border-red-600 bg-red-50/80 shadow-md ring-2 ring-red-400"
-                      : "border-slate-300 bg-white hover:border-slate-400"
+                      ? "border-emerald-600 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-400/30"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="font-black text-xs text-slate-900 uppercase">Pantallas Táctiles</div>
@@ -580,17 +580,17 @@ export function ConfiguracionCajasModal({
                   <div className="mt-2 text-[10px] text-slate-600 leading-tight">
                     Botones y tablas amplias para facilitar el toque con los dedos.
                   </div>
-                  <div className="mt-3 font-black text-xs text-red-700">Zoom: 110%</div>
+                  <div className="mt-3 font-black text-xs text-emerald-700">Zoom: 110%</div>
                 </div>
               </div>
 
               {/* CONTROL DESLIZANTE MANUAL */}
-              <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black text-slate-800 uppercase">
                     Ajuste Manual de Escala (%)
                   </label>
-                  <span className="font-black text-xs text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                  <span className="font-black text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
                     {resolucion.escalaPorcentaje}%
                   </span>
                 </div>
@@ -609,7 +609,7 @@ export function ConfiguracionCajasModal({
                       forzarPantallaCompleta: resolucion.forzarPantallaCompleta,
                     });
                   }}
-                  className="w-full accent-[#B80036] cursor-pointer"
+                  className="w-full accent-emerald-600 cursor-pointer"
                 />
 
                 <div className="flex justify-between text-[10px] text-slate-500 font-bold">
@@ -623,14 +623,14 @@ export function ConfiguracionCajasModal({
         </div>
 
         {/* Pie del Modal */}
-        <div className="flex items-center justify-between bg-slate-200 px-5 py-3 border-t border-slate-300">
+        <div className="flex items-center justify-between bg-slate-50 px-5 py-3.5 border-t border-slate-200">
           <div className="text-xs font-bold text-slate-700">
-            Terminal activa: <strong className="text-red-700">{terminal.nombreEquipo}</strong> — {terminal.nombreCaja} ({terminal.prefijo})
+            Terminal activa: <strong className="text-emerald-700">{terminal.nombreEquipo}</strong> — {terminal.nombreCaja} ({terminal.prefijo})
           </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-8 rounded bg-slate-800 px-5 text-xs font-black uppercase text-white hover:bg-black shadow"
+            className="h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-5 text-xs font-bold uppercase shadow-2xs transition-all"
           >
             Cerrar
           </button>

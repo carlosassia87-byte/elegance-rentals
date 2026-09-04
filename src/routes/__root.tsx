@@ -104,7 +104,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="h-full overflow-hidden bg-[#EDEDED]">
+      <body className="h-full overflow-hidden bg-[#F8FAFC] text-slate-900 font-sans antialiased">
         {children}
         <Scripts />
       </body>
@@ -117,7 +117,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="h-screen w-screen overflow-hidden bg-[#EDEDED]">
+      <div className="h-screen w-screen overflow-hidden bg-[#F8FAFC] text-slate-900">
         <Outlet />
       </div>
       <Toaster position="bottom-right" />

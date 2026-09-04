@@ -159,7 +159,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           </div>
           <button
             onClick={() => onOpenChange(false)}
-            className="flex h-7 w-7 items-center justify-center rounded hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -167,70 +167,70 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
 
         <div className="p-5 space-y-4 max-h-[78vh] overflow-y-auto">
           {/* BARRA DE FILTRO Y DETALLES */}
-          <div className="flex items-center justify-between rounded-md border border-slate-300 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-slate-600" />
+              <Calendar className="h-4 w-4 text-emerald-600" />
               <span className="text-xs font-black uppercase text-slate-800">Fecha de Cuadre:</span>
               <input
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="h-7 rounded border border-slate-400 bg-slate-50 px-2 text-xs font-bold text-slate-900"
+                className="h-8 rounded-xl border border-slate-300 bg-slate-50 px-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border">
-                Caja: <strong className="text-red-700">{terminal.nombreCaja}</strong>
+              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                Caja: <strong className="text-emerald-700 font-black">{terminal.nombreCaja}</strong>
               </span>
               <button
                 type="button"
                 onClick={calcularArqueo}
                 disabled={cargando}
-                className="flex items-center gap-1 h-7 rounded bg-slate-700 px-2.5 text-xs font-bold text-white hover:bg-slate-900 shadow"
+                className="flex items-center gap-1.5 h-8 rounded-xl bg-slate-800 px-3 text-xs font-bold text-white hover:bg-slate-900 shadow-xs transition-all active:scale-95"
               >
-                <RefreshCw className={`h-3 w-3 ${cargando ? "animate-spin" : ""}`} /> Recalcular
+                <RefreshCw className={`h-3.5 w-3.5 ${cargando ? "animate-spin text-emerald-400" : ""}`} /> Recalcular
               </button>
             </div>
           </div>
 
           {/* TARJETA PRINCIPAL: TOTAL NETO ESPERADO */}
-          <div className="rounded-xl border-2 border-emerald-500 bg-emerald-50 p-4 shadow-md text-center">
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-emerald-50 p-5 shadow-xs text-center">
             <div className="text-xs font-black text-emerald-900 uppercase tracking-widest">
               TOTAL NETO EN CAJA (EFECTIVO + TRANSFERENCIAS)
             </div>
-            <div className="text-3xl font-black text-emerald-700 mt-1">
+            <div className="text-3xl font-black text-emerald-700 mt-1.5 tracking-tight">
               ${totales.totalNetoCaja.toLocaleString("es-CO")}
             </div>
             <div className="text-xs font-semibold text-emerald-800 mt-1">
-              Total facturas/operaciones procesadas hoy: <strong>{totales.cantidadFacturas}</strong>
+              Total facturas/operaciones procesadas hoy: <strong className="font-black text-emerald-950">{totales.cantidadFacturas}</strong>
             </div>
           </div>
 
           {/* DESGLOSE EN 2 COLUMNAS */}
           <div className="grid grid-cols-12 gap-3">
             {/* INGRESOS */}
-            <div className="col-span-12 md:col-span-6 rounded-md border border-slate-300 bg-white p-3.5 shadow-sm space-y-2.5">
-              <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5 border-b pb-1 text-emerald-700">
+            <div className="col-span-12 md:col-span-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-2.5">
+              <h3 className="text-xs font-black uppercase flex items-center gap-1.5 border-b border-slate-100 pb-2 text-emerald-700 tracking-wide">
                 <ArrowDownRight className="h-4 w-4" /> Ingresos Totales
               </h3>
 
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between font-bold text-slate-700">
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between font-bold text-slate-600">
                   <span>Alquileres (Efectivo):</span>
                   <span className="font-black text-slate-900">${totales.alquilerEfectivo.toLocaleString("es-CO")}</span>
                 </div>
-                <div className="flex justify-between font-bold text-slate-700">
-                  <span>Alquileres (Transferencia / Tarjeta):</span>
+                <div className="flex justify-between font-bold text-slate-600">
+                  <span>Alquileres (Transf. / Tarjeta):</span>
                   <span className="font-black text-slate-900">${totales.alquilerTransferencia.toLocaleString("es-CO")}</span>
                 </div>
-                <div className="flex justify-between font-bold text-slate-700">
+                <div className="flex justify-between font-bold text-slate-600">
                   <span>Depósitos Recibidos (Garantía):</span>
-                  <span className="font-black text-blue-700">${totales.totalDepositosRecibidos.toLocaleString("es-CO")}</span>
+                  <span className="font-black text-emerald-700">${totales.totalDepositosRecibidos.toLocaleString("es-CO")}</span>
                 </div>
-                <div className="border-t pt-1 flex justify-between font-black text-slate-900">
+                <div className="border-t border-slate-100 pt-2 flex justify-between font-black text-slate-900 text-xs">
                   <span>Total Ingresos Brutos:</span>
-                  <span className="text-emerald-700">
+                  <span className="text-emerald-700 font-extrabold">
                     ${(totales.totalAlquileres + totales.totalDepositosRecibidos).toLocaleString("es-CO")}
                   </span>
                 </div>
@@ -238,23 +238,23 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
             </div>
 
             {/* EGRESOS Y SALIDAS */}
-            <div className="col-span-12 md:col-span-6 rounded-md border border-slate-300 bg-white p-3.5 shadow-sm space-y-2.5">
-              <h3 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5 border-b pb-1 text-red-700">
+            <div className="col-span-12 md:col-span-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-2.5">
+              <h3 className="text-xs font-black uppercase flex items-center gap-1.5 border-b border-slate-100 pb-2 text-rose-700 tracking-wide">
                 <ArrowUpRight className="h-4 w-4" /> Egresos y Salidas
               </h3>
 
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between font-bold text-slate-700">
-                  <span>Depósitos Devueltos (Prendas):</span>
-                  <span className="font-black text-red-600">-${totales.totalDepositosDevueltos.toLocaleString("es-CO")}</span>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between font-bold text-slate-600">
+                  <span>Depósitos Devueltos:</span>
+                  <span className="font-black text-rose-600">-${totales.totalDepositosDevueltos.toLocaleString("es-CO")}</span>
                 </div>
-                <div className="flex justify-between font-bold text-slate-700">
+                <div className="flex justify-between font-bold text-slate-600">
                   <span>Gastos / Salidas de Caja:</span>
-                  <span className="font-black text-red-600">-${totales.totalGastos.toLocaleString("es-CO")}</span>
+                  <span className="font-black text-rose-600">-${totales.totalGastos.toLocaleString("es-CO")}</span>
                 </div>
-                <div className="border-t pt-1 flex justify-between font-black text-slate-900">
+                <div className="border-t border-slate-100 pt-2 flex justify-between font-black text-slate-900 text-xs">
                   <span>Total Egresos:</span>
-                  <span className="text-red-700">
+                  <span className="text-rose-700 font-extrabold">
                     -${(totales.totalDepositosDevueltos + totales.totalGastos).toLocaleString("es-CO")}
                   </span>
                 </div>
@@ -263,22 +263,22 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           </div>
 
           {/* RESUMEN POR FORMA DE PAGO */}
-          <div className="rounded-md border border-slate-300 bg-white p-3.5 shadow-sm space-y-2">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b pb-1">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-2.5">
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-1.5">
               Desglose Disponible
             </h3>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded bg-amber-50 p-2 border border-amber-200">
+              <div className="rounded-xl bg-amber-50/80 p-3 border border-amber-200/80">
                 <span className="text-[11px] font-bold text-amber-900 uppercase">Efectivo Físico en Caja:</span>
-                <div className="text-base font-black text-amber-800 mt-0.5">
+                <div className="text-base font-black text-amber-800 mt-1">
                   ${totales.efectivoEnCaja.toLocaleString("es-CO")}
                 </div>
               </div>
 
-              <div className="rounded bg-blue-50 p-2 border border-blue-200">
-                <span className="text-[11px] font-bold text-blue-900 uppercase">Bancos / Datáfono / Transferencias:</span>
-                <div className="text-base font-black text-blue-800 mt-0.5">
+              <div className="rounded-xl bg-emerald-50/80 p-3 border border-emerald-200/80">
+                <span className="text-[11px] font-bold text-emerald-900 uppercase">Bancos / Datáfono / Transf:</span>
+                <div className="text-base font-black text-emerald-800 mt-1">
                   ${totales.transferenciasEnCaja.toLocaleString("es-CO")}
                 </div>
               </div>
@@ -287,11 +287,11 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         </div>
 
         {/* Pie */}
-        <div className="flex items-center justify-between bg-slate-200 px-5 py-3 border-t border-slate-300">
+        <div className="flex items-center justify-between bg-slate-50 px-5 py-3.5 border-t border-slate-200">
           <button
             type="button"
             onClick={handleImprimirCierre}
-            className="flex items-center gap-1.5 h-8 rounded bg-slate-800 px-4 text-xs font-black uppercase text-white hover:bg-black shadow"
+            className="flex items-center gap-1.5 h-9 rounded-xl bg-slate-800 px-4 text-xs font-black uppercase text-white hover:bg-slate-900 shadow-xs transition-all active:scale-95"
           >
             <Printer className="h-4 w-4" /> Imprimir Comprobante de Arqueo
           </button>
@@ -299,7 +299,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-8 rounded bg-red-700 px-5 text-xs font-black uppercase text-white hover:bg-red-800 shadow"
+            className="h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-5 text-xs font-bold uppercase shadow-2xs transition-all"
           >
             Cerrar
           </button>
