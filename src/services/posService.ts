@@ -54,44 +54,76 @@ export async function buscarClientesPorNombre(query: string): Promise<Cliente[]>
 
 export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente | null> {
   try {
+    const cedulaNum = typeof cliente.CEDULA === "string" ? parseInt(cliente.CEDULA, 10) : cliente.CEDULA;
+    
+    // 1. Si viene con IDCLIENTES > 0, actualizar por ID
     if (cliente.IDCLIENTES && cliente.IDCLIENTES > 0) {
       const { data, error } = await supabase
         .from("CLIENTES" as any)
         .update({
-          CEDULA: cliente.CEDULA,
-          NOMBRE: cliente.NOMBRE,
-          DIRECCION: cliente.DIRECCION,
-          TELEFONO: cliente.TELEFONO,
-          TELEFONO2: cliente.TELEFONO2,
-          EMPRESA: cliente.EMPRESA,
-          DIRECCIONEMP: cliente.DIRECCIONEMP,
+          CEDULA: cedulaNum || 0,
+          NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+          DIRECCION: cliente.DIRECCION || "",
+          TELEFONO: cliente.TELEFONO || "",
+          TELEFONO2: cliente.TELEFONO2 || "",
+          EMPRESA: cliente.EMPRESA || "",
+          DIRECCIONEMP: cliente.DIRECCIONEMP || "",
           SALDO: cliente.SALDO ?? 0,
-          NOTA: cliente.NOTA,
+          NOTA: cliente.NOTA || "",
         })
         .eq("IDCLIENTES", cliente.IDCLIENTES)
         .select()
         .single();
-      if (error) throw error;
-      return data as unknown as Cliente;
-    } else {
-      const { data, error } = await supabase
-        .from("CLIENTES" as any)
-        .insert({
-          CEDULA: cliente.CEDULA,
-          NOMBRE: cliente.NOMBRE,
-          DIRECCION: cliente.DIRECCION,
-          TELEFONO: cliente.TELEFONO,
-          TELEFONO2: cliente.TELEFONO2,
-          EMPRESA: cliente.EMPRESA,
-          DIRECCIONEMP: cliente.DIRECCIONEMP,
-          SALDO: cliente.SALDO ?? 0,
-          NOTA: cliente.NOTA,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as unknown as Cliente;
+      if (!error && data) return data as unknown as Cliente;
     }
+
+    // 2. Si tiene cédula válida, verificar si ya existe en Supabase
+    if (cedulaNum && cedulaNum > 0) {
+      const { data: existente } = await supabase
+        .from("CLIENTES" as any)
+        .select("IDCLIENTES")
+        .eq("CEDULA", cedulaNum)
+        .maybeSingle();
+
+      if (existente && (existente as any).IDCLIENTES) {
+        const { data, error } = await supabase
+          .from("CLIENTES" as any)
+          .update({
+            NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+            DIRECCION: cliente.DIRECCION || "",
+            TELEFONO: cliente.TELEFONO || "",
+            TELEFONO2: cliente.TELEFONO2 || "",
+            EMPRESA: cliente.EMPRESA || "",
+            DIRECCIONEMP: cliente.DIRECCIONEMP || "",
+            SALDO: cliente.SALDO ?? 0,
+            NOTA: cliente.NOTA || "",
+          })
+          .eq("IDCLIENTES", (existente as any).IDCLIENTES)
+          .select()
+          .single();
+        if (!error && data) return data as unknown as Cliente;
+      }
+    }
+
+    // 3. Si no existe, insertar nuevo
+    const { data, error } = await supabase
+      .from("CLIENTES" as any)
+      .insert({
+        CEDULA: cedulaNum || 0,
+        NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+        DIRECCION: cliente.DIRECCION || "",
+        TELEFONO: cliente.TELEFONO || "",
+        TELEFONO2: cliente.TELEFONO2 || "",
+        EMPRESA: cliente.EMPRESA || "",
+        DIRECCIONEMP: cliente.DIRECCIONEMP || "",
+        SALDO: cliente.SALDO ?? 0,
+        NOTA: cliente.NOTA || "",
+      })
+      .select()
+      .single();
+
+    if (!error && data) return data as unknown as Cliente;
+    return cliente as unknown as Cliente;
   } catch (err) {
     console.error("Error guardando cliente:", err);
     return cliente as unknown as Cliente;
@@ -395,50 +427,85 @@ export async function registrarAlquilerFactura(
       }
     } catch {}
 
-    const facturaFinalData = {
-      ...facturaData,
+    const cleanFacturaData: Record<string, any> = {
       NUMEROFACT: sNumeroFactura,
+      FECHASALIDA: facturaData.FECHASALIDA || new Date().toISOString().split("T")[0],
+      FECHAENTRADA: facturaData.FECHAENTRADA || new Date().toISOString().split("T")[0],
+      FTOTALDEPOSITO: Number(facturaData.FTOTALDEPOSITO) || 0,
+      FTOTALVENTADEPOSITO: Number(facturaData.FTOTALVENTADEPOSITO) || 0,
+      FORMAPAGO: facturaData.FORMAPAGO || "EFECTIVO",
+      MODO: facturaData.MODO || "ALQUILER",
+      VENDEDOR: facturaData.VENDEDOR || "ADMINISTRADOR",
+      CCLIENTE: (facturaData.CCLIENTE || "GENERAL").toUpperCase(),
+      CAMBIOS: Number(facturaData.CAMBIOS) || 0,
+      PAGACON: Number(facturaData.PAGACON) || 0,
+      ESTADOCLIENTE: facturaData.ESTADOCLIENTE || "EN ALQUILER",
+      CDIRECCION: facturaData.CDIRECCION || "",
+      CTELEFONO: facturaData.CTELEFONO || "",
+      CTELEFONO1: facturaData.CTELEFONO1 || "",
+      CEMPRESA: facturaData.CEMPRESA || "",
+      CCEDULA: String(facturaData.CCEDULA || ""),
+      PAGOCONEFECTIVO: Number(facturaData.PAGOCONEFECTIVO) || 0,
+      PAGOCONTRANFERENCIA: Number(facturaData.PAGOCONTRANFERENCIA) || 0,
+      FTOTALALQUILER: Number(facturaData.FTOTALALQUILER) || 0,
+      FPAGOTRANS: facturaData.FPAGOTRANS || "",
+      DESCUENTO: Number(facturaData.DESCUENTO) || 0,
+      TOTAL_SALDO: Number(facturaData.TOTAL_SALDO) || 0,
+      FECHA_RECIBO: facturaData.FECHA_RECIBO || new Date().toISOString().split("T")[0],
     };
 
-    // 3. Insertar en tabla FACTURA de Supabase
+    // 3. Insertar en tabla FACTURA de Supabase en la nube
     let facturaInsertada: any = null;
     try {
       const { data: facturaRaw, error: errorFactura } = await supabase
         .from("FACTURA" as any)
-        .insert(facturaFinalData)
+        .insert(cleanFacturaData)
         .select()
         .single();
 
       if (!errorFactura && facturaRaw) {
         facturaInsertada = facturaRaw;
+      } else if (errorFactura) {
+        console.error("Error insertando FACTURA en Supabase:", errorFactura.message);
       }
-    } catch (e) {
-      console.warn("Fallo insert en FACTURA supabase, usando respaldo local:", e);
+    } catch (e: any) {
+      console.error("Excepción insertando FACTURA en Supabase:", e?.message);
     }
 
     if (!facturaInsertada) {
       facturaInsertada = {
-        ...facturaFinalData,
+        ...cleanFacturaData,
         IDFACTURA: Date.now(),
       };
     }
 
-    // 3. Insertar los ítems en CAMPOFACTURA vinculados con IDFACTURA y NUMEROFACT
-    const camposConFactura: CampoFactura[] = items.map((item, idx) => ({
-      ...item,
-      IDFACTURA: Number(facturaInsertada.IDFACTURA) || Date.now(),
+    // 4. Insertar los ítems en CAMPOFACTURA en Supabase (sin AUTOMATIC para permitir auto-serial de PostgreSQL)
+    const camposParaSupabase = items.map((item) => ({
+      DESCRIPCION: item.DESCRIPCION || "",
+      CANTIDAD: Number(item.CANTIDAD) || 1,
+      VALOR: Number(item.VALOR) || 0,
+      TOTAL: Number(item.TOTAL) || 0,
+      BARRAS: item.BARRAS || "0",
       NUMEROFACT: sNumeroFactura,
-      AUTOMATIC: idx + 1,
+      IDFACTURA: Number(facturaInsertada.IDFACTURA) || Date.now(),
+      VALORDEPOSITO: Number(item.VALORDEPOSITO) || 0,
+      TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
+      TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
     }));
 
     try {
-      await supabase.from("CAMPOFACTURA" as any).insert(camposConFactura);
-    } catch (e) {
-      console.warn("Fallo insert en CAMPOFACTURA supabase:", e);
+      const { error: errCampos } = await supabase
+        .from("CAMPOFACTURA" as any)
+        .insert(camposParaSupabase);
+      if (errCampos) {
+        console.error("Error insertando CAMPOFACTURA en Supabase:", errCampos.message);
+      }
+    } catch (e: any) {
+      console.error("Excepción insertando CAMPOFACTURA en Supabase:", e?.message);
     }
 
-    // 4. Guardar copia de respaldo persistente 100% segura en LocalStorage
-    saveLocalFactura(facturaInsertada as Factura, camposConFactura);
+    // 5. Guardar copia de respaldo persistente en LocalStorage
+    saveLocalFactura(facturaInsertada as Factura, camposParaSupabase as CampoFactura[]);
 
     // 5. Descontar Stock de cada ARTICULO en inventario
     for (const item of items) {
