@@ -28,6 +28,8 @@ import {
   Users,
   Bell,
   Loader2,
+  Shirt,
+  RotateCcw,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -57,6 +59,7 @@ import {
   aplicarEscalaResolucion,
   type TerminalConfig,
   type EmpresaConfig,
+  type ResolucionConfig,
   EMPRESA_DEFAULT,
   TERMINAL_DEFAULT,
 } from "@/services/empresaCajaService";
@@ -579,6 +582,7 @@ export function PuntoDeVenta() {
   const transNum = parseFloat(cobroTransferencia) || 0;
   const totalPagado = efecNum + transNum;
   const cambioVSaldo = totalPagado - totalDepositoMasAlquiler;
+  const bAlquiler = totalDeposito > 0;
 
   // Verificar si el cliente tiene trajes en alquiler (3 días límite, $7.000/día de retraso) o notas
   async function verificarAlquileresYAlertarCliente(cli: Partial<Cliente>) {
@@ -629,15 +633,16 @@ export function PuntoDeVenta() {
     try {
       const res = await consultarCedulaColombia(cedBuscada);
       if (res.encontrado && res.cliente) {
+        const c = res.cliente;
         setClienteForm((prev) => ({
           ...prev,
-          ...res.cliente,
+          ...c,
           CEDULA: Number(cedBuscada),
-          NOMBRE: res.cliente.NOMBRE || res.nombreCompleto || prev.NOMBRE,
-          DIRECCION: res.cliente.DIRECCION || prev.DIRECCION,
-          TELEFONO: res.cliente.TELEFONO || prev.TELEFONO,
-          TELEFONO2: res.cliente.TELEFONO2 || prev.TELEFONO2,
-          NOTA: res.cliente.NOTA || prev.NOTA,
+          NOMBRE: c.NOMBRE || res.nombreCompleto || prev.NOMBRE,
+          DIRECCION: c.DIRECCION || prev.DIRECCION,
+          TELEFONO: c.TELEFONO || prev.TELEFONO,
+          TELEFONO2: c.TELEFONO2 || prev.TELEFONO2,
+          NOTA: c.NOTA || prev.NOTA,
         }));
 
         if (res.origen === "LOCAL_DB") {
@@ -1003,11 +1008,11 @@ export function PuntoDeVenta() {
       
       const numFacturaFinal = (resultado && resultado.factura) ? resultado.factura.NUMEROFACT : numeroRecibo;
 
-      const pagoReal = pagoEfecNum + pagoTransNum;
+      const pagoReal = efecNum + transNum;
       const fPagoStr =
-        pagoEfecNum > 0 && pagoTransNum > 0
+        efecNum > 0 && transNum > 0
           ? "MIXTO"
-          : pagoTransNum > 0
+          : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
       const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
@@ -1043,7 +1048,7 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
-        descuento: Number(descuentoGlobal) || 0,
+        descuento: descuentoNum,
         recibi: pagoReal,
         saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
@@ -1059,11 +1064,11 @@ export function PuntoDeVenta() {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
 
-      const pagoReal = pagoEfecNum + pagoTransNum;
+      const pagoReal = efecNum + transNum;
       const fPagoStr =
-        pagoEfecNum > 0 && pagoTransNum > 0
+        efecNum > 0 && transNum > 0
           ? "MIXTO"
-          : pagoTransNum > 0
+          : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
       const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
@@ -1098,7 +1103,7 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
-        descuento: Number(descuentoGlobal) || 0,
+        descuento: descuentoNum,
         recibi: pagoReal,
         saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
@@ -1493,14 +1498,14 @@ export function PuntoDeVenta() {
         </button>
 
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="h-8.5 rounded-xl bg-slate-800 px-4 text-xs font-bold text-white shadow-xs hover:bg-slate-900 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           LIMPIAR / NUEVO
         </button>
 
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="h-8.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           NUEVO ALQUILER
@@ -1663,7 +1668,7 @@ export function PuntoDeVenta() {
 
         {/* BOTÓN SALIR X */}
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="flex items-center gap-1 h-8.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 px-3 text-xs font-bold border border-slate-200 shadow-xs active:scale-95 uppercase tracking-wider transition-all"
         >
           LIMPIAR <X className="h-3.5 w-3.5" />

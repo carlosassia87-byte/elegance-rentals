@@ -25,7 +25,7 @@ import {
   Bell,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
-import type { UsuarioPos } from "@/services/authPosService";
+import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
 
 interface SidebarMenuProps {
   isOpen: boolean;
@@ -51,7 +51,7 @@ export function SidebarMenu({
     onClose();
   };
 
-  const permisos = usuario?.permisos || {};
+  const permisos: Partial<PermisosUsuario> = usuario?.permisos || {};
 
   return (
     <div className="fixed inset-0 z-50 flex select-none animate-in fade-in duration-200">

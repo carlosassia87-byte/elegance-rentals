@@ -21,6 +21,11 @@ export interface PermisosUsuario {
   configResoluciones: boolean;
   gestionUsuarios: boolean;
   hacerDescuentos: boolean;
+  // Alias opcionales usados por algunos componentes
+  posVentas?: boolean;
+  crearArticulos?: boolean;
+  devoluciones?: boolean;
+  gastosCaja?: boolean;
 }
 
 export interface UsuarioPos {

@@ -484,7 +484,7 @@ export function ReimpresionFacturasModal({
                         descripcion: `${it.descripcion}${it.talla ? ` (${it.talla})` : ""}`,
                         cantidad: it.cantidad,
                         valor: it.valorAlquiler,
-                        total: it.valorAlquiler * it.cantidad + (it.totalDeposito || 0),
+                        total: it.valorAlquiler * it.cantidad + (it.valorDeposito || 0) * it.cantidad,
                       }))}
                     />
                   </div>
