@@ -358,6 +358,63 @@ export type Database = {
         }
         Relationships: []
       }
+      EMPRESA_CONFIG: {
+        Row: {
+          CIUDAD: string | null
+          DIAS_ALQUILER: number | null
+          DIRECCION: string | null
+          EMAIL: string | null
+          ID: number
+          LOGO_URL: string | null
+          MENSAJE_PIE: string | null
+          MONEDA: string | null
+          NIT: string | null
+          NOMBRE_COMERCIAL: string | null
+          RAZON_SOCIAL: string | null
+          REGIMEN: string | null
+          SIMBOLO_MONEDA: string | null
+          TELEFONO1: string | null
+          TELEFONO2: string | null
+          TERMINOS: string | null
+        }
+        Insert: {
+          CIUDAD?: string | null
+          DIAS_ALQUILER?: number | null
+          DIRECCION?: string | null
+          EMAIL?: string | null
+          ID?: number
+          LOGO_URL?: string | null
+          MENSAJE_PIE?: string | null
+          MONEDA?: string | null
+          NIT?: string | null
+          NOMBRE_COMERCIAL?: string | null
+          RAZON_SOCIAL?: string | null
+          REGIMEN?: string | null
+          SIMBOLO_MONEDA?: string | null
+          TELEFONO1?: string | null
+          TELEFONO2?: string | null
+          TERMINOS?: string | null
+        }
+        Update: {
+          CIUDAD?: string | null
+          DIAS_ALQUILER?: number | null
+          DIRECCION?: string | null
+          EMAIL?: string | null
+          ID?: number
+          LOGO_URL?: string | null
+          MENSAJE_PIE?: string | null
+          MONEDA?: string | null
+          NIT?: string | null
+          NOMBRE_COMERCIAL?: string | null
+          RAZON_SOCIAL?: string | null
+          REGIMEN?: string | null
+          SIMBOLO_MONEDA?: string | null
+          TELEFONO1?: string | null
+          TELEFONO2?: string | null
+          TERMINOS?: string | null
+        }
+        Relationships: []
+      }
       ESTADO_CLI: {
         Row: {
           ESTADOCLI: string
@@ -662,6 +719,62 @@ export type Database = {
           TIPO?: boolean | null
         }
         Relationships: []
+      }
+      MOVIMIENTOS_INVENTARIO: {
+        Row: {
+          CANTIDAD: number
+          CODBARRAS: string | null
+          DESCRIPCION: string | null
+          FECHA: string | null
+          IDARTICULO: number | null
+          IDMOVIMIENTO: number
+          MOTIVO: string | null
+          NOTAS: string | null
+          STOCK_ANTERIOR: number | null
+          STOCK_NUEVO: number | null
+          TALLA: string | null
+          TIPO_MOVIMIENTO: string | null
+          USUARIO: string | null
+        }
+        Insert: {
+          CANTIDAD?: number
+          CODBARRAS?: string | null
+          DESCRIPCION?: string | null
+          FECHA?: string | null
+          IDARTICULO?: number | null
+          IDMOVIMIENTO?: number
+          MOTIVO?: string | null
+          NOTAS?: string | null
+          STOCK_ANTERIOR?: number | null
+          STOCK_NUEVO?: number | null
+          TALLA?: string | null
+          TIPO_MOVIMIENTO?: string | null
+          USUARIO?: string | null
+        }
+        Update: {
+          CANTIDAD?: number
+          CODBARRAS?: string | null
+          DESCRIPCION?: string | null
+          FECHA?: string | null
+          IDARTICULO?: number | null
+          IDMOVIMIENTO?: number
+          MOTIVO?: string | null
+          NOTAS?: string | null
+          STOCK_ANTERIOR?: number | null
+          STOCK_NUEVO?: number | null
+          TALLA?: string | null
+          TIPO_MOVIMIENTO?: string | null
+          USUARIO?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "MOVIMIENTOS_INVENTARIO_IDARTICULO_fkey"
+            columns: ["IDARTICULO"]
+            isOneToOne: false
+            referencedRelation: "ARTICULO"
+            referencedColumns: ["IDARTICULO"]
+          },
+        ]
       }
       numero_de_serie: {
         Row: {
