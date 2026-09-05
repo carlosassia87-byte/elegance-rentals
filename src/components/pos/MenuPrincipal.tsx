@@ -112,17 +112,17 @@ export function MenuPrincipal({
         }`}
       >
         {/* Cabecera del Sidebar con Toggle Hamburguesa */}
-        <div className="flex items-center justify-between border-b border-slate-200/80 bg-slate-50/80 px-4 py-3.5">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-4 py-3.5">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs font-black text-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-xs font-black text-sm">
               POS
             </div>
             {sidebarExpandido && (
               <div className="min-w-0 transition-opacity duration-200">
-                <h2 className="text-xs font-black tracking-tight text-slate-900 truncate">
+                <h2 className="text-sm font-black tracking-tight text-slate-900 truncate">
                   {empresa.nombreComercial || "LA CASA DEL DISFRAZ"}
                 </h2>
-                <p className="text-[10px] font-bold text-emerald-700 uppercase truncate">
+                <p className="text-xs font-bold text-slate-500 uppercase truncate">
                   {usuario.rol} • {usuario.nombre}
                 </p>
               </div>
@@ -133,19 +133,19 @@ export function MenuPrincipal({
           <button
             type="button"
             onClick={() => setSidebarExpandido(!sidebarExpandido)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-200/70 hover:bg-emerald-600 hover:text-white text-slate-700 transition-all shadow-xs"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-200/70 hover:bg-slate-800 hover:text-white text-slate-700 transition-all shadow-xs"
             title={sidebarExpandido ? "Retraer Menú" : "Expandir Menú"}
           >
             {sidebarExpandido ? <ChevronLeft className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
         </div>
 
-        {/* Lista de Navegación Categorizada */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4 text-xs custom-scrollbar">
-          {/* SECCIÓN 1: PUNTO DE VENTA (DESTACADO) */}
+        {/* Lista de Navegación Categorizada - SIN COLORES CHILLONES Y CON LETRA MÁS GRANDE */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
+          {/* SECCIÓN 1: PUNTO DE VENTA */}
           <div className="space-y-1">
             {sidebarExpandido && (
-              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-400">
                 Punto de Venta
               </div>
             )}
@@ -153,68 +153,66 @@ export function MenuPrincipal({
             {permisos.posVentas !== false && (
               <button
                 onClick={() => handleAccionConPermiso("pos", true, "Punto de Venta")}
-                className={`flex w-full items-center rounded-xl py-2.5 font-bold transition-all group ${
+                className={`flex w-full items-center rounded-xl py-3 font-black text-sm transition-all group ${
                   sidebarExpandido
-                    ? "justify-between px-3 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                    : "justify-center px-0 bg-emerald-600 text-white hover:bg-emerald-700"
+                    ? "justify-between px-3.5 bg-slate-900 text-white shadow-sm hover:bg-black"
+                    : "justify-center px-0 bg-slate-900 text-white hover:bg-black"
                 }`}
                 title="Abrir Punto de Venta"
               >
                 <div className="flex items-center gap-3">
-                  <ShoppingCart className="h-4 w-4 shrink-0" />
-                  {sidebarExpandido && <span>Abrir Punto de Venta</span>}
+                  <ShoppingCart className="h-5 w-5 shrink-0 text-emerald-400" />
+                  {sidebarExpandido && <span className="tracking-wide">Abrir Punto de Venta</span>}
                 </div>
-                {sidebarExpandido && <ArrowRight className="h-3.5 w-3.5 opacity-80" />}
+                {sidebarExpandido && <ArrowRight className="h-4 w-4 opacity-80" />}
               </button>
             )}
 
             {permisos.catalogoArticulos !== false && (
               <button
                 onClick={() => handleAccionConPermiso("inventario_stock", true, "Inventario & Stock")}
-                className={`flex w-full items-center rounded-xl py-2.5 font-black text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Módulo de Inventario, Alimentación de Stock y Kardex"
               >
                 <div className="flex items-center gap-3">
-                  <Package className="h-4 w-4 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Package className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Inventario & Stock</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] font-black bg-blue-600 text-white px-1.5 py-0.2 rounded">KARDEX</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
 
             {permisos.catalogoArticulos !== false && (
               <button
                 onClick={() => handleAccionConPermiso("catalogo_articulos", true, "Catálogo")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Catálogo Rápido de Trajes & Vestidos"
               >
                 <div className="flex items-center gap-3">
-                  <Package className="h-4 w-4 text-slate-500 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Package className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Catálogo de Trajes</span>}
                 </div>
-                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
 
             {permisos.crearArticulos && (
               <button
                 onClick={() => handleAccionConPermiso("nuevo_articulo", true, "Nuevo Traje")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Registrar Nuevo Vestido / Traje"
               >
                 <div className="flex items-center gap-3">
-                  <PlusCircle className="h-4 w-4 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <PlusCircle className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Nuevo Vestido / Traje</span>}
                 </div>
-                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
           </div>
@@ -222,38 +220,38 @@ export function MenuPrincipal({
           {/* SECCIÓN 2: CLIENTES */}
           <div className="space-y-1">
             {sidebarExpandido && (
-              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-400">
                 Clientes
               </div>
             )}
 
             <button
               onClick={() => handleAccionConPermiso("catalogo_clientes", true, "Catálogo de Clientes")}
-              className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-800 hover:bg-sky-50 hover:text-sky-900 transition-all group ${
-                sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+              className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
               }`}
               title="Catálogo y Directorio General de Clientes"
             >
               <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-sky-600 shrink-0 group-hover:scale-110 transition-transform" />
+                <Users className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                 {sidebarExpandido && <span>Catálogo de Clientes</span>}
               </div>
-              {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+              {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
             </button>
 
             {permisos.crearModificarClientes !== false && (
               <button
                 onClick={() => handleAccionConPermiso("nuevo_cliente", true, "Registrar Cliente")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Registrar Nuevo Cliente"
               >
                 <div className="flex items-center gap-3">
-                  <UserCheck className="h-4 w-4 text-indigo-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <UserCheck className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Registrar Cliente</span>}
                 </div>
-                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
           </div>
@@ -261,25 +259,25 @@ export function MenuPrincipal({
           {/* SECCIÓN 3: OPERACIONES & CAJA */}
           <div className="space-y-1">
             {sidebarExpandido && (
-              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-400">
                 Operaciones & Auditoría
               </div>
             )}
 
             <button
               onClick={() => handleAccionConPermiso("alertas_retrasos", true, "Alertas & Retrasos")}
-              className={`flex w-full items-center rounded-xl py-2 font-black text-rose-950 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all group ${
-                sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+              className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
               }`}
               title="Panel de Retrasos y Trajes por Vencer (Límite 3 Días · $7.000/día)"
             >
               <div className="flex items-center gap-3">
-                <Bell className="h-4 w-4 text-rose-600 shrink-0 group-hover:scale-110 transition-transform" />
+                <Bell className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                 {sidebarExpandido && <span>Trajes en Mora & Alertas</span>}
               </div>
               {sidebarExpandido && metricasRetrasos.totalClientesEnMora > 0 && (
-                <span className="text-[9px] font-black bg-rose-600 text-white px-1.5 py-0.2 rounded-full animate-pulse">
-                  {metricasRetrasos.totalClientesEnMora} MORA
+                <span className="text-xs font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
+                  {metricasRetrasos.totalClientesEnMora}
                 </span>
               )}
             </button>
@@ -287,49 +285,45 @@ export function MenuPrincipal({
             {permisos.movimientosTrajes !== false && (
               <button
                 onClick={() => handleAccionConPermiso("movimientos_trajes", true, "Control de Movimientos")}
-                className={`flex w-full items-center rounded-xl py-2 font-black text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Control de Movimientos y Estado de Trajes"
               >
                 <div className="flex items-center gap-3">
-                  <Activity className="h-4 w-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Activity className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Movimientos & Trajes</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.2 rounded">AUDITORÍA</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
 
             {permisos.movimientosTrajes !== false && (
               <button
                 onClick={() => handleAccionConPermiso("balance_depositos", true, "Balance de Depósitos")}
-                className={`flex w-full items-center rounded-xl py-2 font-black text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Balance Financiero de Depósitos y Saldos"
               >
                 <div className="flex items-center gap-3">
-                  <Wallet className="h-4 w-4 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Wallet className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Balance de Depósitos</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] font-black bg-amber-600 text-white px-1.5 py-0.2 rounded">FINANZAS</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
 
             {permisos.apartadosAbonos && (
               <button
                 onClick={() => handleAccionConPermiso("apartados", true, "Reservas & Abonos")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Reservas, Abonos y Entregas"
               >
                 <div className="flex items-center gap-3">
-                  <ArrowDownLeft className="h-4 w-4 text-purple-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <ArrowDownLeft className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Reservas & Abonos</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -339,13 +333,13 @@ export function MenuPrincipal({
             {permisos.devoluciones && (
               <button
                 onClick={() => handleAccionConPermiso("entrada_vestido", true, "Devolución & Depósito")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Devolución de Trajes / Reintegro de Depósito"
               >
                 <div className="flex items-center gap-3">
-                  <RotateCcw className="h-4 w-4 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <RotateCcw className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Devolución & Depósito</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -355,13 +349,13 @@ export function MenuPrincipal({
             {permisos.gastosCaja && (
               <button
                 onClick={() => handleAccionConPermiso("gasto_salida", true, "Gastos")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Registrar Gasto de Caja"
               >
                 <div className="flex items-center gap-3">
-                  <TrendingDown className="h-4 w-4 text-rose-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <TrendingDown className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Gastos de Caja</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -371,36 +365,32 @@ export function MenuPrincipal({
             {permisos.cierreCaja && (
               <button
                 onClick={() => handleAccionConPermiso("cierre_caja", true, "Arqueo de Caja")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Arqueo y Cierre de Caja"
               >
                 <div className="flex items-center gap-3">
-                  <Wallet className="h-4 w-4 text-emerald-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Wallet className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Arqueo y Cierre de Caja</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] font-black bg-emerald-600 text-white px-1.5 py-0.2 rounded">HOY</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
               </button>
             )}
 
             {permisos.reimpresion && (
               <button
                 onClick={() => handleAccionConPermiso("reimprimir", true, "Reimpresión de Facturas")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-cyan-950 bg-cyan-50/80 hover:bg-cyan-100 border border-cyan-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Reimpresión & Historial de Facturas por Fecha"
               >
                 <div className="flex items-center gap-3">
-                  <Printer className="h-4 w-4 text-cyan-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Printer className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Reimpresión & Facturas</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] font-black bg-cyan-600 text-white px-1.5 py-0.2 rounded">TICKET POS</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
               </button>
             )}
           </div>
@@ -408,7 +398,7 @@ export function MenuPrincipal({
           {/* SECCIÓN 4: ADMINISTRACIÓN & CONFIGURACIÓN */}
           <div className="space-y-1">
             {sidebarExpandido && (
-              <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-400">
                 Administración & Ajustes
               </div>
             )}
@@ -416,31 +406,29 @@ export function MenuPrincipal({
             {permisos.gestionUsuarios && (
               <button
                 onClick={() => handleAccionConPermiso("gestion_usuarios", true, "Gestión de Usuarios")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-purple-950 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Usuarios, Roles y Permisos"
               >
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-4 w-4 text-purple-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <ShieldCheck className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Usuarios & Roles</span>}
                 </div>
-                {sidebarExpandido && (
-                  <span className="text-[9px] bg-purple-600 text-white px-1.5 py-0.2 rounded font-black">ADMIN</span>
-                )}
+                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
               </button>
             )}
 
             {permisos.configEmpresa && (
               <button
                 onClick={() => handleAccionConPermiso("config_empresa", true, "Datos de Empresa")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Configuración de Empresa"
               >
                 <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Building2 className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Datos de Empresa</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -450,13 +438,13 @@ export function MenuPrincipal({
             {permisos.configCajas && (
               <button
                 onClick={() => handleAccionConPermiso("config_cajas", true, "Multi-Cajas")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
-                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Multi-Cajas y Asignar Terminal"
               >
                 <div className="flex items-center gap-3">
-                  <Monitor className="h-4 w-4 text-rose-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Monitor className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
                   {sidebarExpandido && <span>Multi-Cajas & Esta PC</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
