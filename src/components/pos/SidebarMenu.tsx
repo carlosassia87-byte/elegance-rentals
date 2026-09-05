@@ -25,7 +25,7 @@ import {
   Bell,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
-import type { UsuarioPos } from "@/services/authPosService";
+import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
 
 interface SidebarMenuProps {
   isOpen: boolean;
