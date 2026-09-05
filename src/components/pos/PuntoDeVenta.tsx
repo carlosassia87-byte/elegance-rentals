@@ -71,6 +71,7 @@ import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
+import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -232,6 +233,7 @@ export function PuntoDeVenta() {
   const [modalCierreCaja, setModalCierreCaja] = useState(false);
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [modalMovimientosTrajes, setModalMovimientosTrajes] = useState(false);
+  const [modalBalanceDepositos, setModalBalanceDepositos] = useState(false);
   const [modalCatalogoClientes, setModalCatalogoClientes] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
@@ -443,6 +445,9 @@ export function PuntoDeVenta() {
         break;
       case "movimientos_trajes":
         setModalMovimientosTrajes(true);
+        break;
+      case "balance_depositos":
+        setModalBalanceDepositos(true);
         break;
       case "config_empresa":
         setModalEmpresa(true);
@@ -3490,6 +3495,16 @@ export function PuntoDeVenta() {
       <MovimientosTrajesModal
         open={modalMovimientosTrajes}
         onOpenChange={setModalMovimientosTrajes}
+        empresa={empresaConfig}
+        cajeroNombre={cajero}
+      />
+
+      {/* =========================================================
+          MODAL: BALANCE & AUDITORÍA FINANCIERA DE DEPÓSITOS Y SALDOS
+      ========================================================= */}
+      <BalanceDepositosModal
+        open={modalBalanceDepositos}
+        onOpenChange={setModalBalanceDepositos}
         empresa={empresaConfig}
         cajeroNombre={cajero}
       />

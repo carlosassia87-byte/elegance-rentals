@@ -48,7 +48,7 @@ interface MovimientosTrajesModalProps {
   cajeroNombre?: string;
 }
 
-type SubmoduloTipo = "POR_DEVOLVER" | "VENDIDOS" | "DEVUELTOS" | "APARTADOS" | "BALANCE_FINANCIERO";
+type SubmoduloTipo = "POR_DEVOLVER" | "VENDIDOS" | "DEVUELTOS" | "APARTADOS";
 
 export function MovimientosTrajesModal({
   open,
@@ -442,19 +442,6 @@ export function MovimientosTrajesModal({
                 >
                   {metricas.totalPrendasApartadas}
                 </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSubmoduloActivo("BALANCE_FINANCIERO")}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ml-auto ${
-                  submoduloActivo === "BALANCE_FINANCIERO"
-                    ? "bg-slate-900 text-emerald-400 shadow-sm ring-2 ring-emerald-500/50"
-                    : "bg-slate-800 text-slate-100 hover:bg-slate-900"
-                }`}
-              >
-                <Wallet className="h-3.5 w-3.5 text-emerald-400" />
-                <span>💰 Balance de Depósitos & Saldos</span>
               </button>
             </div>
           </div>
@@ -910,124 +897,6 @@ export function MovimientosTrajesModal({
                         </tbody>
                       </table>
                     )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* -------------------------------------------------------------------
-                SUB-MÓDULO 5: BALANCE FINANCIERO DE DEPÓSITOS Y ALQUILERES
-            ------------------------------------------------------------------- */}
-            {submoduloActivo === "BALANCE_FINANCIERO" && (
-              <div className="flex-1 flex flex-col space-y-4 min-h-0 overflow-y-auto custom-scrollbar">
-                {/* 5 Tarjetas Financieras Claras */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-                    <span className="text-[10px] font-black uppercase text-slate-500">1. Ingresos por Alquiler</span>
-                    <div className="text-2xl font-black text-slate-900 font-mono mt-1">
-                      ${metricas.totalDineroAlquiler.toLocaleString("es-CO")}
-                    </div>
-                    <span className="text-[10px] text-slate-500 font-semibold">Total cobrado por servicio</span>
-                  </div>
-
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-                    <span className="text-[10px] font-black uppercase text-blue-800">2. Depósitos Cobrados Inicialmente</span>
-                    <div className="text-2xl font-black text-blue-900 font-mono mt-1">
-                      ${metricas.totalDineroDepositos.toLocaleString("es-CO")}
-                    </div>
-                    <span className="text-[10px] text-blue-700 font-semibold">Fianza total registrada</span>
-                  </div>
-
-                  <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 shadow-2xs">
-                    <span className="text-[10px] font-black uppercase text-emerald-900">3. Depósitos ya Devueltos</span>
-                    <div className="text-2xl font-black text-emerald-900 font-mono mt-1">
-                      ${totalDepositosYaDevueltos.toLocaleString("es-CO")}
-                    </div>
-                    <span className="text-[10px] text-emerald-700 font-semibold">Dinero ya entregado al cliente</span>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-4 rounded-2xl shadow-md">
-                    <span className="text-[10px] font-black uppercase text-amber-100">
-                      4. DINERO POR DEVOLVER A CLIENTES
-                    </span>
-                    <div className="text-2xl font-black font-mono mt-1 text-white">
-                      ${totalDepositosPorDevolver.toLocaleString("es-CO")}
-                    </div>
-                    <span className="text-[10px] text-amber-100 font-semibold">Fianzas pendientes por retornar</span>
-                  </div>
-                </div>
-
-                {/* Tabla de Auditoría Financiera por Factura */}
-                <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col min-h-[300px]">
-                  <div className="bg-slate-900 px-4 py-2.5 text-white shrink-0 flex justify-between items-center">
-                    <span className="text-xs font-black uppercase tracking-wider">
-                      Auditoría Financiera de Depósitos por Factura
-                    </span>
-                    <span className="text-[10px] text-slate-300">
-                      {operaciones.length} Facturas Auditadas
-                    </span>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black uppercase text-[10px] border-b">
-                        <tr>
-                          <th className="p-2.5">Factura</th>
-                          <th className="p-2.5">Fecha</th>
-                          <th className="p-2.5">Cliente</th>
-                          <th className="p-2.5 text-right">Alquiler</th>
-                          <th className="p-2.5 text-right">Depósito Cobrado</th>
-                          <th className="p-2.5 text-right text-emerald-800">Depósito Devuelto</th>
-                          <th className="p-2.5 text-right text-amber-900">Depósito Pendiente</th>
-                          <th className="p-2.5 text-center">Acción</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-semibold">
-                        {operaciones.map((op) => {
-                          const depCobrado = op.totalDeposito;
-                          const depDevuelto = op.items
-                            .filter((it) => it.estadoPrenda === "DEVUELTO A TIENDA")
-                            .reduce((a, b) => a + b.valorDeposito * b.cantidad, 0);
-                          const depPendiente = Math.max(0, depCobrado - depDevuelto);
-
-                          return (
-                            <tr key={op.numeroFact} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-mono font-black text-slate-900">{op.numeroFact}</td>
-                              <td className="p-2.5 text-slate-600 font-semibold">{op.fechaSalida}</td>
-                              <td className="p-2.5">
-                                <div className="font-black text-slate-900 uppercase">{op.clienteNombre}</div>
-                                <div className="text-[10px] text-slate-500">CC: {op.clienteCedula}</div>
-                              </td>
-                              <td className="p-2.5 text-right font-mono">${op.totalAlquiler.toLocaleString("es-CO")}</td>
-                              <td className="p-2.5 text-right font-mono font-bold">${depCobrado.toLocaleString("es-CO")}</td>
-                              <td className="p-2.5 text-right font-mono font-black text-emerald-700">
-                                ${depDevuelto.toLocaleString("es-CO")}
-                              </td>
-                              <td className="p-2.5 text-right font-mono font-black text-amber-900">
-                                {depPendiente > 0 ? (
-                                  <span className="bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                                    ${depPendiente.toLocaleString("es-CO")}
-                                  </span>
-                                ) : (
-                                  <span className="text-emerald-700 font-bold text-[10px]">Liquidado</span>
-                                )}
-                              </td>
-                              <td className="p-2.5 text-center">
-                                {depPendiente > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => abrirDevolucionFactura(op.numeroFact)}
-                                    className="flex items-center gap-1 h-6 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-2 text-[10px] font-black shadow-2xs mx-auto"
-                                  >
-                                    <RotateCcw className="h-3 w-3" /> Devolver
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               </div>

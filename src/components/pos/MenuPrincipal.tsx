@@ -243,6 +243,24 @@ export function MenuPrincipal({
               </button>
             )}
 
+            {permisos.movimientosTrajes !== false && (
+              <button
+                onClick={() => handleAccionConPermiso("balance_depositos", true, "Balance de Depósitos")}
+                className={`flex w-full items-center rounded-xl py-2 font-black text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                }`}
+                title="Balance Financiero de Depósitos y Saldos"
+              >
+                <div className="flex items-center gap-3">
+                  <Wallet className="h-4 w-4 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  {sidebarExpandido && <span>Balance de Depósitos</span>}
+                </div>
+                {sidebarExpandido && (
+                  <span className="text-[9px] font-black bg-amber-600 text-white px-1.5 py-0.2 rounded">FINANZAS</span>
+                )}
+              </button>
+            )}
+
             {permisos.apartadosAbonos && (
               <button
                 onClick={() => handleAccionConPermiso("apartados", true, "Reservas & Abonos")}

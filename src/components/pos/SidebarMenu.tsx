@@ -194,6 +194,21 @@ export function SidebarMenu({
               </button>
             )}
 
+            {permisos.movimientosTrajes !== false && (
+              <button
+                onClick={() => handleItemClick("balance_depositos")}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-black text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Wallet className="h-4 w-4 text-amber-600 group-hover:scale-110 transition-transform" />
+                  <span>Balance de Depósitos & Saldos</span>
+                </div>
+                <span className="text-[9px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-black">
+                  FINANZAS
+                </span>
+              </button>
+            )}
+
             {permisos.apartadosAbonos && (
               <button
                 onClick={() => handleItemClick("apartados")}
