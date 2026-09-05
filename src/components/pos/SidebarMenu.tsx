@@ -51,7 +51,7 @@ export function SidebarMenu({
     onClose();
   };
 
-  const permisos = usuario?.permisos || {};
+  const permisos: Partial<PermisosUsuario> = usuario?.permisos || {};
 
   return (
     <div className="fixed inset-0 z-50 flex select-none animate-in fade-in duration-200">
