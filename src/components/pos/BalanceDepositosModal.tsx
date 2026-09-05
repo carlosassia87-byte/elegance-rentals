@@ -179,45 +179,45 @@ export function BalanceDepositosModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[96vw] lg:max-w-[1300px] bg-[#F8FAFC] p-0 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden text-slate-900 h-[92vh] flex flex-col">
+        <DialogContent className="flex h-dvh w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#F8FAFC] p-0 text-slate-900 shadow-2xl sm:h-[92vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl sm:border lg:max-w-[1300px]">
           {/* =========================================================================
               1. CABECERA PRINCIPAL
           ========================================================================= */}
-          <div className="flex items-center justify-between bg-slate-900 px-6 py-3.5 text-white shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 bg-slate-900 px-3 py-3 text-white sm:flex sm:items-center sm:justify-between sm:px-6 sm:py-3.5">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 font-black shadow-xs">
                 <Wallet className="h-5 w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
                   <h2 className="text-sm font-black tracking-wide uppercase">
                     BALANCE & AUDITORÍA DE DEPÓSITOS Y SALDOS
                   </h2>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30">
+                  <span className="hidden rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30 sm:inline-block">
                     Control Financiero
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300">
+                <p className="hidden text-[11px] text-slate-300 sm:block">
                   Control exacto de dinero de depósitos cobrados, montos reintegrados y fianzas pendientes por devolver a clientes
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setFacturaADevolver("");
                   setModalDevolucionOpen(true);
                 }}
-                className="flex items-center gap-1.5 h-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3.5 text-xs font-black transition-all shadow-xs"
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3.5 text-xs font-black transition-all shadow-xs sm:flex"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Devolución de Traje & Depósito
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all"
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all sm:flex"
                 title="Imprimir Balance"
               >
                 <Printer className="h-4 w-4" /> Imprimir
@@ -234,10 +234,10 @@ export function BalanceDepositosModal({
           {/* =========================================================================
               2. BARRA DE FILTROS DE FECHA, PRESETS Y BÚSQUEDA
           ========================================================================= */}
-          <div className="bg-white border-b border-slate-200 px-5 py-3 space-y-2.5 shrink-0 shadow-2xs">
+          <div className="shrink-0 space-y-2.5 border-b border-slate-200 bg-white px-3 py-2.5 shadow-2xs sm:px-5 sm:py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Rango de Fechas */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
                 <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1 text-xs">
                   <Calendar className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span className="font-bold text-slate-700 text-[11px] uppercase">Desde:</span>
@@ -261,7 +261,7 @@ export function BalanceDepositosModal({
                 </div>
 
                 {/* Presets */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 overflow-x-auto">
                   <button
                     type="button"
                     onClick={setPresetHoy}
@@ -298,7 +298,7 @@ export function BalanceDepositosModal({
               </div>
 
               {/* Buscador y Botón de Recarga */}
-              <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="flex w-full min-w-0 items-center gap-2 sm:max-w-md sm:flex-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
@@ -324,7 +324,7 @@ export function BalanceDepositosModal({
             </div>
 
             {/* Filtros rápidos de estado de fianza */}
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-100 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-100 pt-1 text-xs">
               <span className="font-bold text-slate-400 text-[10px] uppercase">Filtrar Facturas:</span>
               <button
                 type="button"
@@ -365,7 +365,7 @@ export function BalanceDepositosModal({
           {/* =========================================================================
               3. CUERPO: TARJETAS FINANCIERAS Y TABLA DE AUDITORÍA
           ========================================================================= */}
-          <div className="flex-1 p-4 min-h-0 overflow-y-auto custom-scrollbar space-y-4">
+          <div className="flex-1 min-h-0 space-y-4 overflow-y-auto p-3 sm:p-4 custom-scrollbar">
             {/* 4 Tarjetas Financieras */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
@@ -436,14 +436,14 @@ export function BalanceDepositosModal({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 overflow-auto custom-scrollbar">
                 {facturasFiltradas.length === 0 ? (
                   <div className="p-12 text-center text-slate-400 font-bold text-xs space-y-2">
                     <p>No se encontraron facturas para el filtro seleccionado.</p>
                     <p className="text-[11px] text-slate-400">Prueba ajustando el rango de fechas o el término de búsqueda.</p>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="min-w-[900px] w-full text-left text-xs border-collapse">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black uppercase text-[10px] border-b border-slate-200">
                       <tr>
                         <th className="p-2.5">Factura</th>
