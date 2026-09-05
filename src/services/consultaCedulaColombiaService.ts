@@ -144,12 +144,60 @@ export async function consultarCedulaColombia(
     }
   }
 
-  // PASO 3: Consulta en línea mediante Servicios de Consulta DIAN / RUT / RUES
+  // PASO 3: Consulta mediante el servicio de RUES / RUT de Nubixa (utilizado en E:\nubixadian)
   try {
-    // Consultar endpoint proxy/público de RUT DIAN
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const resp = await fetch("https://api.consultarutxyz.misimpuestosco.com/api/rues/bulk-lookup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ nits: [cedulaStr] }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (resp.ok) {
+      const data = await resp.json();
+      const info = data.results && data.results[cedulaStr];
+
+      if (info && (info.razonSocial || info.nombre)) {
+        const razonSocial = String(info.razonSocial || info.nombre || "").trim().toUpperCase();
+        const direccion = String(info.direccion || "").trim().toUpperCase();
+        const ciudad = String(info.municipio || info.ciudad || "").trim().toUpperCase();
+        const departamento = String(info.departamento || "").trim().toUpperCase();
+        const correo = String(info.correo || info.email || "").trim().toLowerCase();
+        const telefono = String(info.telefono || "").trim();
+
+        return {
+          encontrado: true,
+          origen: "RUT_DIAN",
+          nombreCompleto: razonSocial,
+          ciudad: ciudad ? (departamento ? `${ciudad}, ${departamento}` : ciudad) : undefined,
+          cliente: {
+            CEDULA: cedulaNum,
+            NOMBRE: razonSocial,
+            DIRECCION: direccion || (ciudad ? `${ciudad}` : ""),
+            TELEFONO: telefono ? parseInt(telefono.replace(/\D/g, ""), 10) : undefined,
+            EMAIL: correo || undefined,
+            NOTA: `Registro oficial RUES/RUT (${info.categoria || "Consultado en línea"})`,
+          },
+          mensaje: `Encontrado en RUES / RUT: ${razonSocial}`,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("Fallo consulta al servicio RUES / RUT:", e);
+  }
+
+  // PASO 4: Fallback adicional a otros endpoints públicos de RUT DIAN
+  try {
     const urlDian = `https://api.diancolombia.online/consulta-rut?nit=${cedulaStr}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     try {
       const resp = await fetch(urlDian, {
@@ -184,7 +232,7 @@ export async function consultarCedulaColombia(
       }
     } catch {}
   } catch (e) {
-    console.warn("Fallo consulta DIAN / RUT:", e);
+    console.warn("Fallo consulta alternativa DIAN / RUT:", e);
   }
 
   return {
