@@ -629,15 +629,16 @@ export function PuntoDeVenta() {
     try {
       const res = await consultarCedulaColombia(cedBuscada);
       if (res.encontrado && res.cliente) {
+        const c = res.cliente;
         setClienteForm((prev) => ({
           ...prev,
-          ...res.cliente,
+          ...c,
           CEDULA: Number(cedBuscada),
-          NOMBRE: res.cliente.NOMBRE || res.nombreCompleto || prev.NOMBRE,
-          DIRECCION: res.cliente.DIRECCION || prev.DIRECCION,
-          TELEFONO: res.cliente.TELEFONO || prev.TELEFONO,
-          TELEFONO2: res.cliente.TELEFONO2 || prev.TELEFONO2,
-          NOTA: res.cliente.NOTA || prev.NOTA,
+          NOMBRE: c.NOMBRE || res.nombreCompleto || prev.NOMBRE,
+          DIRECCION: c.DIRECCION || prev.DIRECCION,
+          TELEFONO: c.TELEFONO || prev.TELEFONO,
+          TELEFONO2: c.TELEFONO2 || prev.TELEFONO2,
+          NOTA: c.NOTA || prev.NOTA,
         }));
 
         if (res.origen === "LOCAL_DB") {
