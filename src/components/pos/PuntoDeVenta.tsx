@@ -1072,6 +1072,46 @@ export function PuntoDeVenta() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Selector rápido de Tamaño de Letra / Zoom */}
+                  <div className="flex items-center bg-white rounded-xl border border-slate-200 px-1 py-0.5 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = obtenerResolucionConfig();
+                        const nuevoPorc = Math.max(75, (cur.escalaPorcentaje || 108) - 5);
+                        const nueva: ResolucionConfig = { ...cur, modo: "personalizada", escalaPorcentaje: nuevoPorc };
+                        aplicarEscalaResolucion(nueva);
+                        toast.info(`Tamaño de letra ajustado a: ${nuevoPorc}%`);
+                      }}
+                      className="px-2 py-1 rounded-lg hover:bg-slate-100 font-black text-slate-700 text-xs transition-all active:scale-90"
+                      title="Disminuir tamaño de letras (A-)"
+                    >
+                      A-
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalCajasConfig(true)}
+                      className="px-1.5 py-0.5 text-[10px] font-black text-emerald-800 hover:underline"
+                      title="Ajustar resolución y escala"
+                    >
+                      Zoom
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = obtenerResolucionConfig();
+                        const nuevoPorc = Math.min(150, (cur.escalaPorcentaje || 108) + 5);
+                        const nueva: ResolucionConfig = { ...cur, modo: "personalizada", escalaPorcentaje: nuevoPorc };
+                        aplicarEscalaResolucion(nueva);
+                        toast.info(`Tamaño de letra ajustado a: ${nuevoPorc}%`);
+                      }}
+                      className="px-2 py-1 rounded-lg hover:bg-slate-100 font-black text-slate-700 text-xs transition-all active:scale-90"
+                      title="Aumentar tamaño de letras (A+)"
+                    >
+                      A+
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setModalCajasConfig(true)}

@@ -133,6 +133,13 @@
 }
 
 @layer base {
+  html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -140,6 +147,8 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-size: 0.9375rem; /* 15px base */
+    line-height: 1.45;
   }
 
   /* Quitar flechas de subir/bajar (spinners) de todos los campos numéricos en todos los módulos */
@@ -154,4 +163,61 @@
     appearance: textfield !important;
   }
 }
+
+/* =========================================================================
+   MEJORA DE LEGIBILIDAD Y TAMAÑO DE FUENTE PARA TODOS LOS MÓDULOS
+========================================================================= */
+
+/* Aumentar textos diminutos a tamaños legibles */
+.text-\[9px\], [class*="text-[9px]"] {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+.text-\[10px\], [class*="text-[10px]"] {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+.text-\[11px\], [class*="text-[11px]"] {
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+
+.text-xs {
+  font-size: 13.5px !important;
+  line-height: 1.45 !important;
+}
+
+.text-sm {
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+}
+
+/* Inputs, Selects y Textareas más cómodos y legibles */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  font-size: 13.5px !important;
+}
+
+/* Tablas con encabezados y celdas más claras */
+table th {
+  font-size: 12px !important;
+  letter-spacing: 0.03em !important;
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+}
+
+table td {
+  font-size: 13.5px !important;
+  padding-top: 0.55rem !important;
+  padding-bottom: 0.55rem !important;
+}
+
+/* Diálogos y Modales con mayor confort visual */
+[role="dialog"] {
+  font-size: 14px;
+}
+
 
