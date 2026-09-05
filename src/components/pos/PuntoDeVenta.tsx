@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura, AbonoCliente } from "@/types/database.types";
 import {
   buscarClientePorCedula,
@@ -456,6 +457,42 @@ export function PuntoDeVenta() {
       });
     }
   }, [vistaActiva, terminalConfig.nombreCaja, terminalConfig.prefijo]);
+
+  // Sincronización en TIEMPO REAL MULTI-SESIÓN / MULTI-PC
+  // Cuando se registra una venta en otro PC, actualiza de inmediato el consecutivo y el stock
+  useEffect(() => {
+    const channel = supabase
+      .channel("pos_realtime_sync_consecutivo")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "FACTURA" },
+        async (payload) => {
+          const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
+          if (nuevoNum) setNumeroRecibo(nuevoNum);
+          cargarArticulos();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "CAJAS" },
+        async () => {
+          const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
+          if (nuevoNum) setNumeroRecibo(nuevoNum);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ARTICULO" },
+        () => {
+          cargarArticulos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [terminalConfig.nombreCaja, terminalConfig.prefijo]);
 
   function handleLogout() {
     logoutPos();

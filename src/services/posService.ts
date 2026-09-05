@@ -380,8 +380,22 @@ export async function registrarAlquilerFactura(
   nombreCaja = "SERVIDOR",
   prefijoDefault = "G"
 ): Promise<{ factura: Factura; items: CampoFactura[] }> {
-  // 1. Obtener el número consecutivo garantizado
-  const sNumeroFactura = facturaData.NUMEROFACT || (await generarNumeroFactura(nombreCaja, prefijoDefault));
+  // 1. Obtener el número consecutivo garantizado y evitar colisiones concurrentes entre PCs
+  let sNumeroFactura = facturaData.NUMEROFACT || (await generarNumeroFactura(nombreCaja, prefijoDefault));
+
+  try {
+    // Validar si otra PC ya registró una factura con este mismo número
+    const { data: existente } = await supabase
+      .from("FACTURA" as any)
+      .select("NUMEROFACT")
+      .eq("NUMEROFACT", sNumeroFactura)
+      .maybeSingle();
+
+    if (existente && (existente as any).NUMEROFACT) {
+      sNumeroFactura = await generarNumeroFactura(nombreCaja, prefijoDefault);
+    }
+  } catch {}
+
   const numMatch = String(sNumeroFactura).match(/\d+/);
   const numeroEntero = numMatch ? parseInt(numMatch[0], 10) : 1;
 
