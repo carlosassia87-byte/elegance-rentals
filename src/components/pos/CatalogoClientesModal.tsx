@@ -20,6 +20,7 @@ import {
   UserCheck,
   ChevronRight,
   Save,
+  Loader2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ import {
   guardarCliente,
   eliminarCliente,
 } from "@/services/posService";
+import { consultarCedulaColombia } from "@/services/consultaCedulaColombiaService";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
 
 interface CatalogoClientesModalProps {
@@ -64,6 +66,43 @@ export function CatalogoClientesModal({
     NOTA: "",
   });
   const [guardando, setGuardando] = useState(false);
+  const [buscandoCedula, setBuscandoCedula] = useState(false);
+
+  const handleBuscarCedulaAutoRelleno = async () => {
+    if (!form.CEDULA || form.CEDULA === 0) {
+      toast.error("Ingresa la cédula a buscar");
+      return;
+    }
+    setBuscandoCedula(true);
+    try {
+      const res = await consultarCedulaColombia(form.CEDULA);
+      if (res.encontrado && res.cliente) {
+        setForm((prev) => ({
+          ...prev,
+          ...res.cliente,
+          NOMBRE: res.cliente.NOMBRE || res.nombreCompleto || prev.NOMBRE,
+          DIRECCION: res.cliente.DIRECCION || prev.DIRECCION,
+          TELEFONO: res.cliente.TELEFONO || prev.TELEFONO,
+          TELEFONO2: res.cliente.TELEFONO2 || prev.TELEFONO2,
+          NOTA: res.cliente.NOTA || prev.NOTA,
+        }));
+        if (res.origen === "LOCAL_DB") {
+          toast.success(`✓ Cliente ya existente en catálogo: ${res.nombreCompleto}`);
+        } else if (res.origen === "RUT_DIAN") {
+          toast.success(`✓ Datos obtenidos de RUT / DIAN: ${res.nombreCompleto}`, { duration: 5000 });
+        } else {
+          toast.success(`✓ Datos encontrados: ${res.nombreCompleto}`);
+        }
+      } else {
+        toast.info("Cédula no encontrada en bases de datos. Completa los datos manualmente.");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al consultar la cédula");
+    } finally {
+      setBuscandoCedula(false);
+    }
+  };
 
   const cargarClientes = async () => {
     setCargando(true);
@@ -522,15 +561,37 @@ export function CatalogoClientesModal({
                 {/* CEDULA */}
                 <div className="col-span-12 sm:col-span-6">
                   <label className="font-bold text-slate-700 uppercase">Cédula / Documento *</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={form.CEDULA || ""}
-                    onChange={(e) => setForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))}
-                    placeholder="Ej. 1144123456"
-                    className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-2xs"
-                  />
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={form.CEDULA || ""}
+                      onChange={(e) => setForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleBuscarCedulaAutoRelleno())}
+                      placeholder="Ej. 1144123456"
+                      className="h-8 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 font-mono font-bold text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-2xs"
+                    />
+                    <button
+                      type="button"
+                      disabled={buscandoCedula}
+                      onClick={handleBuscarCedulaAutoRelleno}
+                      className="flex items-center gap-1 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold shadow-2xs uppercase transition-all disabled:opacity-50"
+                      title="Buscar en base de datos o RUT / DIAN"
+                    >
+                      {buscandoCedula ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
+                          <span>Buscando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-3 w-3" />
+                          <span>Buscar</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* NOMBRE */}

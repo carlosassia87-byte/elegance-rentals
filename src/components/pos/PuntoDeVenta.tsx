@@ -26,6 +26,7 @@ import {
   Activity,
   Users,
   Bell,
+  Loader2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ import {
   registrarSalidaVestidoApartado,
   type ItemApartadoConEstado,
 } from "@/services/posService";
+import { consultarCedulaColombia } from "@/services/consultaCedulaColombiaService";
 import {
   obtenerTerminalConfig,
   guardarTerminalConfig,
@@ -602,22 +604,53 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Buscar cliente por cédula con Enter o botón Buscar
-  async function handleBuscarCedulaDirecta(cedulaValor?: string | number) {
+  const [buscandoCedula, setBuscandoCedula] = useState(false);
+
+  // Buscar cliente por cédula y autorellenar desde base de datos interna o RUT/DIAN/RUES
+  async function handleBuscarCedulaConAutoRelleno(cedulaValor?: string | number) {
     const cedBuscada = cedulaValor ?? clienteForm.CEDULA;
-    if (!cedBuscada) {
-      toast.error("Ingresa la cédula a buscar");
+    if (!cedBuscada || String(cedBuscada).trim() === "0" || String(cedBuscada).trim() === "") {
+      toast.error("Ingresa el número de cédula o NIT a consultar");
       return;
     }
 
-    const cli = await buscarClientePorCedula(cedBuscada);
-    if (cli) {
-      setClienteForm(cli);
-      await verificarAlquileresYAlertarCliente(cli);
-    } else {
-      toast.info("Cédula no encontrada. Puedes registrar sus datos.");
-      setModalCliente(true);
+    setBuscandoCedula(true);
+    try {
+      const res = await consultarCedulaColombia(cedBuscada);
+      if (res.encontrado && res.cliente) {
+        setClienteForm((prev) => ({
+          ...prev,
+          ...res.cliente,
+          CEDULA: Number(cedBuscada),
+          NOMBRE: res.cliente.NOMBRE || res.nombreCompleto || prev.NOMBRE,
+          DIRECCION: res.cliente.DIRECCION || prev.DIRECCION,
+          TELEFONO: res.cliente.TELEFONO || prev.TELEFONO,
+          TELEFONO2: res.cliente.TELEFONO2 || prev.TELEFONO2,
+          NOTA: res.cliente.NOTA || prev.NOTA,
+        }));
+
+        if (res.origen === "LOCAL_DB") {
+          toast.success(`✓ Cliente encontrado en la tienda: ${res.nombreCompleto}`);
+          await verificarAlquileresYAlertarCliente(res.cliente);
+        } else if (res.origen === "RUT_DIAN") {
+          toast.success(`✓ Datos obtenidos de registro oficial RUT / DIAN: ${res.nombreCompleto}`, { duration: 6000 });
+        } else {
+          toast.success(`✓ Datos encontrados: ${res.nombreCompleto}`);
+        }
+      } else {
+        toast.info("Cédula no encontrada en bases de datos. Por favor completa los campos manualmente.");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al consultar la cédula");
+    } finally {
+      setBuscandoCedula(false);
     }
+  }
+
+  // Buscar cliente por cédula desde barra rápida
+  async function handleBuscarCedulaDirecta(cedulaValor?: string | number) {
+    await handleBuscarCedulaConAutoRelleno(cedulaValor);
   }
 
   // Confirmar Selección de Operación
@@ -2451,15 +2484,27 @@ export function PuntoDeVenta() {
                   onChange={(e) =>
                     setClienteForm((p) => ({ ...p, CEDULA: Number(e.target.value) || 0 }))
                   }
-                  onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaDirecta(clienteForm.CEDULA)}
+                  onKeyDown={(e) => e.key === "Enter" && handleBuscarCedulaConAutoRelleno(clienteForm.CEDULA)}
                   className="h-8 w-48 rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-black text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none shadow-2xs"
                 />
                 <button
                   type="button"
-                  onClick={() => handleBuscarCedulaDirecta(clienteForm.CEDULA)}
-                  className="ml-2 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 text-xs font-bold shadow-2xs uppercase transition-all"
+                  disabled={buscandoCedula}
+                  onClick={() => handleBuscarCedulaConAutoRelleno(clienteForm.CEDULA)}
+                  className="ml-2 flex items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-4 text-xs font-bold shadow-2xs uppercase transition-all disabled:opacity-50"
+                  title="Buscar en base de datos de la tienda y registro oficial RUT/DIAN"
                 >
-                  Buscar
+                  {buscandoCedula ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+                      <span>Buscando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-3.5 w-3.5" />
+                      <span>Buscar</span>
+                    </>
+                  )}
                 </button>
               </div>
 
