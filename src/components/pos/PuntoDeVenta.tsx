@@ -73,6 +73,7 @@ import { CatalogoClientesModal } from "./CatalogoClientesModal";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import { InventarioStockModal } from "./InventarioStockModal";
+import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -237,6 +238,7 @@ export function PuntoDeVenta() {
   const [modalBalanceDepositos, setModalBalanceDepositos] = useState(false);
   const [modalCatalogoClientes, setModalCatalogoClientes] = useState(false);
   const [modalInventarioStock, setModalInventarioStock] = useState(false);
+  const [modalReimpresionFacturas, setModalReimpresionFacturas] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -443,7 +445,7 @@ export function PuntoDeVenta() {
         setModalInventarioStock(true);
         break;
       case "reimprimir":
-        setModalImprimir(true);
+        setModalReimpresionFacturas(true);
         break;
       case "cierre_caja":
         setModalCierreCaja(true);
@@ -1377,10 +1379,12 @@ export function PuntoDeVenta() {
         </button>
 
         <button
-          onClick={() => setModalImprimir(true)}
-          className="h-8.5 rounded-xl bg-cyan-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-cyan-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
+          onClick={() => setModalReimpresionFacturas(true)}
+          className="h-8.5 rounded-xl bg-cyan-600 px-3.5 text-xs font-black text-white shadow-xs hover:bg-cyan-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all flex items-center gap-1.5"
+          title="Consultar facturas por fecha y reimprimir comprobante"
         >
-          REIMPRIMIR
+          <Printer className="h-3.5 w-3.5 text-cyan-200" />
+          <span>REIMPRIMIR</span>
         </button>
 
         <button
@@ -3590,6 +3594,16 @@ export function PuntoDeVenta() {
           setArticuloTexto(art.CODBARRAS || art.DESCRIPCION);
           setModalInventarioStock(false);
         }}
+      />
+
+      {/* =========================================================
+          MODAL: REIMPRESIÓN & HISTORIAL DE FACTURAS POR FECHA
+      ========================================================= */}
+      <ReimpresionFacturasModal
+        open={modalReimpresionFacturas}
+        onOpenChange={setModalReimpresionFacturas}
+        empresa={empresaConfig}
+        cajeroNombre={cajero}
       />
     </div>
   );

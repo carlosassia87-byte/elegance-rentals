@@ -347,17 +347,19 @@ export function MenuPrincipal({
 
             {permisos.reimpresion && (
               <button
-                onClick={() => handleAccionConPermiso("reimprimir", true, "Reimpresión")}
-                className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
+                onClick={() => handleAccionConPermiso("reimprimir", true, "Reimpresión de Facturas")}
+                className={`flex w-full items-center rounded-xl py-2 font-bold text-cyan-950 bg-cyan-50/80 hover:bg-cyan-100 border border-cyan-200 transition-all group ${
                   sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
                 }`}
-                title="Reimprimir Recibo"
+                title="Reimpresión & Historial de Facturas por Fecha"
               >
                 <div className="flex items-center gap-3">
                   <Printer className="h-4 w-4 text-cyan-600 shrink-0 group-hover:scale-110 transition-transform" />
-                  {sidebarExpandido && <span>Reimprimir Recibo</span>}
+                  {sidebarExpandido && <span>Reimpresión & Facturas</span>}
                 </div>
-                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+                {sidebarExpandido && (
+                  <span className="text-[9px] font-black bg-cyan-600 text-white px-1.5 py-0.2 rounded">TICKET POS</span>
+                )}
               </button>
             )}
           </div>
