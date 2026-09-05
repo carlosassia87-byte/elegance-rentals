@@ -22,6 +22,7 @@ import {
   Laptop,
   Activity,
   RotateCcw,
+  Bell,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -234,6 +235,17 @@ export function SidebarMenu({
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
               </button>
             )}
+
+            <button
+              onClick={() => handleItemClick("alertas_retrasos")}
+              className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-black text-rose-900 bg-rose-50/80 hover:bg-rose-100 hover:text-rose-950 transition-all group border border-rose-200"
+            >
+              <div className="flex items-center gap-2.5">
+                <Bell className="h-4 w-4 text-rose-600 group-hover:scale-110 transition-transform" />
+                <span>Trajes en Mora & Alertas</span>
+              </div>
+              <span className="text-[9px] font-black bg-rose-600 text-white px-1.5 py-0.2 rounded">MORA 3D</span>
+            </button>
 
             {permisos.devoluciones && (
               <button

@@ -25,6 +25,7 @@ import {
   LogOut,
   Activity,
   Users,
+  Bell,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -74,6 +75,7 @@ import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import { InventarioStockModal } from "./InventarioStockModal";
 import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
+import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -239,6 +241,7 @@ export function PuntoDeVenta() {
   const [modalCatalogoClientes, setModalCatalogoClientes] = useState(false);
   const [modalInventarioStock, setModalInventarioStock] = useState(false);
   const [modalReimpresionFacturas, setModalReimpresionFacturas] = useState(false);
+  const [modalAlertasRetrasos, setModalAlertasRetrasos] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -443,6 +446,9 @@ export function PuntoDeVenta() {
         break;
       case "inventario_stock":
         setModalInventarioStock(true);
+        break;
+      case "alertas_retrasos":
+        setModalAlertasRetrasos(true);
         break;
       case "reimprimir":
         setModalReimpresionFacturas(true);
@@ -1043,6 +1049,15 @@ export function PuntoDeVenta() {
                   >
                     <ChevronLeft className="h-4 w-4 text-emerald-400" />
                     <span className="tracking-wide uppercase">MENÚ PRINCIPAL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalAlertasRetrasos(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95 animate-pulse"
+                    title="Panel de Alertas de Trajes con Retraso y Mora (3 Días · $7.000/día)"
+                  >
+                    <Bell className="h-3.5 w-3.5" /> ALERTAS & MORA
                   </button>
 
                   <button
@@ -3604,6 +3619,19 @@ export function PuntoDeVenta() {
         onOpenChange={setModalReimpresionFacturas}
         empresa={empresaConfig}
         cajeroNombre={cajero}
+      />
+
+      {/* =========================================================
+          MODAL: PANEL DE NOTIFICACIONES: RETRASOS Y COBRO DE MORA
+      ========================================================= */}
+      <AlertasRetrasosModal
+        open={modalAlertasRetrasos}
+        onOpenChange={setModalAlertasRetrasos}
+        empresa={empresaConfig}
+        cajeroNombre={cajero}
+        onAbrirDevolucion={(numFact) => {
+          setModalDevolucion(true);
+        }}
       />
     </div>
   );
