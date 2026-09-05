@@ -181,7 +181,7 @@ export async function consultarCedulaColombia(
             CEDULA: cedulaNum,
             NOMBRE: razonSocial,
             DIRECCION: direccion || (ciudad ? `${ciudad}` : ""),
-            TELEFONO: telefono ? parseInt(telefono.replace(/\D/g, ""), 10) : undefined,
+            TELEFONO: telefono ? telefono.replace(/\D/g, "") : undefined,
             EMAIL: correo || undefined,
             NOTA: `Registro oficial RUES/RUT (${info.categoria || "Consultado en línea"})`,
           },

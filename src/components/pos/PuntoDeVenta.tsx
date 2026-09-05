@@ -1498,14 +1498,14 @@ export function PuntoDeVenta() {
         </button>
 
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="h-8.5 rounded-xl bg-slate-800 px-4 text-xs font-bold text-white shadow-xs hover:bg-slate-900 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           LIMPIAR / NUEVO
         </button>
 
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="h-8.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all"
         >
           NUEVO ALQUILER
@@ -1668,7 +1668,7 @@ export function PuntoDeVenta() {
 
         {/* BOTÓN SALIR X */}
         <button
-          onClick={handleLimpiar}
+          onClick={() => handleLimpiar()}
           className="flex items-center gap-1 h-8.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-red-50 hover:text-red-700 px-3 text-xs font-bold border border-slate-200 shadow-xs active:scale-95 uppercase tracking-wider transition-all"
         >
           LIMPIAR <X className="h-3.5 w-3.5" />
