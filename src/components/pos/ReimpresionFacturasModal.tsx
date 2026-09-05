@@ -165,28 +165,28 @@ export function ReimpresionFacturasModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       {/* Telón de fondo */}
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" onClick={() => onOpenChange(false)} />
 
       {/* Contenedor Principal del Modal */}
-      <div className="relative z-10 flex h-[92vh] w-full max-w-7xl flex-col rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-800 font-sans">
+      <div className="relative z-10 flex h-dvh w-full max-w-7xl flex-col overflow-hidden bg-white text-slate-800 shadow-2xl sm:h-[92vh] sm:rounded-3xl sm:border sm:border-slate-200 font-sans">
         {/* Encabezado Superior */}
-        <header className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-3.5 gap-3">
-          <div className="flex items-center gap-3">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-200 bg-slate-50 px-3 py-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:px-6 sm:py-3.5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-md shadow-cyan-500/20">
               <Printer className="h-6 w-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
                   Reimpresión & Historial de Facturas
                 </h2>
-                <span className="rounded-md bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-800 uppercase">
+                <span className="hidden rounded-md bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-800 uppercase sm:inline-block">
                   TIRILLA POS 80MM
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="hidden text-xs text-slate-500 font-medium sm:block">
                 Consulta facturas emitidas por fecha o número y reimprime comprobantes de alquiler
               </p>
             </div>
@@ -202,9 +202,9 @@ export function ReimpresionFacturasModal({
         </header>
 
         {/* Barra de Filtros Rápidos y Rangos de Fecha */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-100/70 px-6 py-2.5 text-xs">
+        <div className="grid shrink-0 gap-2 border-b border-slate-200 bg-slate-100/70 px-3 py-2.5 text-xs sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
           {/* Accesos rápidos de rango */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <span className="font-bold text-slate-500 text-[11px] uppercase mr-1">Rango:</span>
             <button
               type="button"
@@ -234,7 +234,7 @@ export function ReimpresionFacturasModal({
           </div>
 
           {/* Selectores de Fecha Manual */}
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center">
             <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
               <span className="text-[11px] font-bold text-slate-400">Desde:</span>
               <input
@@ -265,12 +265,12 @@ export function ReimpresionFacturasModal({
         </div>
 
         {/* Cuerpo Principal Dividido: Tabla a la Izquierda (70%) + Vista Previa de Recibo a la Derecha (30%) */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 overflow-y-auto md:flex md:flex-row md:overflow-hidden">
           {/* LADO IZQUIERDO: LISTADO Y BÚSQUEDA DE FACTURAS */}
-          <div className="flex-1 flex flex-col p-4 border-r border-slate-200 overflow-hidden space-y-3">
+          <div className="flex min-h-[55vh] flex-col space-y-3 border-b border-slate-200 p-3 md:min-h-0 md:flex-1 md:overflow-hidden md:border-b-0 md:border-r md:p-4">
             {/* Buscador y Filtro por Modo */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex-1 min-w-[220px] relative">
+              <div className="relative min-w-0 flex-1 sm:min-w-[220px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
@@ -281,7 +281,7 @@ export function ReimpresionFacturasModal({
                 />
               </div>
 
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+              <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => setFiltroModo("TODOS")}
@@ -323,7 +323,7 @@ export function ReimpresionFacturasModal({
 
             {/* Tabla de Facturas */}
             <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-              <table className="w-full border-collapse text-left text-xs">
+              <table className="min-w-[760px] w-full border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-700 uppercase font-black tracking-wider">
                   <tr>
                     <th className="px-3 py-2.5">Factura N°</th>
@@ -433,7 +433,7 @@ export function ReimpresionFacturasModal({
           </div>
 
           {/* LADO DERECHO: PANEL DE VISTA PREVIA Y REIMPRESIÓN DEL TICKET POS */}
-          <div className="w-full md:w-96 bg-slate-50 flex flex-col p-4 overflow-y-auto space-y-3">
+          <div className="flex w-full flex-col space-y-3 bg-slate-50 p-3 md:w-96 md:overflow-y-auto md:p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-700">
                 <Receipt className="h-4 w-4 text-cyan-600" />

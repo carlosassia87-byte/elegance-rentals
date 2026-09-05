@@ -245,25 +245,25 @@ export function CatalogoClientesModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] lg:max-w-7xl bg-[#F8FAFC] p-0 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden text-slate-900 h-[92vh] flex flex-col">
+        <DialogContent className="flex h-dvh w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#F8FAFC] p-0 text-slate-900 shadow-2xl sm:h-[92vh] sm:w-[95vw] sm:max-w-[95vw] sm:rounded-2xl sm:border lg:max-w-7xl">
           {/* =========================================================================
               1. CABECERA PRINCIPAL
           ========================================================================= */}
-          <div className="flex items-center justify-between bg-slate-900 px-6 py-4 text-white shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 bg-slate-900 px-3 py-3 text-white sm:flex sm:items-center sm:justify-between sm:px-6 sm:py-4">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white font-black shadow-xs">
                 <Users className="h-5 w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
                   <h2 className="text-base font-black tracking-wide uppercase">
                     DIRECTORIO Y CATÁLOGO GENERAL DE CLIENTES
                   </h2>
-                  <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30">
+                  <span className="mt-1 inline-block rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30 sm:mt-0">
                     {clientes.length} Registrados
                   </span>
                 </div>
-                <p className="text-xs text-slate-300">
+                <p className="hidden text-xs text-slate-300 sm:block">
                   Administra la base de datos de clientes, teléfonos, direcciones, empresas asociadas y saldos
                 </p>
               </div>
@@ -280,10 +280,10 @@ export function CatalogoClientesModal({
           {/* =========================================================================
               2. BARRA DE HERRAMIENTAS Y ACCIONES
           ========================================================================= */}
-          <div className="bg-white border-b border-slate-200 p-4 space-y-3 shrink-0 shadow-2xs">
+          <div className="shrink-0 space-y-3 border-b border-slate-200 bg-white p-3 shadow-2xs sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* BOTONES DE ACCIÓN DE CATÁLOGO */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto sm:flex-wrap">
                 <button
                   type="button"
                   onClick={handleNuevoCliente}
@@ -310,7 +310,7 @@ export function CatalogoClientesModal({
                   <Trash2 className="h-3.5 w-3.5" /> Eliminar
                 </button>
 
-                <div className="h-6 w-px bg-slate-300 mx-1" />
+                <div className="hidden h-6 w-px bg-slate-300 mx-1 sm:block" />
 
                 <button
                   type="button"
@@ -332,7 +332,7 @@ export function CatalogoClientesModal({
               </div>
 
               {/* BUSCADOR UNIVERSAL EN VIVO */}
-              <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="flex w-full min-w-0 items-center gap-2 sm:max-w-md sm:flex-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
@@ -359,9 +359,9 @@ export function CatalogoClientesModal({
           {/* =========================================================================
               3. TABLA DE CLIENTES (LISTADO PRINCIPAL)
           ========================================================================= */}
-          <div className="flex-1 p-4 overflow-hidden flex flex-col">
+          <div className="flex flex-1 flex-col overflow-hidden p-3 sm:p-4">
             <div className="flex-1 rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 overflow-auto custom-scrollbar">
                 {clientes.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full p-12 text-center text-slate-400">
                     <Users className="h-12 w-12 text-slate-300 mb-2" />
@@ -371,7 +371,7 @@ export function CatalogoClientesModal({
                     </p>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="min-w-[980px] w-full text-left text-xs border-collapse">
                     <thead className="sticky top-0 z-10 bg-slate-900 text-white font-black uppercase text-[11px]">
                       <tr>
                         <th className="p-3">Cédula / NIT</th>
@@ -513,8 +513,8 @@ export function CatalogoClientesModal({
           {/* =========================================================================
               4. PIE DEL MODAL CON ACCIÓN DE CIERRE
           ========================================================================= */}
-          <div className="flex items-center justify-between bg-slate-50 px-6 py-3.5 border-t border-slate-200 shrink-0">
-            <div className="text-xs text-slate-600">
+          <div className="flex shrink-0 items-center justify-end border-t border-slate-200 bg-slate-50 px-3 py-2.5 sm:justify-between sm:px-6 sm:py-3.5">
+            <div className="hidden text-xs text-slate-600 sm:block">
               Total <strong>{clientes.length}</strong> clientes en el catálogo • Doble clic para cargar en el Punto de Venta
             </div>
             <button

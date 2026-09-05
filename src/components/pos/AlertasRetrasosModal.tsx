@@ -157,15 +157,15 @@ export function AlertasRetrasosModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" onClick={() => onOpenChange(false)} />
 
       {/* Modal Container */}
-      <div className="relative z-10 flex h-[92vh] w-full max-w-7xl flex-col rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-800 font-sans">
+      <div className="relative z-10 flex h-dvh w-full max-w-7xl flex-col overflow-hidden bg-white text-slate-800 shadow-2xl sm:h-[92vh] sm:rounded-3xl sm:border sm:border-slate-200 font-sans">
         {/* Cabecera Principal */}
-        <header className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-rose-50/70 px-6 py-3.5 gap-3">
-          <div className="flex items-center gap-3">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-200 bg-rose-50/70 px-3 py-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:px-6 sm:py-3.5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-600 to-red-700 text-white shadow-md shadow-rose-600/25">
               <Bell className="h-6 w-6" />
               {metricas.totalClientesEnMora > 0 && (
@@ -174,29 +174,29 @@ export function AlertasRetrasosModal({
                 </span>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
                   Panel de Notificaciones: Trajes por Vencer & Retrasos
                 </h2>
-                <span className="rounded-md bg-rose-200 px-2 py-0.5 text-[10px] font-black text-rose-900 uppercase">
+                <span className="mt-1 hidden rounded-md bg-rose-200 px-2 py-0.5 text-[10px] font-black text-rose-900 uppercase sm:inline-block">
                   LÍMITE 3 DÍAS · $15.000/DÍA DE MORA
                 </span>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
+              <p className="hidden text-xs text-slate-600 font-medium sm:block">
                 Control de prendas pendientes de entrega, cálculo de recargos y cobro por WhatsApp
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <button
               type="button"
               onClick={cargarAlertas}
               className="flex items-center gap-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 px-3 py-1.5 text-xs font-bold transition-all border border-slate-300 shadow-2xs"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${cargando ? "animate-spin text-rose-600" : ""}`} />
-              <span>Actualizar</span>
+              <span className="hidden sm:inline">Actualizar</span>
             </button>
 
             <button
@@ -210,7 +210,7 @@ export function AlertasRetrasosModal({
         </header>
 
         {/* Tarjetas KPI de Estado Ejecutivo */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 px-6 py-3 bg-slate-50 border-b border-slate-200/90 text-xs">
+        <div className="grid shrink-0 grid-flow-col auto-cols-[72%] gap-2 overflow-x-auto border-b border-slate-200/90 bg-slate-50 px-3 py-2 text-xs sm:grid-cols-5 sm:auto-cols-auto sm:px-6 sm:py-3">
           {/* Tarjeta 1: Clientes en Mora */}
           <div className="flex items-center gap-2.5 rounded-2xl bg-white p-2.5 border border-rose-200 shadow-2xs">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700 font-black shrink-0">
@@ -268,9 +268,9 @@ export function AlertasRetrasosModal({
         </div>
 
         {/* Pestañas de Filtro y Buscador */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-100/70 px-6 py-2.5 text-xs">
+        <div className="grid gap-2 border-b border-slate-200 bg-slate-100/70 px-3 py-2.5 text-xs sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
           {/* Pestañas */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
               type="button"
               onClick={() => setFiltroTab("MORA")}
@@ -324,7 +324,7 @@ export function AlertasRetrasosModal({
           </div>
 
           {/* Buscador */}
-          <div className="w-72 relative">
+          <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
@@ -337,9 +337,9 @@ export function AlertasRetrasosModal({
         </div>
 
         {/* Contenido Dividido: Listado a la izquierda (60%) + Panel de Contacto y Liquidación a la derecha (40%) */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 overflow-y-auto md:flex md:flex-row md:overflow-hidden">
           {/* LADO IZQUIERDO: LISTADO DE CLIENTES CON RETRASO */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar border-r border-slate-200">
+          <div className="space-y-2.5 border-b border-slate-200 p-3 md:flex-1 md:overflow-y-auto md:border-b-0 md:border-r md:p-4 custom-scrollbar">
             {alertasFiltradas.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center text-slate-400">
                 <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-2" />
@@ -437,7 +437,7 @@ export function AlertasRetrasosModal({
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTACTO DIRECTO, COBRO POR WHATSAPP & DEVOLUCIÓN */}
-          <div className="w-full md:w-[450px] bg-slate-50 flex flex-col p-5 overflow-y-auto space-y-4">
+          <div className="flex w-full flex-col space-y-4 bg-slate-50 p-3 md:w-[450px] md:overflow-y-auto md:p-5">
             {itemSeleccionado ? (
               <div className="space-y-4">
                 {/* Cabecera del Cliente Seleccionado */}

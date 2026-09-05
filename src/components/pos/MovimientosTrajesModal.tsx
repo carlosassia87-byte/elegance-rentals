@@ -220,45 +220,45 @@ export function MovimientosTrajesModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[96vw] lg:max-w-[1400px] bg-[#F8FAFC] p-0 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden text-slate-900 h-[92vh] flex flex-col">
+        <DialogContent className="flex h-dvh w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#F8FAFC] p-0 text-slate-900 shadow-2xl sm:h-[92vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-2xl sm:border lg:max-w-[1400px]">
           {/* =========================================================================
               1. CABECERA PRINCIPAL
           ========================================================================= */}
-          <div className="flex items-center justify-between bg-slate-900 px-6 py-3 text-white shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2 bg-slate-900 px-3 py-3 text-white sm:flex sm:items-center sm:justify-between sm:px-6">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white font-black shadow-xs">
                 <Activity className="h-5 w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
                   <h2 className="text-sm font-black tracking-wide uppercase">
                     AUDITORÍA & CONTROL DE TRAJES POR SUB-MÓDULOS
                   </h2>
-                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30">
+                  <span className="hidden rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-300 border border-emerald-500/30 sm:inline-block">
                     Detallado y Clasificado
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300">
+                <p className="hidden text-[11px] text-slate-300 sm:block">
                   Consulta separada de trajes por devolver, vendidos, devueltos y balance de depósitos pendientes
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setFacturaADevolver("");
                   setModalDevolucionOpen(true);
                 }}
-                className="flex items-center gap-1.5 h-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3.5 text-xs font-black transition-all shadow-xs"
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3.5 text-xs font-black transition-all shadow-xs sm:flex"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Devolución de Traje & Depósito
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all"
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all sm:flex"
                 title="Imprimir Reporte"
               >
                 <Printer className="h-4 w-4" /> Imprimir
@@ -275,10 +275,10 @@ export function MovimientosTrajesModal({
           {/* =========================================================================
               2. BARRA DE FILTROS DE FECHA Y BUSCADOR
           ========================================================================= */}
-          <div className="bg-white border-b border-slate-200 px-4 py-2.5 space-y-2.5 shrink-0 shadow-2xs">
+          <div className="shrink-0 space-y-2.5 border-b border-slate-200 bg-white px-3 py-2.5 shadow-2xs sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* RANGO DE FECHAS */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
                 <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1 text-xs">
                   <Calendar className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span className="font-bold text-slate-700 text-[11px] uppercase">Desde:</span>
@@ -302,7 +302,7 @@ export function MovimientosTrajesModal({
                 </div>
 
                 {/* Presets */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 overflow-x-auto">
                   <button
                     type="button"
                     onClick={setPresetHoy}
@@ -339,7 +339,7 @@ export function MovimientosTrajesModal({
               </div>
 
               {/* BUSCADOR */}
-              <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="flex w-full min-w-0 items-center gap-2 sm:max-w-md sm:flex-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
@@ -367,7 +367,7 @@ export function MovimientosTrajesModal({
             {/* =========================================================================
                 3. PESTAÑAS DE SUB-MÓDULOS BIEN ORGANIZADOS (NO REVUELTO)
             ========================================================================= */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200">
+            <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-200 pt-1">
               <button
                 type="button"
                 onClick={() => setSubmoduloActivo("POR_DEVOLVER")}
@@ -449,7 +449,7 @@ export function MovimientosTrajesModal({
           {/* =========================================================================
               4. CONTENIDO DEL SUB-MÓDULO ACTIVO
           ========================================================================= */}
-          <div className="flex-1 p-3.5 min-h-0 overflow-hidden flex flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:overflow-hidden sm:p-3.5">
             {/* -------------------------------------------------------------------
                 SUB-MÓDULO 1: TRAJES POR DEVOLVER (EN ALQUILER)
             ------------------------------------------------------------------- */}
@@ -493,7 +493,7 @@ export function MovimientosTrajesModal({
                 </div>
 
                 {/* Tabla Dual: Clientes y Prendas */}
-                <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
+                <div className="grid min-h-0 flex-1 grid-cols-12 gap-3 sm:overflow-hidden">
                   <div className="col-span-12 lg:col-span-6 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
                     <div className="bg-slate-900 px-4 py-2.5 text-white shrink-0 flex justify-between items-center">
                       <span className="text-xs font-black uppercase tracking-wider">
@@ -502,13 +502,13 @@ export function MovimientosTrajesModal({
                       <span className="text-[10px] text-slate-300 font-semibold">Selecciona para ver prendas</span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 overflow-auto custom-scrollbar">
                       {operacionesPorDevolver.length === 0 ? (
                         <div className="p-8 text-center text-slate-400 font-bold text-xs">
                           No hay trajes pendientes de devolución en este rango de fecha
                         </div>
                       ) : (
-                        <table className="w-full text-left text-xs border-collapse">
+                        <table className="min-w-[620px] w-full text-left text-xs border-collapse">
                           <thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 font-black uppercase text-[10px] border-b">
                             <tr>
                               <th className="p-2">Factura</th>
