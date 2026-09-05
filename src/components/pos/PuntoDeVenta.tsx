@@ -880,10 +880,15 @@ export function PuntoDeVenta() {
   }
 
   // Limpiar / Nuevo Alquiler / Reset Completo del POS
-  function handleLimpiar(silencioso = false) {
-    generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo).then((nuevoNum) => {
+  async function handleLimpiar(silencioso = false) {
+    try {
+      const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
       setNumeroRecibo(nuevoNum);
-    });
+    } catch {
+      const numMatch = String(numeroRecibo).match(/\d+/);
+      const nextNum = numMatch ? parseInt(numMatch[0], 10) + 1 : 1;
+      setNumeroRecibo(`${terminalConfig.prefijo || "G"}${nextNum}`);
+    }
     setClienteForm({
       IDCLIENTES: 0,
       CEDULA: 0,
@@ -1064,7 +1069,7 @@ export function PuntoDeVenta() {
       toast.success("¡Venta/Alquiler procesado exitosamente!");
 
       // Limpiar automáticamente el Punto de Venta y generar nuevo consecutivo para la siguiente venta
-      handleLimpiar(true);
+      await handleLimpiar(true);
     } catch (err: any) {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
@@ -1116,7 +1121,7 @@ export function PuntoDeVenta() {
 
       setModalCobroDetalle(false);
       setModalImprimir(true);
-      handleLimpiar(true);
+      await handleLimpiar(true);
     } finally {
       setBGuardando(false);
     }

@@ -258,7 +258,10 @@ function saveLocalAbono(abono: AbonoCliente) {
 // ==========================================
 export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefault = "G"): Promise<string> {
   try {
-    // 1. Consultar CAJAS para nombreCaja en Supabase o Local
+    let pfx = prefijoDefault;
+    let maxNum = 0;
+
+    // 1. Consultar CAJAS para nombreCaja en Supabase
     try {
       const { data: cajaRaw, error: errCaja } = await supabase
         .from("CAJAS" as any)
@@ -267,51 +270,67 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
         .maybeSingle();
 
       const caja = cajaRaw as any;
-      if (!errCaja && caja && caja.NUMERACION) {
-        const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
-        const pfx = caja.PREFIJO || prefijoDefault;
-        return `${pfx}${nuevoNumero}`;
+      if (!errCaja && caja) {
+        if (caja.PREFIJO) pfx = caja.PREFIJO;
+        const numCaja = Number(caja.NUMERACION) || 0;
+        if (numCaja > maxNum) maxNum = numCaja;
       }
     } catch (e) {
       console.warn("Error consultando caja en Supabase:", e);
     }
 
-    // 2. Fallback con Cajas de LocalStorage
+    // 2. Consultar CAJAS en LocalStorage
     try {
       const rawCajas = localStorage.getItem("elegance_lista_cajas");
       if (rawCajas) {
         const list: any[] = JSON.parse(rawCajas);
         const cajaLocal = list.find((c) => c.NOMBRECAJA === nombreCaja);
-        if (cajaLocal && cajaLocal.NUMERACION) {
-          const nuevoNumero = (Number(cajaLocal.NUMERACION) || 0) + 1;
-          const pfx = cajaLocal.PREFIJO || prefijoDefault;
-          return `${pfx}${nuevoNumero}`;
+        if (cajaLocal) {
+          if (cajaLocal.PREFIJO) pfx = cajaLocal.PREFIJO;
+          const numLocal = Number(cajaLocal.NUMERACION) || 0;
+          if (numLocal > maxNum) maxNum = numLocal;
         }
       }
     } catch {}
 
-    // 3. Fallback con última factura en Supabase
-    const { data } = await supabase
-      .from("FACTURA" as any)
-      .select("IDFACTURA, NUMEROFACT")
-      .order("IDFACTURA", { ascending: false })
-      .limit(1);
+    // 3. Consultar FACTURA en Supabase para obtener el mayor número registrado
+    try {
+      const { data: facts } = await supabase
+        .from("FACTURA" as any)
+        .select("NUMEROFACT, IDFACTURA")
+        .order("IDFACTURA", { ascending: false })
+        .limit(100);
 
-    if (data && data.length > 0) {
-      const lastFact = data[0] as any;
-      const numMatch = String(lastFact.NUMEROFACT || "").match(/\d+/);
-      const ultimoNum = numMatch ? parseInt(numMatch[0], 10) + 1 : Number(lastFact.IDFACTURA) + 1;
-      return `${prefijoDefault}${ultimoNum}`;
+      if (facts && facts.length > 0) {
+        for (const f of facts as any[]) {
+          const numMatch = String(f.NUMEROFACT || "").match(/\d+/);
+          if (numMatch) {
+            const n = parseInt(numMatch[0], 10);
+            if (!isNaN(n) && n > maxNum) {
+              maxNum = n;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error consultando última factura:", e);
     }
 
-    // 4. Fallback con local facturas
-    const localFacts = getLocalFacturas();
-    if (localFacts.length > 0) {
-      const nextId = localFacts.length + 1;
-      return `${prefijoDefault}${nextId}`;
-    }
+    // 4. Consultar facturas locales en LocalStorage
+    try {
+      const localFacts = getLocalFacturas();
+      for (const f of localFacts) {
+        const numMatch = String(f.NUMEROFACT || "").match(/\d+/);
+        if (numMatch) {
+          const n = parseInt(numMatch[0], 10);
+          if (!isNaN(n) && n > maxNum) {
+            maxNum = n;
+          }
+        }
+      }
+    } catch {}
 
-    return `${prefijoDefault}1`;
+    return `${pfx}${maxNum + 1}`;
   } catch {
     const localFacts = getLocalFacturas();
     return `${prefijoDefault}${localFacts.length + 1}`;
@@ -324,10 +343,13 @@ export async function registrarAlquilerFactura(
   nombreCaja = "SERVIDOR",
   prefijoDefault = "G"
 ): Promise<{ factura: Factura; items: CampoFactura[] }> {
-  let sNumeroFactura = facturaData.NUMEROFACT || `${prefijoDefault}1`;
-  
+  // 1. Obtener el número consecutivo garantizado
+  const sNumeroFactura = facturaData.NUMEROFACT || (await generarNumeroFactura(nombreCaja, prefijoDefault));
+  const numMatch = String(sNumeroFactura).match(/\d+/);
+  const numeroEntero = numMatch ? parseInt(numMatch[0], 10) : 1;
+
   try {
-    // 1. Obtener y actualizar numeración de la caja en Supabase y Local
+    // 2. Actualizar numeración de la caja en Supabase y Local
     try {
       const { data: cajaRaw } = await supabase
         .from("CAJAS" as any)
@@ -337,16 +359,22 @@ export async function registrarAlquilerFactura(
 
       const caja = cajaRaw as any;
       if (caja) {
-        const nuevoNumero = (Number(caja.NUMERACION) || 0) + 1;
-        const pfx = caja.PREFIJO || prefijoDefault;
-        sNumeroFactura = `${pfx}${nuevoNumero}`;
         await supabase
           .from("CAJAS" as any)
-          .update({ NUMERACION: nuevoNumero })
-          .eq("IDCAJA", caja.IDCAJA || caja.IDCAJAS);
+          .update({ NUMERACION: numeroEntero })
+          .eq("NOMBRECAJA", nombreCaja);
+      } else {
+        await supabase
+          .from("CAJAS" as any)
+          .insert({
+            NOMBRECAJA: nombreCaja,
+            NUMERACION: numeroEntero,
+            PREFIJO: prefijoDefault,
+            RESOLUCION: "AUTORIZADO",
+          });
       }
     } catch (e) {
-      console.warn("No se pudo actualizar CAJAS, usando número propuesto:", e);
+      console.warn("No se pudo actualizar CAJAS en Supabase:", e);
     }
 
     // Actualizar también en LocalStorage
@@ -356,8 +384,7 @@ export async function registrarAlquilerFactura(
         const list: any[] = JSON.parse(rawCajas);
         const idx = list.findIndex((c) => c.NOMBRECAJA === nombreCaja);
         if (idx >= 0) {
-          const nuevoNumero = (Number(list[idx].NUMERACION) || 0) + 1;
-          list[idx].NUMERACION = nuevoNumero;
+          list[idx].NUMERACION = numeroEntero;
           localStorage.setItem("elegance_lista_cajas", JSON.stringify(list));
         }
       }
@@ -368,7 +395,7 @@ export async function registrarAlquilerFactura(
       NUMEROFACT: sNumeroFactura,
     };
 
-    // 2. Insertar en tabla FACTURA de Supabase
+    // 3. Insertar en tabla FACTURA de Supabase
     let facturaInsertada: any = null;
     try {
       const { data: facturaRaw, error: errorFactura } = await supabase
