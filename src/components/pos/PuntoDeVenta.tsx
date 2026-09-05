@@ -584,7 +584,7 @@ export function PuntoDeVenta() {
   const cambioVSaldo = totalPagado - totalDepositoMasAlquiler;
   const bAlquiler = totalDeposito > 0;
 
-  // Verificar si el cliente tiene trajes en alquiler (3 días límite, $7.000/día de retraso) o notas
+  // Verificar si el cliente tiene trajes en alquiler (3 días límite, $15.000/día de retraso) o notas
   async function verificarAlquileresYAlertarCliente(cli: Partial<Cliente>) {
     if (!cli.CEDULA || cli.CEDULA === 0) return;
     try {
@@ -1180,7 +1180,7 @@ export function PuntoDeVenta() {
                     type="button"
                     onClick={() => setModalAlertasRetrasos(true)}
                     className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95 animate-pulse"
-                    title="Panel de Alertas de Trajes con Retraso y Mora (3 Días · $7.000/día)"
+                    title="Panel de Alertas de Trajes con Retraso y Mora (3 Días · $15.000/día)"
                   >
                     <Bell className="h-3.5 w-3.5" /> ALERTAS & MORA
                   </button>
@@ -1439,7 +1439,7 @@ export function PuntoDeVenta() {
 
                   {alquileresActivosCliente.some((a) => a.tieneRetraso) && (
                     <span className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide shrink-0 animate-pulse">
-                      🔴 MORA $7.000/DÍA
+                      🔴 MORA $15.000/DÍA
                     </span>
                   )}
 
@@ -2375,10 +2375,10 @@ export function PuntoDeVenta() {
                         ))}
                       </div>
 
-                      {/* Aviso de costo por retraso ($7.000 / día) */}
+                      {/* Aviso de costo por retraso ($15.000 / día) */}
                       {alq.tieneRetraso && (
                         <div className="mt-1 p-2 rounded-lg bg-white border border-rose-200 text-[10px] text-rose-900 font-semibold leading-relaxed">
-                          📌 <strong>Costo por mora:</strong> $7.000 COP por día transcurrido después de los 3 días permitidos. Se puede descontar del depósito o condonar al recibir el traje.
+                          📌 <strong>Costo por mora:</strong> $15.000 COP por día transcurrido después de los 3 días permitidos. Se puede descontar del depósito o condonar al recibir el traje.
                         </div>
                       )}
 

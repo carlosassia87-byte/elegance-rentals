@@ -123,7 +123,7 @@ export function DevolucionTrajesModal({
     return itemsSeleccionados.reduce((acc, it) => acc + (it.valorDeposito * it.cantidad), 0);
   }, [itemsSeleccionados]);
 
-  // Cálculo de retraso de 3 días y recargo de $7.000 / día
+  // Cálculo de retraso de 3 días y recargo de $15.000 / día
   const infoRetraso = useMemo(() => {
     if (!detalle?.fechaSalida) return null;
     const dSalida = new Date(detalle.fechaSalida);
@@ -134,7 +134,7 @@ export function DevolucionTrajesModal({
     const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     const diasPermitidos = 3;
     const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
-    const costoPorDia = 7000;
+    const costoPorDia = 15000;
     const recargoSugerido = diasRetraso * costoPorDia;
 
     return {
@@ -422,7 +422,7 @@ export function DevolucionTrajesModal({
                       <span>2. Ajustes, Retraso & Penalidades</span>
                     </div>
 
-                    {/* Alerta de Retraso de 3 Días & $7.000 / Día */}
+                    {/* Alerta de Retraso de 3 Días & $15.000 / Día */}
                     {infoRetraso?.tieneRetraso ? (
                       <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 space-y-2 shadow-xs">
                         <div className="flex items-start gap-2">
@@ -432,7 +432,7 @@ export function DevolucionTrajesModal({
                               ⚠️ RETRASO DETECTADO: {infoRetraso.diasRetraso} día(s) de mora
                             </p>
                             <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                              El cliente lleva <strong>{infoRetraso.diasTranscurridos} días</strong> con el traje (límite permitido: <strong>3 días</strong>). Costo: <strong>$7.000 COP / día</strong>.
+                              El cliente lleva <strong>{infoRetraso.diasTranscurridos} días</strong> con el traje (límite permitido: <strong>3 días</strong>). Costo: <strong>$15.000 COP / día</strong>.
                               <br />
                               Recargo acumulado: <strong className="text-rose-700 font-mono">${infoRetraso.recargoSugerido.toLocaleString("es-CO")} COP</strong>.
                             </p>
@@ -445,7 +445,7 @@ export function DevolucionTrajesModal({
                             type="button"
                             onClick={() => {
                               setDeduccionPenalidad(String(infoRetraso.recargoSugerido));
-                              setMotivoDeduccion(`Recargo por ${infoRetraso.diasRetraso} día(s) de retraso ($7.000/día)`);
+                              setMotivoDeduccion(`Recargo por ${infoRetraso.diasRetraso} día(s) de retraso ($15.000/día)`);
                               toast.info(`Descuento de $${infoRetraso.recargoSugerido.toLocaleString("es-CO")} aplicado`);
                             }}
                             className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 text-[11px] font-black shadow-xs transition-all active:scale-95"

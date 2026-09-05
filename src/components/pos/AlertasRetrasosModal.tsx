@@ -180,7 +180,7 @@ export function AlertasRetrasosModal({
                   Panel de Notificaciones: Trajes por Vencer & Retrasos
                 </h2>
                 <span className="rounded-md bg-rose-200 px-2 py-0.5 text-[10px] font-black text-rose-900 uppercase">
-                  LÍMITE 3 DÍAS · $7.000/DÍA DE MORA
+                  LÍMITE 3 DÍAS · $15.000/DÍA DE MORA
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium">
@@ -509,7 +509,7 @@ export function AlertasRetrasosModal({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] opacity-75 block font-bold">RECARGO MORA ($7.000/d):</span>
+                      <span className="text-[10px] opacity-75 block font-bold">RECARGO MORA ($15.000/d):</span>
                       <span className="font-mono font-black text-rose-700 text-base">
                         ${itemSeleccionado.recargoTotalRetraso.toLocaleString("es-CO")}
                       </span>

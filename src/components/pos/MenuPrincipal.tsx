@@ -269,7 +269,7 @@ export function MenuPrincipal({
               className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-slate-800 hover:bg-slate-100 transition-all group ${
                 sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
               }`}
-              title="Panel de Retrasos y Trajes por Vencer (Límite 3 Días · $7.000/día)"
+              title="Panel de Retrasos y Trajes por Vencer (Límite 3 Días · $15.000/día)"
             >
               <div className="flex items-center gap-3">
                 <Bell className="h-5 w-5 text-slate-500 group-hover:text-slate-900 shrink-0 transition-colors" />
@@ -523,7 +523,7 @@ export function MenuPrincipal({
                   ? "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100 animate-pulse"
                   : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
               }`}
-              title="Panel de Retrasos y Trajes por Vencer (3 Días Límite · $7.000/día)"
+              title="Panel de Retrasos y Trajes por Vencer (3 Días Límite · $15.000/día)"
             >
               <Bell className="h-4 w-4 text-rose-600" />
               <span className="hidden sm:inline">Alertas Mora</span>
@@ -570,7 +570,7 @@ export function MenuPrincipal({
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 font-medium">
-                    Han superado el límite de 3 días de alquiler ($7.000/día). Haz clic aquí para enviarles cobro por WhatsApp o recibir trajes.
+                    Han superado el límite de 3 días de alquiler ($15.000/día). Haz clic aquí para enviarles cobro por WhatsApp o recibir trajes.
                   </p>
                 </div>
               </div>

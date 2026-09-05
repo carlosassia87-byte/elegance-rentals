@@ -302,7 +302,7 @@ export async function registrarDevolucionCompleta(
   }
 }
 
-// 3. Consultar si un cliente tiene trajes actualmente en alquiler y calcular días de retraso & recargos ($7.000/día tras 3 días)
+// 3. Consultar si un cliente tiene trajes actualmente en alquiler y calcular días de retraso & recargos ($15.000/día tras 3 días)
 export interface PrendaActivaAlquiler {
   codigoBarras: string;
   descripcion: string;
@@ -318,8 +318,8 @@ export interface AlquilerActivoClienteInfo {
   diasTranscurridos: number;
   diasPermitidos: number; // 3 días
   diasRetraso: number; // Max(0, diasTranscurridos - 3)
-  costoPorDiaRetraso: number; // $7.000
-  recargoTotalRetraso: number; // diasRetraso * 7000
+  costoPorDiaRetraso: number; // $15.000
+  recargoTotalRetraso: number; // diasRetraso * 15000
   tieneRetraso: boolean;
   prendas: PrendaActivaAlquiler[];
   totalDepositoRetenido: number;
@@ -425,7 +425,7 @@ export async function consultarAlquileresActivosCliente(
         const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         const diasPermitidos = 3;
         const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
-        const costoPorDia = 7000;
+        const costoPorDia = 15000;
         const recargoTotal = diasRetraso * costoPorDia;
 
         alquileresActivos.push({

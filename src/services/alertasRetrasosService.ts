@@ -15,8 +15,8 @@ export interface ItemRetrasoAlquiler {
   diasTranscurridos: number;
   diasPermitidos: number; // 3 días
   diasRetraso: number; // Max(0, diasTranscurridos - 3)
-  costoPorDiaRetraso: number; // $7.000 COP
-  recargoTotalRetraso: number; // diasRetraso * 7000
+  costoPorDiaRetraso: number; // $15.000 COP
+  recargoTotalRetraso: number; // diasRetraso * 15000
   nivelUrgencia: "CRITICO_MORA" | "VENCE_HOY" | "VENCE_MANANA" | "EN_TIEMPO";
   totalDepositoRetenido: number;
   totalAlquiler: number;
@@ -133,7 +133,7 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
       const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const diasPermitidos = 3;
       const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
-      const costoPorDia = 7000;
+      const costoPorDia = 15000;
       const recargoTotal = diasRetraso * costoPorDia;
 
       let nivelUrgencia: ItemRetrasoAlquiler["nivelUrgencia"] = "EN_TIEMPO";
@@ -212,7 +212,7 @@ export function generarMensajeWhatsAppRetraso(
       `${prendasTexto}\n\n` +
       `📅 *Fecha de Salida:* ${item.fechaSalida}\n` +
       `⚠️ *Días de Retraso:* ${item.diasRetraso} día(s) (Límite contractual: 3 días)\n` +
-      `💰 *Recargo por Mora Acumulado:* ${moraFormateada} ($7.000/día)\n` +
+      `💰 *Recargo por Mora Acumulado:* ${moraFormateada} ($15.000/día)\n` +
       `🔒 *Depósito en Custodia:* ${depositoFormateado}\n\n` +
       `Por favor acércate a nuestra tienda lo antes posible para realizar la entrega de la(s) prenda(s) y liquidar el reintegro de tu depósito restante.\n\n` +
       `¡Muchas gracias por tu atención!`
