@@ -25,6 +25,7 @@ import {
   consultarMovimientos,
   type OperacionClienteMovimiento,
 } from "@/services/movimientosService";
+import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 
 interface ReimpresionFacturasModalProps {
   open: boolean;
@@ -136,62 +137,7 @@ export function ReimpresionFacturasModal({
       toast.error("Selecciona una factura para imprimir");
       return;
     }
-
-    // Crear ventana de impresión limpia con estilos de recibo térmico 80mm
-    const printContent = ticketRef.current?.innerHTML;
-    if (!printContent) {
-      window.print();
-      return;
-    }
-
-    const printWindow = window.open("", "_blank", "width=400,height=650");
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Recibo POS - Factura ${facturaSeleccionada.numeroFact}</title>
-            <style>
-              @page {
-                size: 80mm auto;
-                margin: 4mm;
-              }
-              body {
-                font-family: 'Courier New', Courier, monospace, sans-serif;
-                font-size: 11px;
-                line-height: 1.3;
-                color: #000;
-                margin: 0;
-                padding: 4px;
-                background: #fff;
-              }
-              .text-center { text-align: center; }
-              .text-right { text-align: right; }
-              .font-bold { font-weight: bold; }
-              .font-black { font-weight: 900; }
-              .border-b { border-bottom: 1px dashed #000; }
-              .border-t { border-top: 1px dashed #000; }
-              .my-2 { margin-top: 6px; margin-bottom: 6px; }
-              .py-1 { padding-top: 3px; padding-bottom: 3px; }
-              .flex { display: flex; justify-content: space-between; }
-              .uppercase { text-transform: uppercase; }
-            </style>
-          </head>
-          <body>
-            ${printContent}
-            <script>
-              window.onload = function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    } else {
-      window.print();
-    }
+    imprimirTicketPOS80mm(ticketRef.current, `Recibo-${facturaSeleccionada.numeroFact}`);
   };
 
   // Copiar Resumen
@@ -507,102 +453,40 @@ export function ReimpresionFacturasModal({
 
             {facturaSeleccionada ? (
               <div className="flex-1 flex flex-col space-y-3">
-                {/* Tirilla Térmica Simulada 80mm */}
-                <div
-                  ref={ticketRef}
-                  className="rounded-2xl bg-white p-5 border border-slate-300/80 shadow-md font-mono text-xs text-slate-900 space-y-3"
-                >
-                  {/* Encabezado del Comercio */}
-                  <div className="border-b border-dashed border-slate-400 pb-3 text-center">
-                    <h3 className="text-sm font-black uppercase tracking-wide text-slate-900">
-                      {empresa.nombreComercial || "LA CASA DEL DISFRAZ"}
-                    </h3>
-                    <p className="text-[11px] font-bold text-slate-600">{empresa.razonSocial || "LA CASA DEL DISFRAZ S.A.S."}</p>
-                    <p className="text-[10px] text-slate-500">NIT: {empresa.nit || "900.123.456-7"}</p>
-                    <p className="text-[10px] text-slate-500">{empresa.direccion || "Calle Principal # 10 - 25"}</p>
-                    <p className="text-[10px] text-slate-500">Tel: {empresa.telefono1 || "315 123 4567"}</p>
-                    <p className="mt-1 text-[10px] font-semibold text-emerald-800">
-                      Para toda ocasión sin importar tu edad
-                    </p>
-                    <div className="mt-2 pt-1 border-t border-dashed border-slate-300">
-                      <span className="text-sm font-black text-slate-900">
-                        RECIBO N° {facturaSeleccionada.numeroFact}
-                      </span>
-                      <p className="text-[10px] text-slate-500">
-                        Fecha: {facturaSeleccionada.fechaSalida} · Cajero: {facturaSeleccionada.vendedor || cajeroNombre}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Datos del Cliente */}
-                  <div className="py-1 text-[11px] space-y-0.5 border-b border-dashed border-slate-400 font-semibold">
-                    <p>
-                      <strong>CLIENTE:</strong> {facturaSeleccionada.clienteNombre.toUpperCase()}
-                    </p>
-                    <p>
-                      <strong>CÉDULA:</strong> {facturaSeleccionada.clienteCedula}
-                    </p>
-                    <p>
-                      <strong>TELÉFONO:</strong> {facturaSeleccionada.clienteTelefono}
-                    </p>
-                    <p>
-                      <strong>SALIDA:</strong> {facturaSeleccionada.fechaSalida} |{" "}
-                      <strong>DEVOLUCIÓN:</strong> {facturaSeleccionada.fechaEntregaPactada}
-                    </p>
-                  </div>
-
-                  {/* Detalle de Prendas */}
-                  <div className="py-2 border-b border-dashed border-slate-400">
-                    <div className="flex justify-between font-black pb-1 text-[11px] uppercase">
-                      <span>PRENDA / TALLA</span>
-                      <span>ALQUILER</span>
-                    </div>
-                    {facturaSeleccionada.items.length === 0 ? (
-                      <div className="py-1 text-slate-500 italic text-[11px]">
-                        Prendas registradas en comprobante #{facturaSeleccionada.numeroFact}
-                      </div>
-                    ) : (
-                      facturaSeleccionada.items.map((it, idx) => (
-                        <div key={idx} className="flex justify-between py-0.5 text-[11px] font-bold">
-                          <span>
-                            {it.cantidad}x {it.descripcion} ({it.talla})
-                          </span>
-                          <span>${it.valorAlquiler.toLocaleString("es-CO")}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Totales y Liquidación */}
-                  <div className="py-1.5 space-y-1 text-right text-xs font-bold">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Total Alquiler:</span>
-                      <span>${facturaSeleccionada.totalAlquiler.toLocaleString("es-CO")}</span>
-                    </div>
-                    <div className="flex justify-between font-black text-amber-800">
-                      <span>Depósito (Fianza):</span>
-                      <span>${facturaSeleccionada.totalDeposito.toLocaleString("es-CO")}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-black border-t border-slate-400 pt-1 text-slate-900">
-                      <span>TOTAL COBRADO:</span>
-                      <span>${facturaSeleccionada.totalVentaDeposito.toLocaleString("es-CO")}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-emerald-800 font-bold">
-                      <span>Efectivo: ${facturaSeleccionada.pagoEfectivo.toLocaleString("es-CO")}</span>
-                      <span>Transf: ${facturaSeleccionada.pagoTransferencia.toLocaleString("es-CO")}</span>
-                    </div>
-                    {facturaSeleccionada.saldoPendiente > 0 && (
-                      <div className="flex justify-between text-rose-700 font-black border-t pt-0.5">
-                        <span>SALDO PENDIENTE:</span>
-                        <span>${facturaSeleccionada.saldoPendiente.toLocaleString("es-CO")}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Mensaje de Pie */}
-                  <div className="border-t border-dashed border-slate-400 pt-2 text-center text-[10px] text-slate-500 italic font-semibold">
-                    {empresa.mensajePieFactura ||
-                      "¡Gracias por su preferencia! Conserve este recibo para la devolución de su prenda y depósito."}
+                {/* Tirilla Térmica POS 80mm Oficial */}
+                <div className="rounded-2xl bg-slate-100/70 p-3 border border-slate-300 shadow-inner overflow-y-auto max-h-[68vh] flex justify-center">
+                  <div className="bg-white p-3 shadow-md rounded-lg border border-slate-200">
+                    <TicketFactura80mm
+                      ref={ticketRef}
+                      caja="SERVIDOR"
+                      cliente={facturaSeleccionada.clienteNombre}
+                      cedula={facturaSeleccionada.clienteCedula}
+                      direccion={facturaSeleccionada.clienteDireccion || "DG 17"}
+                      telefono1={facturaSeleccionada.clienteTelefono || "1"}
+                      telefono2="1"
+                      formaPago={facturaSeleccionada.pagoTransferencia > 0 && facturaSeleccionada.pagoEfectivo > 0 ? "MIXTO" : facturaSeleccionada.pagoTransferencia > 0 ? "TRANSFERENCIA" : "EFECTIVO"}
+                      tipo={facturaSeleccionada.tipoOperacion || "ALQUILER"}
+                      cajero={facturaSeleccionada.vendedor || cajeroNombre || "SUPERVISOR"}
+                      recibo={facturaSeleccionada.numeroFact}
+                      fechaSalida={facturaSeleccionada.fechaSalida}
+                      fechaDevolucion={facturaSeleccionada.fechaEntregaPactada}
+                      valorAlquiler={facturaSeleccionada.totalAlquiler}
+                      deposito={facturaSeleccionada.totalDeposito}
+                      totalAlqDep={facturaSeleccionada.totalVentaDeposito}
+                      descuento={0}
+                      recibi={facturaSeleccionada.pagoEfectivo + facturaSeleccionada.pagoTransferencia}
+                      saldo={facturaSeleccionada.saldoPendiente || 0}
+                      esAbono={facturaSeleccionada.tipoOperacion === "APARTADO / ABONO"}
+                      direccionEmpresa={empresa.direccion || "CRA 23 #15- 34"}
+                      ciudadEmpresa="BUCARAMANGA -SANTANDER"
+                      telefonosEmpresa={empresa.telefono1 ? `${empresa.telefono1} - ${empresa.telefono2 || "3202375610"}` : "6076963959 - 3202375610"}
+                      items={facturaSeleccionada.items.map((it) => ({
+                        descripcion: `${it.descripcion}${it.talla ? ` (${it.talla})` : ""}`,
+                        cantidad: it.cantidad,
+                        valor: it.valorAlquiler,
+                        total: it.valorAlquiler * it.cantidad + (it.totalDeposito || 0),
+                      }))}
+                    />
                   </div>
                 </div>
 

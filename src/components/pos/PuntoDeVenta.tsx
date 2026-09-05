@@ -80,6 +80,7 @@ import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import { InventarioStockModal } from "./InventarioStockModal";
 import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
 import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
+import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -215,16 +216,22 @@ export function PuntoDeVenta() {
   const [modalPreguntaSalida, setModalPreguntaSalida] = useState(false);
   const [modalImprimirAbono80mm, setModalImprimirAbono80mm] = useState(false);
   const [ticketAbonoData, setTicketAbonoData] = useState<any>(null);
+  const ticketVentaRef = useRef<HTMLDivElement>(null);
+  const ticketAbonoRef = useRef<HTMLDivElement>(null);
 
   // Snapshot de datos de venta para comprobante / recibo
   const [ticketReciboVenta, setTicketReciboVenta] = useState<{
     numeroRecibo: string;
     fechaHoy: string;
     cajero: string;
+    caja?: string;
+    formaPago?: string;
+    tipo?: string;
     cliente: {
       nombre: string;
       cedula: string | number;
       telefono: string;
+      telefono2?: string;
       direccion?: string;
     };
     fechaSalida: string;
@@ -233,6 +240,9 @@ export function PuntoDeVenta() {
     totalAlquiler: number;
     totalDeposito: number;
     totalGeneral: number;
+    descuento?: number;
+    recibi?: number;
+    saldo?: number;
     cambio: number;
   } | null>(null);
 
@@ -993,16 +1003,39 @@ export function PuntoDeVenta() {
       
       const numFacturaFinal = (resultado && resultado.factura) ? resultado.factura.NUMEROFACT : numeroRecibo;
 
+      const pagoReal = pagoEfecNum + pagoTransNum;
+      const fPagoStr =
+        pagoEfecNum > 0 && pagoTransNum > 0
+          ? "MIXTO"
+          : pagoTransNum > 0
+          ? "TRANSFERENCIA"
+          : "EFECTIVO";
+      const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
+      const saldoRestante = Math.max(0, totalDepositoMasAlquiler - pagoReal);
+      const fechaHoraActual = new Date().toLocaleString("es-CO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
       // Guardar snapshot de los datos de la venta para el recibo de impresión
       setTicketReciboVenta({
         numeroRecibo: numFacturaFinal,
-        fechaHoy: fechaHoy,
-        cajero: cajero,
+        fechaHoy: fechaHoraActual,
+        cajero: cajero || "SUPERVISOR",
+        caja: terminalConfig.nombreCaja || "SERVIDOR",
+        formaPago: fPagoStr,
+        tipo: tipoOperacion,
         cliente: {
-          nombre: clienteForm.NOMBRE || "GENERAL",
+          nombre: clienteForm.NOMBRE || "CLIENTE GENERAL",
           cedula: clienteForm.CEDULA || "N/A",
-          telefono: clienteForm.TELEFONO || "N/A",
-          direccion: clienteForm.DIRECCION || "",
+          telefono: clienteForm.TELEFONO || "1",
+          telefono2: clienteForm.TELEFONO2 || "1",
+          direccion: clienteForm.DIRECCION || "DG 17",
         },
         fechaSalida: fechaSalida || fechaHoy,
         fechaEntrada: fechaEntrada || fechaHoy,
@@ -1010,6 +1043,9 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
+        descuento: Number(descuentoGlobal) || 0,
+        recibi: pagoReal,
+        saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
       });
 
@@ -1023,15 +1059,38 @@ export function PuntoDeVenta() {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
 
+      const pagoReal = pagoEfecNum + pagoTransNum;
+      const fPagoStr =
+        pagoEfecNum > 0 && pagoTransNum > 0
+          ? "MIXTO"
+          : pagoTransNum > 0
+          ? "TRANSFERENCIA"
+          : "EFECTIVO";
+      const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
+      const saldoRestante = Math.max(0, totalDepositoMasAlquiler - pagoReal);
+      const fechaHoraActual = new Date().toLocaleString("es-CO", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
       setTicketReciboVenta({
         numeroRecibo: numeroRecibo,
-        fechaHoy: fechaHoy,
-        cajero: cajero,
+        fechaHoy: fechaHoraActual,
+        cajero: cajero || "SUPERVISOR",
+        caja: terminalConfig.nombreCaja || "SERVIDOR",
+        formaPago: fPagoStr,
+        tipo: tipoOperacion,
         cliente: {
-          nombre: clienteForm.NOMBRE || "GENERAL",
+          nombre: clienteForm.NOMBRE || "CLIENTE GENERAL",
           cedula: clienteForm.CEDULA || "N/A",
-          telefono: clienteForm.TELEFONO || "N/A",
-          direccion: clienteForm.DIRECCION || "",
+          telefono: clienteForm.TELEFONO || "1",
+          telefono2: clienteForm.TELEFONO2 || "1",
+          direccion: clienteForm.DIRECCION || "DG 17",
         },
         fechaSalida: fechaSalida || fechaHoy,
         fechaEntrada: fechaEntrada || fechaHoy,
@@ -1039,6 +1098,9 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
+        descuento: Number(descuentoGlobal) || 0,
+        recibi: pagoReal,
+        saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
       });
 
@@ -3381,138 +3443,47 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================
-          MODAL: TIRA DE ABONO 80mm (REPORTE entregarvestido EXACTO A WINDEV)
+          MODAL: TIRA DE ABONO 80mm (MODELO OFICIAL POS 80MM)
       ========================================================= */}
       <Dialog open={modalImprimirAbono80mm} onOpenChange={setModalImprimirAbono80mm}>
-        <DialogContent className="max-w-sm bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[90vh]">
+        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh]">
           {ticketAbonoData && (
-            <div className="font-mono text-xs text-slate-900 space-y-2 select-text">
-              {/* LOGO OFICIAL CENTRADO */}
-              <div className="flex flex-col items-center border-b border-dashed border-slate-400 pb-2">
-                <img
-                  src="/logo_casa_del_disfraz.jpg"
-                  alt="La Casa Del Disfraz"
-                  className="h-16 w-auto object-contain mb-1"
-                />
-                <p className="text-center font-bold text-[11px] leading-tight">
-                  CRA 23 #15-34<br />
-                  BUCARAMANGA - SANTANDER<br />
-                  6076963959 - 3202375610
-                </p>
-              </div>
-
-              {/* DATOS DE FACTURA Y CLIENTE */}
-              <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-semibold">
-                <div className="flex justify-between">
-                  <span>CAJA:</span>
-                  <span className="font-bold">{ticketAbonoData.caja}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CLIENTE:</span>
-                  <span className="font-bold">{ticketAbonoData.cliente}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CÉDULA:</span>
-                  <span>{ticketAbonoData.cedula}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>DIRECCIÓN:</span>
-                  <span>{ticketAbonoData.direccion}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TELÉFONO 1:</span>
-                  <span>{ticketAbonoData.telefono1}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TELÉFONO 2:</span>
-                  <span>{ticketAbonoData.telefono2}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>F_PAGO:</span>
-                  <span>{ticketAbonoData.formaPago}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TIPO:</span>
-                  <span className="font-black text-red-700">{ticketAbonoData.tipo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CAJERO:</span>
-                  <span>{ticketAbonoData.cajero}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>RECIBO:</span>
-                  <span className="font-black">{ticketAbonoData.recibo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>FECHA:</span>
-                  <span>{ticketAbonoData.fecha}</span>
+            <div className="space-y-4">
+              <div className="rounded-xl bg-slate-100/70 p-2.5 border border-slate-200 overflow-y-auto max-h-[65vh] flex justify-center">
+                <div className="bg-white p-2 shadow-sm rounded border border-slate-200">
+                  <TicketFactura80mm
+                    ref={ticketAbonoRef}
+                    caja={ticketAbonoData.caja || "SERVIDOR"}
+                    cliente={ticketAbonoData.cliente || "CLIENTE GENERAL"}
+                    cedula={ticketAbonoData.cedula || "N/A"}
+                    direccion={ticketAbonoData.direccion || "DG 17"}
+                    telefono1={ticketAbonoData.telefono1 || "1"}
+                    telefono2={ticketAbonoData.telefono2 || "1"}
+                    formaPago={ticketAbonoData.formaPago || "EFECTIVO"}
+                    tipo={ticketAbonoData.tipo || "ALQUILER"}
+                    cajero={ticketAbonoData.cajero || "SUPERVISOR"}
+                    recibo={ticketAbonoData.recibo || "G0000"}
+                    fecha={ticketAbonoData.fecha}
+                    fechaSalida={ticketAbonoData.fechaSalida}
+                    fechaDevolucion={ticketAbonoData.fechaDevolucion}
+                    valorAlquiler={ticketAbonoData.valorAlquiler || 0}
+                    deposito={ticketAbonoData.deposito || 0}
+                    totalAlqDep={ticketAbonoData.totalAlqDep || (ticketAbonoData.valorAlquiler || 0) + (ticketAbonoData.deposito || 0)}
+                    descuento={ticketAbonoData.descuento || 0}
+                    recibi={ticketAbonoData.recibiAbono || 0}
+                    saldo={ticketAbonoData.saldo || 0}
+                    esAbono={true}
+                    items={(ticketAbonoData.items || []).map((it: any) => ({
+                      descripcion: it.DESCRIPCION || it.descripcion || "PRENDA",
+                      cantidad: it.CANTIDAD || it.cantidad || 1,
+                      valor: it.VALOR || it.valor || it.VALORALQUILER || 0,
+                      total: it.TOTAL || it.total || it.TOTALALQUILER || 0,
+                    }))}
+                  />
                 </div>
               </div>
 
-              {/* TABLA DE ARTÍCULOS */}
-              <div className="border-b border-dashed border-slate-400 pb-2 text-[11px]">
-                <div className="flex justify-between font-black pb-1 border-b border-slate-300">
-                  <span className="w-1/2">DESCRIPCION</span>
-                  <span className="text-center w-12">CANT</span>
-                  <span className="text-right w-16">VALOR</span>
-                  <span className="text-right w-16">TOTAL</span>
-                </div>
-                {ticketAbonoData.items.map((it: any, i: number) => (
-                  <div key={i} className="flex justify-between py-0.5">
-                    <span className="w-1/2 truncate font-bold">{it.DESCRIPCION}</span>
-                    <span className="text-center w-12 font-bold">{it.CANTIDAD}</span>
-                    <span className="text-right w-16 font-mono">${Number(it.VALOR || 0).toLocaleString()}</span>
-                    <span className="text-right w-16 font-mono font-bold">${Number(it.TOTAL || 0).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* TOTALES Y SALDOS */}
-              <div className="text-[11px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-bold text-right">
-                <div className="flex justify-between">
-                  <span>VALOR ALQUILER:</span>
-                  <span className="font-mono">${Number(ticketAbonoData.valorAlquiler).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>DEPOSITO:</span>
-                  <span className="font-mono">${Number(ticketAbonoData.deposito).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>SALDO ANTERIOR:</span>
-                  <span className="font-mono">${Number(ticketAbonoData.saldoAnterior).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-emerald-800">
-                  <span>RECIBI ABONO:</span>
-                  <span className="font-mono font-black">${Number(ticketAbonoData.recibiAbono).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-red-700 text-xs border-t pt-1">
-                  <span>SALDO:</span>
-                  <span className="font-mono font-black">${Number(ticketAbonoData.saldo).toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* FECHAS DE SALIDA Y DEVOLUCIÓN */}
-              <div className="text-[10px] space-y-0.5 border-b border-dashed border-slate-400 pb-2 font-bold">
-                <div className="flex justify-between">
-                  <span>FECHA DE SALIDA DE TRAJE:</span>
-                  <span>{ticketAbonoData.fechaSalida}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>FECHA DE DEVOLUCION TRAJE:</span>
-                  <span>{ticketAbonoData.fechaDevolucion}</span>
-                </div>
-              </div>
-
-              {/* TÉRMINOS Y CONDICIONES EXACTOS */}
-              <div className="text-[9px] text-slate-700 leading-tight space-y-1 pt-1">
-                <p className="font-bold">Condiciones de servicio:</p>
-                <p>- Tiempo de alquiler 3 días hábiles. Por devoluciones hechas después de la fecha se cobrará un recargo de $5.000 por día.</p>
-                <p>- Favor conservar este recibo para efectuar la devolución de dinero que ha dejado como depósito.</p>
-                <p>- No se hace devolución de dinero una vez elaborado este RECIBO.</p>
-                <p className="font-black text-center pt-1">INSTAGRAM: @LACASADELDISFRAZOFICIAL</p>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -3526,7 +3497,7 @@ export function PuntoDeVenta() {
                 <button
                   type="button"
                   onClick={() => {
-                    window.print();
+                    imprimirTicketPOS80mm(ticketAbonoRef.current, `Recibo-Abono-${ticketAbonoData.recibo}`);
                     setModalImprimirAbono80mm(false);
                     handleLimpiar(true);
                   }}
@@ -3541,7 +3512,7 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================
-          MODAL: COMPROBANTE DE ALQUILER / VENTA
+          MODAL: COMPROBANTE DE FACTURA / ALQUILER (MODELO OFICIAL POS 80MM)
       ========================================================= */}
       <Dialog
         open={modalImprimir}
@@ -3552,92 +3523,67 @@ export function PuntoDeVenta() {
           }
         }}
       >
-        <DialogContent className="max-w-md bg-white p-6 border border-slate-200/90 shadow-2xl rounded-2xl">
-          <div className="font-mono text-xs text-slate-900">
-            <div className="border-b border-dashed border-slate-400 pb-3 text-center">
-              <h2 className="text-base font-black uppercase tracking-wider text-slate-900">LA CASA DEL DISFRAZ</h2>
-              <p className="text-xs font-semibold text-emerald-800">Elegance Rentals</p>
-              <p className="text-[10px] text-slate-500">Para toda ocasión sin importar tu edad</p>
-              <p className="mt-2 font-black text-sm text-slate-900">
-                RECIBO N° {ticketReciboVenta?.numeroRecibo || numeroRecibo}
-              </p>
-              <p className="text-[10px] text-slate-500">
-                Fecha: {ticketReciboVenta?.fechaHoy || fechaHoy} · Cajero: {ticketReciboVenta?.cajero || cajero}
-              </p>
-            </div>
-
-            <div className="py-2.5 text-xs space-y-1 border-b border-dashed border-slate-400 font-semibold">
-              <p>
-                <strong>CLIENTE:</strong>{" "}
-                {(ticketReciboVenta?.cliente?.nombre || clienteForm.NOMBRE)?.toUpperCase() || "GENERAL"}
-              </p>
-              <p>
-                <strong>CÉDULA:</strong> {ticketReciboVenta?.cliente?.cedula || clienteForm.CEDULA || "N/A"}
-              </p>
-              <p>
-                <strong>TELÉFONO:</strong> {ticketReciboVenta?.cliente?.telefono || clienteForm.TELEFONO || "N/A"}
-              </p>
-              <p>
-                <strong>SALIDA:</strong> {ticketReciboVenta?.fechaSalida || fechaSalida} |{" "}
-                <strong>ENTRADA:</strong> {ticketReciboVenta?.fechaEntrada || fechaEntrada}
-              </p>
-            </div>
-
-            <div className="py-2.5 border-b border-dashed border-slate-400">
-              <div className="flex justify-between font-black pb-1 text-xs">
-                <span>ARTÍCULO</span>
-                <span>VALOR</span>
-              </div>
-              {(ticketReciboVenta?.items || gridItems).map((it, i) => (
-                <div key={i} className="flex justify-between py-0.5 text-xs font-bold">
-                  <span>
-                    {it.cantidad}x {it.descripcion} ({it.talla})
-                  </span>
-                  <span>${it.totalAlquiler.toLocaleString()}</span>
+        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh]">
+          {ticketReciboVenta && (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-slate-100/70 p-2.5 border border-slate-200 overflow-y-auto max-h-[65vh] flex justify-center">
+                <div className="bg-white p-2 shadow-sm rounded border border-slate-200">
+                  <TicketFactura80mm
+                    ref={ticketVentaRef}
+                    caja={ticketReciboVenta.caja || terminalConfig.nombreCaja || "SERVIDOR"}
+                    cliente={ticketReciboVenta.cliente.nombre || "CLIENTE GENERAL"}
+                    cedula={String(ticketReciboVenta.cliente.cedula || "N/A")}
+                    direccion={ticketReciboVenta.cliente.direccion || "DG 17"}
+                    telefono1={ticketReciboVenta.cliente.telefono || "1"}
+                    telefono2={ticketReciboVenta.cliente.telefono2 || "1"}
+                    formaPago={ticketReciboVenta.formaPago || "EFECTIVO"}
+                    tipo={ticketReciboVenta.tipo || (bAlquiler ? "ALQUILER" : "VENTA")}
+                    cajero={ticketReciboVenta.cajero || cajero || "SUPERVISOR"}
+                    recibo={ticketReciboVenta.numeroRecibo || numeroRecibo}
+                    fecha={ticketReciboVenta.fechaHoy}
+                    fechaSalida={ticketReciboVenta.fechaSalida || fechaSalida}
+                    fechaDevolucion={ticketReciboVenta.fechaEntrada || fechaEntrada}
+                    valorAlquiler={ticketReciboVenta.totalAlquiler}
+                    deposito={ticketReciboVenta.totalDeposito}
+                    totalAlqDep={ticketReciboVenta.totalGeneral}
+                    descuento={ticketReciboVenta.descuento || 0}
+                    recibi={ticketReciboVenta.recibi ?? ticketReciboVenta.totalGeneral}
+                    saldo={ticketReciboVenta.saldo ?? 0}
+                    items={ticketReciboVenta.items.map((it) => ({
+                      descripcion: `${it.descripcion}${it.talla ? ` (${it.talla})` : ""}`,
+                      cantidad: it.cantidad,
+                      valor: it.valorAlquiler,
+                      total: it.totalAlquiler + (it.totalDeposito || 0),
+                    }))}
+                  />
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="py-2.5 space-y-1 text-right text-xs font-bold">
-              <p>
-                Total Alquiler: ${(ticketReciboVenta?.totalAlquiler ?? totalAlquilerConDesc).toLocaleString()}
-              </p>
-              <p className="font-black text-blue-900">
-                Total Depósito (Fianza): ${(ticketReciboVenta?.totalDeposito ?? totalDeposito).toLocaleString()}
-              </p>
-              <p className="text-sm font-black border-t pt-1.5 text-slate-900">
-                TOTAL COBRADO: ${(ticketReciboVenta?.totalGeneral ?? totalDepositoMasAlquiler).toLocaleString()}
-              </p>
-              <p className="text-emerald-800 font-black">
-                Cambio / Vuelto: ${(ticketReciboVenta?.cambio ?? Math.max(0, cambioVSaldo)).toLocaleString()}
-              </p>
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalImprimir(false);
+                    handleLimpiar(true);
+                  }}
+                  className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    imprimirTicketPOS80mm(ticketVentaRef.current, `Recibo-${ticketReciboVenta.numeroRecibo}`);
+                    setModalImprimir(false);
+                    handleLimpiar(true);
+                  }}
+                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm"
+                >
+                  <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Recibo 80mm
+                </button>
+              </div>
             </div>
-
-            <p className="mt-2 text-center text-[10px] text-slate-500 italic font-semibold">
-              Conservar este recibo para la devolución de la prenda y reintegro del depósito.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-200">
-            <button
-              onClick={() => {
-                setModalImprimir(false);
-                handleLimpiar(true);
-              }}
-              className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300"
-            >
-              Cerrar
-            </button>
-            <button
-              onClick={() => {
-                window.print();
-                setModalImprimir(false);
-                handleLimpiar(true);
-              }}
-              className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm"
-            >
-              <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Recibo
-            </button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
