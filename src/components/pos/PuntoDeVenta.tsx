@@ -89,6 +89,7 @@ import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
 import { MantenimientoMigracionModal } from "./MantenimientoMigracionModal";
 import { GestionAccesoriosModal } from "./GestionAccesoriosModal";
 import { SeleccionAccesoriosPosModal } from "./SeleccionAccesoriosPosModal";
+import { extraerPiezasYNombreTraje } from "@/services/accesoriosService";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 import {
   consultarAlquileresActivosCliente,
@@ -897,6 +898,8 @@ export function PuntoDeVenta() {
     }
 
     const cant = Math.max(1, cantidad || 1);
+    const { piezas } = extraerPiezasYNombreTraje(art.DESCRIPCION || "");
+
     const item: ItemAlquilerCarrito = {
       idTemp: `${Date.now()}-${Math.random()}`,
       articulo: art,
@@ -909,6 +912,7 @@ export function PuntoDeVenta() {
       valorDeposito: Number(art.VALORDEPOSITO),
       totalDeposito: Number(art.VALORDEPOSITO) * cant,
       totalGeneral: (Number(art.VALOR) + Number(art.VALORDEPOSITO)) * cant,
+      piezasIncluidas: piezas,
     };
 
     setGridItems((prev) => [...prev, item]);
@@ -1746,21 +1750,41 @@ export function PuntoDeVenta() {
                           : "bg-slate-50/50 font-medium hover:bg-slate-50"
                       }`}
                     >
-                      <td className="px-3.5 py-2 text-slate-900 font-bold flex items-center gap-1.5">
-                        {item.esAccesorio ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 text-[10px] font-black shrink-0 border border-purple-300">
-                            <Crown className="w-3 h-3 text-purple-700" />
-                            ACCESORIO
+                      <td className="px-3.5 py-2 text-slate-900 font-bold">
+                        <div className="flex items-center gap-1.5">
+                          {item.esAccesorio ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 text-[10px] font-black shrink-0 border border-purple-300">
+                              <Crown className="w-3 h-3 text-purple-700" />
+                              ACCESORIO
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[10px] text-slate-400 opacity-75">
+                              [{item.codigoBarras}]
+                            </span>
+                          )}
+                          <span>{item.descripcion}</span>
+                          <span className="text-[10px] text-slate-500 font-normal">
+                            (TALLA: {item.talla})
                           </span>
-                        ) : (
-                          <span className="font-mono text-[10px] text-slate-400 opacity-75">
-                            [{item.codigoBarras}]
-                          </span>
+                        </div>
+
+                        {/* DESGLOSE DE PIEZAS / ACCESORIOS PREDETERMINADOS DEL TRAJE */}
+                        {item.piezasIncluidas && item.piezasIncluidas.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 mt-1 pl-1">
+                            <span className="text-[10px] text-purple-700 font-bold flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              Piezas:
+                            </span>
+                            {item.piezasIncluidas.map((pieza, pIdx) => (
+                              <span
+                                key={pIdx}
+                                className="px-1.5 py-0.2 rounded-md bg-purple-100/90 text-purple-900 border border-purple-300/80 text-[10px] font-bold"
+                              >
+                                ✓ {pieza}
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        <span>{item.descripcion}</span>
-                        <span className="text-[10px] text-slate-500 font-normal">
-                          (TALLA: {item.talla})
-                        </span>
                       </td>
                       <td className="px-2 py-2 text-center font-black">
                         {item.cantidad}
@@ -3821,6 +3845,17 @@ export function PuntoDeVenta() {
         trajeReferencia={accesorioTrajeReferencia}
         onAgregarAlCarrito={(itemsNuevos) => {
           setGridItems((prev) => [...prev, ...itemsNuevos]);
+        }}
+        onActualizarPiezasTraje={(piezasActualizadas) => {
+          if (accesorioTrajeReferencia && "idTemp" in accesorioTrajeReferencia) {
+            setGridItems((prev) =>
+              prev.map((it) =>
+                it.idTemp === (accesorioTrajeReferencia as ItemAlquilerCarrito).idTemp
+                  ? { ...it, piezasIncluidas: piezasActualizadas }
+                  : it
+              )
+            );
+          }
         }}
       />
     </div>

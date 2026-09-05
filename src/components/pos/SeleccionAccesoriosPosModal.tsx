@@ -20,6 +20,7 @@ import type { Accesorio, ItemAlquilerCarrito, Articulo } from "@/types/database.
 import {
   listarAccesorios,
   CATEGORIAS_ACCESORIOS,
+  extraerPiezasYNombreTraje,
 } from "@/services/accesoriosService";
 
 interface ItemAccesorioSeleccionado {
@@ -35,6 +36,7 @@ interface SeleccionAccesoriosPosModalProps {
   onOpenChange: (open: boolean) => void;
   trajeReferencia?: Articulo | ItemAlquilerCarrito | null;
   onAgregarAlCarrito: (itemsNuevos: ItemAlquilerCarrito[]) => void;
+  onActualizarPiezasTraje?: (piezas: string[]) => void;
 }
 
 export function SeleccionAccesoriosPosModal({
@@ -42,6 +44,7 @@ export function SeleccionAccesoriosPosModal({
   onOpenChange,
   trajeReferencia,
   onAgregarAlCarrito,
+  onActualizarPiezasTraje,
 }: SeleccionAccesoriosPosModalProps) {
   const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -52,6 +55,23 @@ export function SeleccionAccesoriosPosModal({
   const [seleccionados, setSeleccionados] = useState<Map<string, ItemAccesorioSeleccionado>>(
     new Map()
   );
+
+  // Extraer accesorios / piezas predeterminadas que ya vienen escritas en la descripción del traje
+  const infoTraje = React.useMemo(() => {
+    if (!trajeReferencia) return null;
+    const rawDesc = "DESCRIPCION" in trajeReferencia ? trajeReferencia.DESCRIPCION : trajeReferencia.descripcion;
+    return extraerPiezasYNombreTraje(rawDesc || "");
+  }, [trajeReferencia]);
+
+  const [piezasIncluidasSeleccionadas, setPiezasIncluidasSeleccionadas] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (infoTraje && infoTraje.piezas) {
+      setPiezasIncluidasSeleccionadas([...infoTraje.piezas]);
+    } else {
+      setPiezasIncluidasSeleccionadas([]);
+    }
+  }, [infoTraje, open]);
 
   useEffect(() => {
     if (open) {
@@ -112,8 +132,13 @@ export function SeleccionAccesoriosPosModal({
   };
 
   const handleConfirmarAgregar = () => {
-    if (seleccionados.size === 0) {
-      toast.info("No has seleccionado ningún accesorio");
+    // Si tiene piezas del traje seleccionadas/modificadas, notificar
+    if (onActualizarPiezasTraje && infoTraje) {
+      onActualizarPiezasTraje(piezasIncluidasSeleccionadas);
+    }
+
+    if (seleccionados.size === 0 && (!infoTraje || piezasIncluidasSeleccionadas.length === 0)) {
+      toast.info("No has seleccionado ningún accesorio o pieza");
       return;
     }
 
@@ -154,8 +179,12 @@ export function SeleccionAccesoriosPosModal({
       });
     });
 
-    onAgregarAlCarrito(itemsNuevos);
-    toast.success(`Se agregaron ${itemsNuevos.length} accesorios a la factura`);
+    if (itemsNuevos.length > 0) {
+      onAgregarAlCarrito(itemsNuevos);
+      toast.success(`Se agregaron ${itemsNuevos.length} accesorios adicionales a la factura`);
+    } else {
+      toast.success(`Se actualizaron las piezas del traje: ${piezasIncluidasSeleccionadas.join(", ")}`);
+    }
     onOpenChange(false);
   };
 
@@ -223,6 +252,63 @@ export function SeleccionAccesoriosPosModal({
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
           {/* Lista de Accesorios Disponibles */}
           <div className="md:col-span-7 overflow-y-auto p-3 space-y-2 border-r border-slate-800 bg-slate-900/50">
+            {/* SECCIÓN 1: PIEZAS PREDETERMINADAS QUE YA VIENEN EN LA DESCRIPCIÓN DEL TRAJE */}
+            {infoTraje && infoTraje.piezas && infoTraje.piezas.length > 0 && (
+              <div className="bg-purple-950/70 border-2 border-purple-600/70 rounded-xl p-3 mb-3 shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black text-purple-200 flex items-center gap-1.5 uppercase">
+                    <Crown className="w-4 h-4 text-amber-300" />
+                    Piezas Incluidas en este Traje ({piezasIncluidasSeleccionadas.length}/{infoTraje.piezas.length})
+                  </span>
+                  <span className="text-[10px] text-purple-200 font-bold bg-purple-900/80 px-2 py-0.5 rounded-full border border-purple-400/40">
+                    🎁 Vienen en el disfraz
+                  </span>
+                </div>
+                <p className="text-[10px] text-purple-300/80 mb-2">
+                  Marca o desmarca las piezas que efectivamente le vas a entregar al cliente:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {infoTraje.piezas.map((pieza) => {
+                    const isChecked = piezasIncluidasSeleccionadas.includes(pieza);
+                    return (
+                      <button
+                        key={pieza}
+                        type="button"
+                        onClick={() => {
+                          if (isChecked) {
+                            setPiezasIncluidasSeleccionadas((prev) => prev.filter((p) => p !== pieza));
+                          } else {
+                            setPiezasIncluidasSeleccionadas((prev) => [...prev, pieza]);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
+                          isChecked
+                            ? "bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-900/50 scale-100"
+                            : "bg-slate-900/90 border-slate-700 text-slate-400 hover:text-slate-200 line-through opacity-70"
+                        }`}
+                      >
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${
+                            isChecked ? "bg-white text-purple-900 font-black" : "border border-slate-600"
+                          }`}
+                        >
+                          {isChecked && "✓"}
+                        </div>
+                        <span>{pieza}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 pt-1 flex items-center justify-between">
+              <span>Catálogo de Accesorios Adicionales</span>
+              <span className="text-[10px] font-normal text-slate-500">
+                {accesoriosFiltrados.length} disponibles
+              </span>
+            </div>
+
             {accesoriosFiltrados.length === 0 ? (
               <div className="text-center py-10 text-slate-500 text-xs">
                 No se encontraron accesorios coincidentes.

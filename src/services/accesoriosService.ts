@@ -292,3 +292,31 @@ export async function generarCodigoAccesorio(): Promise<string> {
     return `ACC-${Math.floor(1000 + Math.random() * 9000)}`;
   }
 }
+
+// 6. Extraer automáticamente nombre del traje y lista de piezas/accesorios predeterminados desde la descripción
+export function extraerPiezasYNombreTraje(descripcion: string): { nombreTraje: string; piezas: string[] } {
+  if (!descripcion) return { nombreTraje: "", piezas: [] };
+
+  let nombre = descripcion.trim();
+  let rawPiezas = "";
+
+  if (descripcion.includes(":")) {
+    const parts = descripcion.split(":");
+    nombre = parts[0].trim();
+    rawPiezas = parts.slice(1).join(" ").trim();
+  } else if (descripcion.includes("\n")) {
+    const lines = descripcion.split("\n");
+    nombre = lines[0].trim();
+    rawPiezas = lines.slice(1).join(" ").trim();
+  }
+
+  const piezas = rawPiezas
+    ? rawPiezas
+        .split(/[,;\n\r]+/)
+        .map((p) => p.trim().replace(/^Y\s+/i, "").toUpperCase())
+        .filter((p) => p.length > 1)
+    : [];
+
+  return { nombreTraje: nombre, piezas };
+}
+
