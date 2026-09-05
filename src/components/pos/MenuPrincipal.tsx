@@ -147,14 +147,32 @@ export function MenuPrincipal({
 
             {permisos.catalogoArticulos !== false && (
               <button
+                onClick={() => handleAccionConPermiso("inventario_stock", true, "Inventario & Stock")}
+                className={`flex w-full items-center rounded-xl py-2.5 font-black text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
+                }`}
+                title="Módulo de Inventario, Alimentación de Stock y Kardex"
+              >
+                <div className="flex items-center gap-3">
+                  <Package className="h-4 w-4 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  {sidebarExpandido && <span>Inventario & Stock</span>}
+                </div>
+                {sidebarExpandido && (
+                  <span className="text-[9px] font-black bg-blue-600 text-white px-1.5 py-0.2 rounded">KARDEX</span>
+                )}
+              </button>
+            )}
+
+            {permisos.catalogoArticulos !== false && (
+              <button
                 onClick={() => handleAccionConPermiso("catalogo_articulos", true, "Catálogo")}
                 className={`flex w-full items-center rounded-xl py-2 font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all group ${
                   sidebarExpandido ? "justify-between px-3" : "justify-center px-0"
                 }`}
-                title="Catálogo de Trajes & Vestidos"
+                title="Catálogo Rápido de Trajes & Vestidos"
               >
                 <div className="flex items-center gap-3">
-                  <Package className="h-4 w-4 text-blue-600 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Package className="h-4 w-4 text-slate-500 shrink-0 group-hover:scale-110 transition-transform" />
                   {sidebarExpandido && <span>Catálogo de Trajes</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}

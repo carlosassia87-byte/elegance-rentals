@@ -117,12 +117,25 @@ export function SidebarMenu({
 
             {permisos.catalogoArticulos !== false && (
               <button
+                onClick={() => handleItemClick("inventario_stock")}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-black text-slate-800 bg-blue-50/80 hover:bg-blue-100 hover:text-blue-900 transition-all group border border-blue-200"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Package className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                  <span>Inventario & Alimentar Stock</span>
+                </div>
+                <span className="text-[9px] font-black bg-blue-600 text-white px-1.5 py-0.2 rounded">KARDEX</span>
+              </button>
+            )}
+
+            {permisos.catalogoArticulos !== false && (
+              <button
                 onClick={() => handleItemClick("catalogo_articulos")}
                 className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-800 transition-all group"
               >
                 <div className="flex items-center gap-2.5">
                   <Package className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                  <span>Archivo de Trajes / Catálogo</span>
+                  <span>Catálogo Rápido de Trajes</span>
                 </div>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100" />
               </button>

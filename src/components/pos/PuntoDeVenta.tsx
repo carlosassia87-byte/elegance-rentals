@@ -72,6 +72,7 @@ import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import { BalanceDepositosModal } from "./BalanceDepositosModal";
+import { InventarioStockModal } from "./InventarioStockModal";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -235,6 +236,7 @@ export function PuntoDeVenta() {
   const [modalMovimientosTrajes, setModalMovimientosTrajes] = useState(false);
   const [modalBalanceDepositos, setModalBalanceDepositos] = useState(false);
   const [modalCatalogoClientes, setModalCatalogoClientes] = useState(false);
+  const [modalInventarioStock, setModalInventarioStock] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -436,6 +438,9 @@ export function PuntoDeVenta() {
         break;
       case "gasto_salida":
         setModalGasto(true);
+        break;
+      case "inventario_stock":
+        setModalInventarioStock(true);
         break;
       case "reimprimir":
         setModalImprimir(true);
@@ -1039,10 +1044,19 @@ export function PuntoDeVenta() {
                   </button>
 
                   <button
-                    onClick={() => setModalArchivoArticulo(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
+                    type="button"
+                    onClick={() => setModalInventarioStock(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95"
+                    title="Módulo de Inventario, Alimentación de Stock y Kardex de Trajes"
                   >
-                    <Package className="h-3.5 w-3.5" /> ARCHIVO ARTICULO
+                    <Package className="h-3.5 w-3.5" /> INVENTARIO & STOCK
+                  </button>
+
+                  <button
+                    onClick={() => setModalArchivoArticulo(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
+                  >
+                    <Package className="h-3.5 w-3.5 text-blue-400" /> ARCHIVO ARTICULO
                   </button>
 
                   <button
@@ -3560,6 +3574,22 @@ export function PuntoDeVenta() {
           await verificarAlquileresYAlertarCliente(cli);
         }}
         empresa={empresaConfig}
+      />
+
+      {/* =========================================================
+          MODAL: INVENTARIO, ALIMENTACIÓN DE STOCK Y KARDEX
+      ========================================================= */}
+      <InventarioStockModal
+        isOpen={modalInventarioStock}
+        onClose={() => {
+          setModalInventarioStock(false);
+          cargarArticulos();
+        }}
+        usuarioActivo={usuarioActivo?.nombre || cajero}
+        onArticuloSeleccionado={(art) => {
+          setArticuloTexto(art.CODBARRAS || art.DESCRIPCION);
+          setModalInventarioStock(false);
+        }}
       />
     </div>
   );
