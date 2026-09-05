@@ -532,7 +532,7 @@ export async function registrarAlquilerFactura(
 
     return {
       factura: facturaInsertada as unknown as Factura,
-      items: camposConFactura,
+      items: camposParaSupabase as unknown as CampoFactura[],
     };
   } catch (err) {
     console.error("Error al registrar factura de alquiler:", err);

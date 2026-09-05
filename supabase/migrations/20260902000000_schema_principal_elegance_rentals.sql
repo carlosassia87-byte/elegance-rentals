@@ -304,20 +304,9 @@ EXCEPTION
     WHEN others THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'fk_factura_automatic'
-    ) THEN
-        ALTER TABLE "FACTURA" 
-        ADD CONSTRAINT fk_factura_automatic 
-        FOREIGN KEY ("AUTOMATIC") REFERENCES "CAMPOFACTURA" ("AUTOMATIC");
-    END IF;
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-    WHEN foreign_key_violation THEN NULL;
-    WHEN others THEN NULL;
-END $$;
+-- Asegurar que no exista constraint circular que bloquee la inserción de FACTURA
+ALTER TABLE IF EXISTS "FACTURA" DROP CONSTRAINT IF EXISTS fk_factura_automatic;
+
 
 -- PERMISOS Y GRANTS PARA SUPABASE (anon y authenticated)
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
