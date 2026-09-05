@@ -224,4 +224,72 @@ table td {
   font-size: 14px;
 }
 
+/* =========================================================================
+   REGLAS DE IMPRESIÓN DE ALTO CONTRASTE Y MÁXIMA NITIDEZ (TÉRMICA Y LÁSER)
+========================================================================= */
+@media print {
+  html, body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  *, *::before, *::after {
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar botones, barras de navegación, fondos oscuros y elementos interactivos al imprimir */
+  button,
+  .no-print,
+  [data-no-print="true"],
+  header nav,
+  aside,
+  input[type="search"],
+  .fixed.inset-0.bg-slate-900\/60,
+  [role="dialog"] > button:last-child {
+    display: none !important;
+  }
+
+  /* Forzar contraste máximo en textos y títulos */
+  h1, h2, h3, h4, h5, h6, strong, b, th {
+    color: #000000 !important;
+    font-weight: 900 !important;
+  }
+
+  p, span, td, div {
+    color: #000000 !important;
+  }
+
+  /* Tablas de reportes nítidas */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  table th, table td {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    padding: 4px 6px !important;
+    font-size: 12px !important;
+  }
+
+  table th {
+    background-color: #f0f0f0 !important;
+    font-weight: 900 !important;
+  }
+
+  /* Evitar cortes indeseados en medio de filas o tarjetas */
+  tr, .card, .report-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
 

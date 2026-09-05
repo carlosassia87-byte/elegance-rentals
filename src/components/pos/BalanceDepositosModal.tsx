@@ -23,6 +23,7 @@ import {
 } from "@/services/movimientosService";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
+import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 
 interface BalanceDepositosModalProps {
   open: boolean;
@@ -216,11 +217,101 @@ export function BalanceDepositosModal({
               </button>
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="hidden items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all sm:flex"
-                title="Imprimir Balance"
+                onClick={() => {
+                  let depPorDevolver = 0;
+                  let depDevuelto = 0;
+                  operaciones.forEach((op) => {
+                    op.items.forEach((it) => {
+                      if (it.estadoPrenda === "EN ALQUILER") {
+                        depPorDevolver += it.valorDeposito * it.cantidad;
+                      } else if (it.estadoPrenda === "DEVUELTO A TIENDA") {
+                        depDevuelto += it.valorDeposito * it.cantidad;
+                      }
+                    });
+                  });
+
+                  const htmlBalance = `
+                    <div style="text-align: center; margin-bottom: 6px;">
+                      <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 95px; object-fit: contain; margin: 0 auto 4px auto; display: block;" />
+                      <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">LA CASA DEL DISFRAZ</div>
+                      <div style="font-size: 11.5px; font-weight: 800;">CRA 23 #15-34 · BUCARAMANGA</div>
+                      <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
+                    </div>
+                    <hr />
+                    <div style="text-align: center; font-weight: 900; font-size: 13px; margin: 4px 0; text-transform: uppercase;">
+                      *** BALANCE GENERAL DE DEPÓSITOS ***
+                    </div>
+                    <hr />
+                    <div style="font-size: 12.5px; font-weight: 700; margin: 4px 0;">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>RANGO FECHAS:</span>
+                        <span style="font-weight: 900;">${fechaInicio || "INICIO"} A ${fechaFin || "HOY"}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>FILTRO ESTADO:</span>
+                        <span style="font-weight: 900;">${filtroEstadoDeposito}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>FECHA IMPRESIÓN:</span>
+                        <span style="font-weight: 800;">${new Date().toLocaleString("es-CO")}</span>
+                      </div>
+                    </div>
+                    <hr />
+
+                    <div style="margin: 8px 0; padding: 6px; border: 2px solid #000; text-align: center;">
+                      <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase;">DEPÓSITOS EN CUSTODIA (PENDIENTES)</div>
+                      <div style="font-size: 18px; font-weight: 900; margin: 2px 0;">$${depPorDevolver.toLocaleString("es-CO")}</div>
+                    </div>
+
+                    <div style="margin: 6px 0; font-size: 13px; font-weight: 700;">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Total Depósitos Devueltos:</span>
+                        <span style="font-weight: 900;">$${depDevuelto.toLocaleString("es-CO")}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Total Depósitos Histórico:</span>
+                        <span style="font-weight: 900;">$${(depPorDevolver + depDevuelto).toLocaleString("es-CO")}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Prendas en Alquiler:</span>
+                        <span style="font-weight: 900;">${metricas.totalPrendasEnAlquiler}</span>
+                      </div>
+                    </div>
+
+                    <hr />
+
+                    <div style="margin-top: 8px;">
+                      <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
+                        DETALLE POR CLIENTE (PENDIENTES)
+                      </div>
+                      ${operaciones.slice(0, 40).map((op) => {
+                        const depOp = op.items.reduce((acc, it) => acc + (it.estadoPrenda === "EN ALQUILER" ? it.valorDeposito * it.cantidad : 0), 0);
+                        if (depOp <= 0 && filtroEstadoDeposito === "PENDIENTES") return "";
+                        return `
+                          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-bottom: 4px; border-bottom: 1px dashed #ccc; padding-bottom: 2px;">
+                            <div>
+                              <div>FACT #${op.numeroFact} - ${op.clienteNombre}</div>
+                              <div style="font-size: 10.5px; font-weight: 700;">Dev: ${op.fechaEntregaPactada} · Tel: ${op.clienteTelefono || "N/A"}</div>
+                            </div>
+                            <div style="font-size: 12.5px; font-weight: 900; text-align: right;">
+                              $${depOp.toLocaleString("es-CO")}
+                            </div>
+                          </div>
+                        `;
+                      }).join("")}
+                    </div>
+
+                    <div style="margin-top: 36px; text-align: center;">
+                      <div style="border-top: 1.5px solid #000; width: 80%; margin: 0 auto 3px auto;"></div>
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma de Auditoría y Control</div>
+                    </div>
+                  `;
+                  imprimirReporte80mmHtml("Balance-Depositos-80mm", htmlBalance);
+                }}
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all sm:flex shadow-xs"
+                title="Imprimir Balance 80mm"
               >
-                <Printer className="h-4 w-4" /> Imprimir
+                <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
               </button>
               <button
                 onClick={() => onOpenChange(false)}

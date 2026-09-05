@@ -26,6 +26,7 @@ import {
   type ComprobanteDevolucionData,
 } from "@/services/devolucionesService";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
+import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 
 interface DevolucionTrajesModalProps {
   open: boolean;
@@ -649,10 +650,99 @@ export function DevolucionTrajesModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm"
+                  onClick={() => {
+                    const htmlComprobante = `
+                      <div style="text-align: center; margin-bottom: 6px;">
+                        <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 95px; object-fit: contain; margin: 0 auto 4px auto; display: block;" />
+                        <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">LA CASA DEL DISFRAZ</div>
+                        <div style="font-size: 11.5px; font-weight: 800;">CRA 23 #15-34 · BUCARAMANGA</div>
+                        <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
+                      </div>
+                      <hr />
+                      <div style="text-align: center; font-weight: 900; font-size: 13.5px; margin: 4px 0; text-transform: uppercase;">
+                        *** COMPROBANTE DE DEVOLUCIÓN & REINTEGRO DE DEPÓSITO ***
+                      </div>
+                      <hr />
+                      <div style="font-size: 13px; font-weight: 700; margin: 4px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>FACTURA N°:</span>
+                          <span style="font-weight: 900;">${comprobanteActivo.numeroFactura}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>FECHA/HORA:</span>
+                          <span style="font-weight: 800;">${comprobanteActivo.fecha} ${comprobanteActivo.hora}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>CAJERO:</span>
+                          <span style="font-weight: 900;">${comprobanteActivo.cajero}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>CLIENTE:</span>
+                          <span style="font-weight: 900; text-transform: uppercase;">${comprobanteActivo.clienteNombre}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>CÉDULA:</span>
+                          <span style="font-weight: 800;">${comprobanteActivo.clienteCedula}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>TELÉFONO:</span>
+                          <span style="font-weight: 800;">${comprobanteActivo.clienteTelefono}</span>
+                        </div>
+                      </div>
+                      <hr />
+
+                      <div style="margin: 6px 0;">
+                        <div style="font-size: 12.5px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                          <span>PRENDAS RECIBIDAS</span>
+                          <span>ESTADO</span>
+                        </div>
+                        ${comprobanteActivo.itemsDevueltos.map((it) => `
+                          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; margin-bottom: 3px;">
+                            <span>${it.cantidad}x ${it.descripcion} (${it.talla})</span>
+                            <span style="font-weight: 900; text-transform: uppercase;">${it.condicion}</span>
+                          </div>
+                        `).join("")}
+                      </div>
+
+                      <hr />
+
+                      <div style="font-size: 13.5px; font-weight: 700; margin: 6px 0; text-align: right; line-height: 1.4;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>Depósito en Custodia:</span>
+                          <span style="font-weight: 900;">$${comprobanteActivo.depositoOriginal.toLocaleString("es-CO")}</span>
+                        </div>
+                        ${comprobanteActivo.deduccionPenalidad > 0 ? `
+                          <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <span>(-) Deducción / Daño:</span>
+                            <span style="font-weight: 900;">-$${comprobanteActivo.deduccionPenalidad.toLocaleString("es-CO")} ${comprobanteActivo.motivoDeduccion ? `(${comprobanteActivo.motivoDeduccion})` : ""}</span>
+                          </div>
+                        ` : ""}
+                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; border-top: 2px solid #000; padding-top: 4px; margin-top: 4px;">
+                          <span>DEPÓSITO ENTREGADO:</span>
+                          <span>$${comprobanteActivo.totalReintegrado.toLocaleString("es-CO")}</span>
+                        </div>
+                      </div>
+
+                      <div style="font-size: 11px; font-weight: 700; text-align: center; margin: 8px 0;">
+                        Prenda recibida a satisfacción en tienda y fianza reintegrada al cliente.
+                      </div>
+
+                      <div style="margin-top: 36px; display: flex; justify-content: space-between; gap: 8px;">
+                        <div style="width: 48%; text-align: center;">
+                          <div style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+                          <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma Cliente</div>
+                        </div>
+                        <div style="width: 48%; text-align: center;">
+                          <div style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+                          <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma Tienda</div>
+                        </div>
+                      </div>
+                    `;
+                    imprimirReporte80mmHtml(`Devolucion-${comprobanteActivo.numeroFactura}`, htmlComprobante);
+                  }}
+                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm transition-all"
                 >
-                  <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Comprobante
+                  <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Comprobante 80mm
                 </button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { obtenerTerminalConfig, obtenerConfiguracionEmpresa, type EmpresaConfig } from "@/services/empresaCajaService";
+import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 
 interface CierreCajaModalProps {
   open: boolean;
@@ -135,8 +136,118 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
   }, [open, fecha]);
 
   const handleImprimirCierre = () => {
-    window.print();
-    toast.success("Imprimiendo comprobante de cierre de caja");
+    const ahora = new Date().toLocaleString("es-CO");
+    const htmlReporte = `
+      <div style="text-align: center; margin-bottom: 6px;">
+        <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 95px; object-fit: contain; margin: 0 auto 4px auto; display: block;" />
+        <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">LA CASA DEL DISFRAZ</div>
+        <div style="font-size: 11.5px; font-weight: 800;">CRA 23 #15-34 · BUCARAMANGA</div>
+        <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
+      </div>
+      <hr />
+      <div style="text-align: center; font-weight: 900; font-size: 14px; margin: 4px 0; text-transform: uppercase;">
+        *** CIERRE Y ARQUEO DE CAJA ***
+      </div>
+      <hr />
+      <div style="font-size: 12.5px; font-weight: 700; margin: 4px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>CAJA:</span>
+          <span style="font-weight: 900;">${terminal.nombreCaja}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>CAJERO:</span>
+          <span style="font-weight: 900;">${terminal.nombreCajero || "SUPERVISOR"}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>FECHA DE CUADRE:</span>
+          <span style="font-weight: 900;">${fecha}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>HORA IMPRESIÓN:</span>
+          <span style="font-weight: 900;">${ahora}</span>
+        </div>
+      </div>
+      <hr />
+      
+      <div style="text-align: center; margin: 8px 0; padding: 6px; border: 2px solid #000000; border-radius: 4px;">
+        <div style="font-size: 12px; font-weight: 900; text-transform: uppercase;">TOTAL NETO EN CAJA</div>
+        <div style="font-size: 20px; font-weight: 900; margin: 3px 0;">$${totales.totalNetoCaja.toLocaleString("es-CO")}</div>
+        <div style="font-size: 11.5px; font-weight: 800;">Operaciones / Facturas: ${totales.cantidadFacturas}</div>
+      </div>
+
+      <div style="margin-top: 8px;">
+        <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 4px;">
+          1. INGRESOS TOTALES
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
+          <span>Alquileres (Efectivo):</span>
+          <span style="font-weight: 900;">$${totales.alquilerEfectivo.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
+          <span>Alquileres (Transf / Datáfono):</span>
+          <span style="font-weight: 900;">$${totales.alquilerTransferencia.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
+          <span>Depósitos Recibidos:</span>
+          <span style="font-weight: 900;">$${totales.totalDepositosRecibidos.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
+          <span>TOTAL INGRESOS BRUTOS:</span>
+          <span>$${(totales.totalAlquileres + totales.totalDepositosRecibidos).toLocaleString("es-CO")}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 4px;">
+          2. EGRESOS Y SALIDAS
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
+          <span>Depósitos Reintegrados:</span>
+          <span style="font-weight: 900;">-$${totales.totalDepositosDevueltos.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
+          <span>Gastos / Salidas de Caja:</span>
+          <span style="font-weight: 900;">-$${totales.totalGastos.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
+          <span>TOTAL EGRESOS:</span>
+          <span>-$${(totales.totalDepositosDevueltos + totales.totalGastos).toLocaleString("es-CO")}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <div style="font-size: 13px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 4px;">
+          3. DISPONIBLE EN CAJA
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; margin-bottom: 2px;">
+          <span>Efectivo Físico en Gaveta:</span>
+          <span>$${totales.efectivoEnCaja.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; margin-bottom: 2px;">
+          <span>Bancos / Transferencias:</span>
+          <span>$${totales.transferenciasEnCaja.toLocaleString("es-CO")}</span>
+        </div>
+      </div>
+
+      <hr style="margin-top: 10px;" />
+
+      <div style="margin-top: 36px; display: flex; justify-content: space-between; gap: 8px;">
+        <div style="width: 48%; text-align: center;">
+          <div style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+          <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma Cajero(a)</div>
+        </div>
+        <div style="width: 48%; text-align: center;">
+          <div style="border-top: 1.5px solid #000; margin-bottom: 3px;"></div>
+          <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma Auditor</div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 14px; font-size: 10px; font-weight: 800; text-transform: uppercase;">
+        SISTEMA DE GESTION POS · ELEGANCE RENTALS
+      </div>
+    `;
+
+    imprimirReporte80mmHtml(`Cierre-Caja-${fecha}`, htmlReporte);
+    toast.success("Imprimiendo comprobante de cierre de caja 80mm");
   };
 
   return (

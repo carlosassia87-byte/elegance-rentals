@@ -121,16 +121,17 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
       <div
         ref={ref}
         id="ticket-pos-80mm"
-        className="ticket-pos-root bg-white text-black font-mono select-text mx-auto"
+        className="ticket-pos-root bg-white text-black select-text mx-auto"
         style={{
           width: "76mm",
           maxWidth: "76mm",
           padding: "2mm 1mm",
-          fontSize: "11px",
-          lineHeight: "1.25",
-          color: "#000",
-          fontFamily: "'Courier New', Courier, monospace",
-          backgroundColor: "#fff",
+          fontSize: "13px",
+          lineHeight: "1.35",
+          color: "#000000",
+          fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          backgroundColor: "#ffffff",
+          fontWeight: 700,
           WebkitPrintColorAdjust: "exact",
           printColorAdjust: "exact",
         }}
@@ -138,24 +139,26 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         {/* ========================================================
             1. LOGO DE LA CASA DEL DISFRAZ Y DATOS DE CABECERA
         ======================================================== */}
-        <div style={{ textAlign: "center", marginBottom: "4px" }}>
+        <div style={{ textAlign: "center", marginBottom: "6px" }}>
           <img
             src="/logo_casa_del_disfraz.jpg"
             alt="La Casa Del Disfraz"
             style={{
-              width: "82%",
-              maxHeight: "95px",
+              width: "86%",
+              maxHeight: "105px",
               objectFit: "contain",
-              margin: "0 auto 4px auto",
+              margin: "0 auto 6px auto",
               display: "block",
+              filter: "contrast(125%) brightness(95%)",
             }}
           />
           <div
             style={{
-              fontWeight: "bold",
-              fontSize: "10.5px",
-              lineHeight: "1.25",
+              fontWeight: 800,
+              fontSize: "12.5px",
+              lineHeight: "1.3",
               textTransform: "uppercase",
+              color: "#000000",
             }}
           >
             <div>{direccionEmpresa}</div>
@@ -164,21 +167,30 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
           </div>
         </div>
 
+        {/* LÍNEA DIVISORIA GRUESA */}
+        <hr
+          style={{
+            border: "none",
+            borderTop: "2px solid #000000",
+            margin: "5px 0",
+          }}
+        />
+
         {/* ========================================================
             2. DATOS DE CLIENTE, CAJA, PAGO Y FACTURA
         ======================================================== */}
-        <div style={{ fontSize: "10.5px", marginTop: "6px", marginBottom: "4px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>CAJA:</span>
-            <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{caja}</span>
+        <div style={{ fontSize: "13px", marginTop: "4px", marginBottom: "6px", color: "#000000" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>CAJA:</span>
+            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{caja}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>CLIENTE:</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>CLIENTE:</span>
             <span
               style={{
-                fontWeight: "bold",
+                fontWeight: 900,
                 textTransform: "uppercase",
-                maxWidth: "60%",
+                maxWidth: "65%",
                 textAlign: "right",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -189,86 +201,87 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
               {cliente}
             </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>CÉDULA:</span>
-            <span style={{ fontWeight: "normal" }}>{cedula}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>CÉDULA:</span>
+            <span style={{ fontWeight: 800 }}>{cedula}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>DIRECCIÓN:</span>
-            <span style={{ fontWeight: "normal", textTransform: "uppercase" }}>{direccion}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>DIRECCIÓN:</span>
+            <span style={{ fontWeight: 800, textTransform: "uppercase", maxWidth: "60%", textAlign: "right" }}>{direccion}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>TELEFONO 1:</span>
-            <span style={{ fontWeight: "normal" }}>{telefono1}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>TELÉFONO 1:</span>
+            <span style={{ fontWeight: 800 }}>{telefono1}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>TELEFONO 2:</span>
-            <span style={{ fontWeight: "normal" }}>{telefono2}</span>
-          </div>
+          {telefono2 && telefono2 !== "1" && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+              <span style={{ fontWeight: 700 }}>TELÉFONO 2:</span>
+              <span style={{ fontWeight: 800 }}>{telefono2}</span>
+            </div>
+          )}
 
           <div style={{ height: "4px" }} />
 
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>F_PAGO</span>
-            <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{formaPago}-</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>F_PAGO:</span>
+            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{formaPago}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>TIPO :</span>
-            <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{tipo}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>TIPO:</span>
+            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{tipo}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>CAJERO:</span>
-            <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{cajero}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>CAJERO:</span>
+            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{cajero}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>RECIBO :</span>
-            <span style={{ fontWeight: "bold", textTransform: "uppercase" }}>{recibo}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 800, fontSize: "14px" }}>RECIBO N°:</span>
+            <span style={{ fontWeight: 900, fontSize: "14px", textTransform: "uppercase" }}>{recibo}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: "normal" }}>FECHA :</span>
-            <span style={{ fontWeight: "normal" }}>{fechaHoraActual}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>FECHA:</span>
+            <span style={{ fontWeight: 800 }}>{fechaHoraActual}</span>
           </div>
         </div>
 
-        {/* LÍNEA DIVISORIA */}
+        {/* LÍNEA DIVISORIA GRUESA */}
         <hr
           style={{
             border: "none",
-            borderTop: "1px solid #000",
-            margin: "4px 0",
+            borderTop: "2px solid #000000",
+            margin: "6px 0",
           }}
         />
 
         {/* ========================================================
             3. TABLA DE ARTÍCULOS
         ======================================================== */}
-        <div style={{ fontSize: "10px", margin: "2px 0 4px 0" }}>
+        <div style={{ fontSize: "13px", margin: "4px 0 6px 0", color: "#000000" }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 28px 48px 52px",
-              fontWeight: "bold",
+              gridTemplateColumns: "1.2fr 36px 54px 62px",
+              fontWeight: 900,
+              fontSize: "12.5px",
               textAlign: "right",
-              borderBottom: "1px solid #000",
-              paddingBottom: "2px",
-              marginBottom: "4px",
+              borderBottom: "1.5px solid #000000",
+              paddingBottom: "3px",
+              marginBottom: "5px",
+              color: "#000000",
             }}
           >
-            <div style={{ textAlign: "left" }}>DESCRIPCION</div>
-            <div style={{ textAlign: "center", lineHeight: "1" }}>
-              CANT<br />IDAD
-            </div>
+            <div style={{ textAlign: "left" }}>DESCRIPCIÓN</div>
+            <div style={{ textAlign: "center", lineHeight: "1.1" }}>CANT</div>
             <div>VALOR</div>
             <div>TOTAL</div>
           </div>
 
           {items.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "4px 0", fontStyle: "italic" }}>
+            <div style={{ textAlign: "center", padding: "6px 0", fontWeight: 800 }}>
               (Sin artículos registrados)
             </div>
           ) : (
             items.map((it, idx) => {
-              // Si trae accesorios en string o array
               const accesoriosList = Array.isArray(it.accesorios)
                 ? it.accesorios
                 : typeof it.accesorios === "string" && it.accesorios.trim()
@@ -276,59 +289,71 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
                 : [];
 
               return (
-                <div key={idx} style={{ marginBottom: "4px" }}>
+                <div key={idx} style={{ marginBottom: "6px" }}>
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1fr 28px 48px 52px",
+                      gridTemplateColumns: "1.2fr 36px 54px 62px",
                       textAlign: "right",
                       alignItems: "start",
+                      fontSize: "13px",
+                      color: "#000000",
                     }}
                   >
                     <div
                       style={{
                         textAlign: "left",
-                        fontWeight: "bold",
+                        fontWeight: 900,
                         textTransform: "uppercase",
                         wordBreak: "break-word",
+                        lineHeight: "1.2",
                       }}
                     >
                       {it.descripcion}
                     </div>
-                    <div style={{ textAlign: "center", fontWeight: "bold" }}>
+                    <div style={{ textAlign: "center", fontWeight: 900, fontSize: "13.5px" }}>
                       {it.cantidad}
                     </div>
-                    <div>{formatEnteroPOS(it.valor)}</div>
-                    <div style={{ fontWeight: "bold" }}>{formatEnteroPOS(it.total)}</div>
+                    <div style={{ fontWeight: 800 }}>{formatEnteroPOS(it.valor)}</div>
+                    <div style={{ fontWeight: 900 }}>{formatEnteroPOS(it.total)}</div>
                   </div>
 
                   {/* Accesorios o complementos listados debajo */}
-                  {accesoriosList.map((acc, aIdx) => (
-                    <div
-                      key={aIdx}
-                      style={{
-                        textAlign: "left",
-                        fontSize: "9.5px",
-                        paddingLeft: "4px",
-                        textTransform: "uppercase",
-                        color: "#222",
-                      }}
-                    >
-                      {acc}
+                  {accesoriosList.length > 0 && (
+                    <div style={{ marginTop: "2px", paddingLeft: "6px" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 900, color: "#000000", textTransform: "uppercase" }}>
+                        PIEZAS / ACCESORIOS:
+                      </div>
+                      {accesoriosList.map((acc, aIdx) => (
+                        <div
+                          key={aIdx}
+                          style={{
+                            textAlign: "left",
+                            fontSize: "11.5px",
+                            fontWeight: 800,
+                            paddingLeft: "4px",
+                            textTransform: "uppercase",
+                            color: "#000000",
+                            lineHeight: "1.25",
+                          }}
+                        >
+                          • {acc}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               );
             })
           )}
         </div>
 
-        {/* LÍNEA DIVISORIA */}
+        {/* LÍNEA DIVISORIA GRUESA */}
         <hr
           style={{
             border: "none",
-            borderTop: "1px solid #000",
-            margin: "4px 0",
+            borderTop: "2px solid #000000",
+            margin: "6px 0",
           }}
         />
 
@@ -337,54 +362,73 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         ======================================================== */}
         <div
           style={{
-            fontSize: "10.5px",
-            fontWeight: "normal",
+            fontSize: "13.5px",
+            color: "#000000",
             textAlign: "right",
-            lineHeight: "1.35",
-            margin: "4px 0",
+            lineHeight: "1.4",
+            margin: "6px 0",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>VALOR ALQUILER:</span>
-            <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(valorAlquiler)}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>VALOR ALQUILER:</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(valorAlquiler)}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>DEPOSITO:</span>
-            <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(deposito)}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+            <span style={{ fontWeight: 700 }}>DEPÓSITO:</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(deposito)}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>TOTAL alq+dep :</span>
-            <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(totalCalculado)}</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "3px",
+              paddingTop: "2px",
+              borderTop: "1.5px dashed #000000",
+              fontSize: "14.5px",
+            }}
+          >
+            <span style={{ fontWeight: 900 }}>TOTAL ALQ + DEP:</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(totalCalculado)}</span>
           </div>
           {(!esAbono && !ocultarDescuentoCero) || descuento > 0 ? (
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>DESCUENTO</span>
-              <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(descuento)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+              <span style={{ fontWeight: 700 }}>DESCUENTO:</span>
+              <span style={{ fontWeight: 900 }}>{formatMonedaPOS(descuento)}</span>
             </div>
           ) : null}
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>{etiquetaRecibi || (esAbono ? "RECIBI ABONO" : "RECIBI")}</span>
-            <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(recibi)}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px", fontSize: "14.5px" }}>
+            <span style={{ fontWeight: 800 }}>{etiquetaRecibi || (esAbono ? "RECIBÍ ABONO:" : "RECIBÍ:")}</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(recibi)}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>SALDO</span>
-            <span style={{ fontWeight: "bold" }}>{formatMonedaPOS(saldo)}</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: "2px",
+              paddingTop: "2px",
+              borderTop: "1.5px solid #000000",
+              fontSize: "15px",
+            }}
+          >
+            <span style={{ fontWeight: 900 }}>SALDO PENDIENTE:</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(saldo)}</span>
           </div>
         </div>
 
-        {/* BANDA DE ASTERISCOS */}
+        {/* BANDA DE SEPARACIÓN */}
         <div
           style={{
             textAlign: "center",
-            letterSpacing: "-1px",
-            fontSize: "10px",
-            fontWeight: "bold",
+            letterSpacing: "1px",
+            fontSize: "12px",
+            fontWeight: 900,
             overflow: "hidden",
             whiteSpace: "nowrap",
-            margin: "2px 0",
+            margin: "4px 0",
+            color: "#000000",
           }}
         >
-          **********************************************************
+          =====================================
         </div>
 
         {/* ========================================================
@@ -392,39 +436,37 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         ======================================================== */}
         <div
           style={{
-            fontSize: "10.5px",
-            fontWeight: "bold",
-            lineHeight: "1.25",
-            margin: "3px 0",
+            fontSize: "13px",
+            fontWeight: 800,
+            lineHeight: "1.35",
+            margin: "4px 0",
+            color: "#000000",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>FECHA DE SALIDA DE TRAJE</span>
-            <span>{salida}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+            <span>FECHA DE SALIDA DE TRAJE:</span>
+            <span style={{ fontWeight: 900 }}>{salida}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <span>FECHA DE DEVOLUCION</span>
-              <br />
-              <span>TRAJE</span>
-            </div>
-            <div style={{ alignSelf: "flex-start" }}>{devolucion}</div>
+            <span>FECHA DEVOLUCIÓN TRAJE:</span>
+            <span style={{ fontWeight: 900 }}>{devolucion}</span>
           </div>
         </div>
 
-        {/* SEGUNDA BANDA DE ASTERISCOS */}
+        {/* SEGUNDA BANDA DE SEPARACIÓN */}
         <div
           style={{
             textAlign: "center",
-            letterSpacing: "-1px",
-            fontSize: "10px",
-            fontWeight: "bold",
+            letterSpacing: "1px",
+            fontSize: "12px",
+            fontWeight: 900,
             overflow: "hidden",
             whiteSpace: "nowrap",
-            margin: "2px 0 4px 0",
+            margin: "4px 0 6px 0",
+            color: "#000000",
           }}
         >
-          ****************************************************************
+          =====================================
         </div>
 
         {/* ========================================================
@@ -432,54 +474,52 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         ======================================================== */}
         <div
           style={{
-            fontSize: "9.5px",
-            lineHeight: "1.25",
+            fontSize: "11px",
+            lineHeight: "1.3",
             textAlign: "left",
-            margin: "4px 0",
+            margin: "6px 0",
+            color: "#000000",
+            fontWeight: 700,
           }}
         >
-          <div style={{ fontWeight: "bold", marginBottom: "2px" }}>Condiciones de servicio:</div>
-          <div style={{ marginBottom: "3px" }}>
-            - Tiempo de alquiler {diasAlquiler} días. Por devoluciones hechas después de la fecha se cobrará un
+          <div style={{ fontWeight: 900, fontSize: "11.5px", marginBottom: "3px", textTransform: "uppercase" }}>
+            Condiciones del servicio:
+          </div>
+          <div style={{ marginBottom: "4px" }}>
+            • Tiempo de alquiler {diasAlquiler} días. Por devoluciones hechas después de la fecha se cobrará un
             recargo de ${formatEnteroPOS(recargoPorDia)} por día.
           </div>
-          <div style={{ marginBottom: "3px" }}>
-            -Favor conservar este recibo para efectuar la devolución de dinero que ha dejado como
-            depósito.
+          <div style={{ marginBottom: "4px" }}>
+            • Favor conservar este recibo para efectuar la devolución del dinero dejado como depósito.
           </div>
-          <div>- Nó se hace devolución de dinero una vez elaborado este RECIBO.</div>
+          <div>• No se hace devolución de dinero una vez elaborado este RECIBO.</div>
         </div>
 
         {/* ========================================================
             7. INSTAGRAM & ESLOGAN
         ======================================================== */}
-        <div style={{ textAlign: "center", marginTop: "8px", marginBottom: "14px" }}>
+        <div style={{ textAlign: "center", marginTop: "10px", marginBottom: "16px", color: "#000000" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: "4px",
-              fontWeight: "bold",
-              fontSize: "10px",
+              gap: "5px",
+              fontWeight: 900,
+              fontSize: "12px",
             }}
           >
-            <svg
-              style={{ width: "13px", height: "13px", fill: "currentColor" }}
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-            </svg>
-            <span>INSTAGRAM:{instagram}</span>
+            <span>INSTAGRAM: {instagram}</span>
           </div>
 
           <div
             style={{
-              fontWeight: "bold",
-              fontSize: "10.5px",
-              lineHeight: "1.25",
+              fontWeight: 900,
+              fontSize: "12px",
+              lineHeight: "1.3",
               marginTop: "8px",
-              padding: "0 4px",
+              padding: "0 2px",
+              textTransform: "uppercase",
             }}
           >
             "{eslogan}"
@@ -489,15 +529,15 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         {/* ========================================================
             8. LÍNEA DE FIRMA
         ======================================================== */}
-        <div style={{ marginTop: "32px", textAlign: "center" }}>
+        <div style={{ marginTop: "36px", textAlign: "center", color: "#000000" }}>
           <div
             style={{
-              borderTop: "1px solid #000",
+              borderTop: "2px solid #000000",
               width: "85%",
-              margin: "0 auto 4px auto",
+              margin: "0 auto 5px auto",
             }}
           />
-          <div style={{ fontSize: "10px", fontWeight: "normal" }}>Nombre y Cedula</div>
+          <div style={{ fontSize: "12px", fontWeight: 800, textTransform: "uppercase" }}>Firma, Nombre y Cédula del Cliente</div>
         </div>
       </div>
     );
@@ -506,7 +546,7 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
 
 TicketFactura80mm.displayName = "TicketFactura80mm";
 
-// Helper universal para disparar impresión de tirilla 80mm de forma limpia
+// Helper universal para disparar impresión de tirilla 80mm de forma limpia y nítida
 export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo: string = "Recibo POS") {
   if (!ticketElement) {
     window.print();
@@ -514,7 +554,80 @@ export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo:
   }
 
   const printContent = ticketElement.innerHTML;
-  const printWindow = window.open("", "_blank", "width=420,height=700");
+  const printWindow = window.open("", "_blank", "width=450,height=750");
+
+  if (printWindow) {
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${titulo}</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 1.5mm 1mm;
+            }
+            @media print {
+              html, body {
+                width: 80mm;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+              }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: #000000 !important;
+              }
+            }
+            body {
+              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1.35;
+              color: #000000 !important;
+              margin: 0;
+              padding: 2mm 1mm;
+              background: #ffffff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            img {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              filter: contrast(125%) brightness(95%);
+            }
+            * {
+              box-sizing: border-box;
+            }
+          </style>
+        </head>
+        <body>
+          <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+            ${printContent}
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 600);
+              }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  } else {
+    window.print();
+  }
+}
+
+// Helper universal para imprimir cualquier Reporte en formato Tirilla 80mm con contraste profesional
+export function imprimirReporte80mmHtml(titulo: string, contenidoHtml: string) {
+  const printWindow = window.open("", "_blank", "width=450,height=750");
 
   if (printWindow) {
     printWindow.document.write(`
@@ -531,41 +644,66 @@ export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo:
             @media print {
               html, body {
                 width: 80mm;
-                margin: 0;
-                padding: 0;
-                background: #fff;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+              }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: #000000 !important;
               }
             }
             body {
-              font-family: 'Courier New', Courier, monospace, sans-serif;
-              font-size: 11px;
-              line-height: 1.25;
-              color: #000;
+              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1.35;
+              color: #000000 !important;
               margin: 0;
-              padding: 2mm 1mm;
-              background: #fff;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            img {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+              padding: 2mm 1.5mm;
+              background: #ffffff;
             }
             * {
               box-sizing: border-box;
+              color: #000000 !important;
+            }
+            h1, h2, h3, h4 {
+              margin: 2px 0;
+              font-weight: 900;
+              text-transform: uppercase;
+              color: #000000 !important;
+            }
+            hr {
+              border: none;
+              border-top: 2px solid #000000;
+              margin: 5px 0;
+            }
+            .border-b {
+              border-bottom: 1.5px solid #000000;
+            }
+            .grid-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+              font-size: 13px;
+            }
+            .bold {
+              font-weight: 900;
             }
           </style>
         </head>
         <body>
-          <div style="width: 76mm; max-width: 76mm; margin: 0 auto;">
-            ${printContent}
+          <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+            ${contenidoHtml}
           </div>
           <script>
             window.onload = function() {
               setTimeout(function() {
                 window.print();
-                setTimeout(function() { window.close(); }, 500);
-              }, 250);
+                setTimeout(function() { window.close(); }, 600);
+              }, 300);
             };
           </script>
         </body>

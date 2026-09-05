@@ -38,6 +38,7 @@ import {
   type EstadoPrenda,
   type ResumenMetricasMovimientos,
 } from "@/services/movimientosService";
+import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
 
@@ -257,11 +258,87 @@ export function MovimientosTrajesModal({
               </button>
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="hidden items-center gap-1.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 px-3 text-xs font-bold transition-all sm:flex"
-                title="Imprimir Reporte"
+                onClick={() => {
+                  const itemsList = (submoduloActivo === "POR_DEVOLVER"
+                    ? operacionesPorDevolver
+                    : submoduloActivo === "DEVUELTOS"
+                    ? operacionesDevueltos
+                    : submoduloActivo === "VENDIDOS"
+                    ? operacionesVendidos
+                    : submoduloActivo === "APARTADOS"
+                    ? operacionesApartados
+                    : operaciones
+                  ).slice(0, 50);
+
+                  const htmlMovimientos = `
+                    <div style="text-align: center; margin-bottom: 6px;">
+                      <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 95px; object-fit: contain; margin: 0 auto 4px auto; display: block;" />
+                      <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">LA CASA DEL DISFRAZ</div>
+                      <div style="font-size: 11.5px; font-weight: 800;">CRA 23 #15-34 · BUCARAMANGA</div>
+                      <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
+                    </div>
+                    <hr />
+                    <div style="text-align: center; font-weight: 900; font-size: 13px; margin: 4px 0; text-transform: uppercase;">
+                      *** REPORTE: ${submoduloActivo.replace("_", " ")} ***
+                    </div>
+                    <hr />
+                    <div style="font-size: 12px; font-weight: 700; margin: 4px 0;">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>RANGO:</span>
+                        <span style="font-weight: 900;">${fechaInicio || "INICIO"} A ${fechaFin || "HOY"}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>TOTAL FACTURAS:</span>
+                        <span style="font-weight: 900;">${itemsList.length}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>FECHA IMPRESIÓN:</span>
+                        <span style="font-weight: 800;">${new Date().toLocaleString("es-CO")}</span>
+                      </div>
+                    </div>
+                    <hr />
+
+                    <div style="margin: 6px 0;">
+                      <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
+                        LISTADO DE PRENDAS Y CLIENTES
+                      </div>
+                      ${itemsList.map((op) => `
+                        <div style="margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 4px;">
+                          <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 900;">
+                            <span>FACT: ${op.numeroFact}</span>
+                            <span>${op.fechaEntregaPactada}</span>
+                          </div>
+                          <div style="font-size: 12px; font-weight: 800; text-transform: uppercase;">
+                            ${op.clienteNombre} (${op.clienteTelefono || "S/T"})
+                          </div>
+                          <div style="margin-top: 2px; padding-left: 4px;">
+                            ${op.items.map((it) => `
+                              <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700;">
+                                <span>• ${it.cantidad}x ${it.descripcion} (${it.talla})</span>
+                                <span style="font-weight: 800;">Dep: $${it.valorDeposito.toLocaleString("es-CO")}</span>
+                              </div>
+                            `).join("")}
+                          </div>
+                        </div>
+                      `).join("")}
+                    </div>
+
+                    <div style="margin-top: 10px; font-size: 13px; font-weight: 900; text-align: right; border-top: 2px solid #000; padding-top: 4px;">
+                      <div>PRENDAS POR DEVOLVER: ${metricas.totalPrendasEnAlquiler}</div>
+                      <div>TOTAL DEPÓSITOS CUSTODIA: $${totalDepositosPorDevolver.toLocaleString("es-CO")}</div>
+                    </div>
+
+                    <div style="margin-top: 32px; text-align: center;">
+                      <div style="border-top: 1.5px solid #000; width: 80%; margin: 0 auto 3px auto;"></div>
+                      <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma de Verificación / Auditoría</div>
+                    </div>
+                  `;
+                  imprimirReporte80mmHtml(`Reporte-Movimientos-${submoduloActivo}`, htmlMovimientos);
+                }}
+                className="hidden items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all sm:flex shadow-xs"
+                title="Imprimir Reporte 80mm"
               >
-                <Printer className="h-4 w-4" /> Imprimir
+                <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
               </button>
               <button
                 onClick={() => onOpenChange(false)}
