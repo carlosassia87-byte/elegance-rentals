@@ -72,6 +72,9 @@ export interface CampoFactura {
   VALORDEPOSITO: number;
   TOTALALQUILER: number;
   TOTALDEPOSITO: number;
+  ES_ACCESORIO?: boolean;
+  ID_TRAJE_PADRE?: string;
+  PIEZAS_INCLUIDAS?: string;
 }
 
 export interface AbonoCliente {
@@ -110,9 +113,26 @@ export interface Caja {
   PREFIJO: string;
 }
 
+export interface Accesorio {
+  IDACCESORIO?: number;
+  CODBARRAS: string;
+  DESCRIPCION: string;
+  CATEGORIA: string;
+  TALLA?: string;
+  STOCK: number;
+  VALOR: number;
+  VALORDEPOSITO: number;
+  IDARTICULO_PADRE?: number | null;
+  NOTAS?: string;
+  ACTIVO?: boolean;
+}
+
 export interface ItemAlquilerCarrito {
   idTemp: string;
   articulo?: Articulo | undefined;
+  accesorio?: Accesorio | undefined;
+  esAccesorio?: boolean;
+  idTrajePadre?: string;
   descripcion: string;
   talla: string;
   codigoBarras: string;
@@ -122,4 +142,6 @@ export interface ItemAlquilerCarrito {
   valorDeposito: number;
   totalDeposito: number;
   totalGeneral: number;
+  piezasIncluidas?: string[];
 }
+

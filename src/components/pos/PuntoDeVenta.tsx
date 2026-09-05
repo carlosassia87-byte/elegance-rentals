@@ -30,11 +30,13 @@ import {
   Loader2,
   Shirt,
   RotateCcw,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura, AbonoCliente } from "@/types/database.types";
+import type { Articulo, Cliente, ItemAlquilerCarrito, Factura, CampoFactura, AbonoCliente, Accesorio } from "@/types/database.types";
 import {
   buscarClientePorCedula,
   buscarClientesPorNombre,
@@ -85,6 +87,8 @@ import { InventarioStockModal } from "./InventarioStockModal";
 import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
 import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
 import { MantenimientoMigracionModal } from "./MantenimientoMigracionModal";
+import { GestionAccesoriosModal } from "./GestionAccesoriosModal";
+import { SeleccionAccesoriosPosModal } from "./SeleccionAccesoriosPosModal";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 import {
   consultarAlquileresActivosCliente,
@@ -264,6 +268,9 @@ export function PuntoDeVenta() {
   const [modalReimpresionFacturas, setModalReimpresionFacturas] = useState(false);
   const [modalAlertasRetrasos, setModalAlertasRetrasos] = useState(false);
   const [modalMantenimiento, setModalMantenimiento] = useState(false);
+  const [modalAccesoriosGestion, setModalAccesoriosGestion] = useState(false);
+  const [modalSeleccionAccesoriosPos, setModalSeleccionAccesoriosPos] = useState(false);
+  const [accesorioTrajeReferencia, setAccesorioTrajeReferencia] = useState<Articulo | ItemAlquilerCarrito | null>(null);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -562,6 +569,9 @@ export function PuntoDeVenta() {
         break;
       case "mantenimiento_migracion":
         setModalMantenimiento(true);
+        break;
+      case "accesorios":
+        setModalAccesoriosGestion(true);
         break;
       default:
         break;
@@ -1052,6 +1062,9 @@ export function PuntoDeVenta() {
         NUMEROFACT: numeroRecibo,
         TOTALALQUILER: g.totalAlquiler,
         TOTALDEPOSITO: g.totalDeposito,
+        ES_ACCESORIO: Boolean(g.esAccesorio),
+        ID_TRAJE_PADRE: g.idTrajePadre || "",
+        PIEZAS_INCLUIDAS: g.piezasIncluidas ? g.piezasIncluidas.join(", ") : "",
       }));
 
       await guardarCliente(clienteForm);
@@ -1544,6 +1557,18 @@ export function PuntoDeVenta() {
         >
           DEVOLUCIÓN & DEPÓSITO
         </button>
+
+        <button
+          onClick={() => {
+            setAccesorioTrajeReferencia(articuloSeleccionado || (gridItems.length > 0 ? gridItems[gridItems.length - 1] : null));
+            setModalSeleccionAccesoriosPos(true);
+          }}
+          className="h-8.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white px-3.5 text-xs font-black shadow-xs active:scale-95 whitespace-nowrap uppercase tracking-wider transition-all flex items-center gap-1.5 border border-purple-500/40"
+          title="Agregar sombreros, espadas, pelucas u otros accesorios para el traje o cliente"
+        >
+          <Crown className="h-3.5 w-3.5 text-amber-300" />
+          <span>+ ACCESORIOS</span>
+        </button>
       </div>
 
       {/* =========================================================================
@@ -1714,13 +1739,28 @@ export function PuntoDeVenta() {
                       className={`cursor-pointer border-b border-slate-100 text-xs transition-colors ${
                         isSelected
                           ? "bg-emerald-100/80 font-bold text-emerald-950"
+                          : item.esAccesorio
+                          ? "bg-purple-50/70 font-medium hover:bg-purple-100/60"
                           : isEven
                           ? "bg-white font-medium hover:bg-slate-50"
                           : "bg-slate-50/50 font-medium hover:bg-slate-50"
                       }`}
                     >
-                      <td className="px-3.5 py-2 text-slate-900 font-bold">
-                        {item.descripcion} <span className="text-[10px] text-slate-500 font-normal">(TALLA: {item.talla})</span>
+                      <td className="px-3.5 py-2 text-slate-900 font-bold flex items-center gap-1.5">
+                        {item.esAccesorio ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 text-[10px] font-black shrink-0 border border-purple-300">
+                            <Crown className="w-3 h-3 text-purple-700" />
+                            ACCESORIO
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[10px] text-slate-400 opacity-75">
+                            [{item.codigoBarras}]
+                          </span>
+                        )}
+                        <span>{item.descripcion}</span>
+                        <span className="text-[10px] text-slate-500 font-normal">
+                          (TALLA: {item.talla})
+                        </span>
                       </td>
                       <td className="px-2 py-2 text-center font-black">
                         {item.cantidad}
@@ -3765,16 +3805,25 @@ export function PuntoDeVenta() {
       />
 
       {/* =========================================================
-          MODAL: MANTENIMIENTO, RESETEO & MIGRACIONES EXCEL/SQL
+          MODAL: GESTIÓN Y CATÁLOGO DE ACCESORIOS
       ========================================================= */}
-      <MantenimientoMigracionModal
-        open={modalMantenimiento}
-        onOpenChange={setModalMantenimiento}
-        cajeroNombre={cajero}
-        onDatosActualizados={() => {
-          cargarArticulos();
+      <GestionAccesoriosModal
+        open={modalAccesoriosGestion}
+        onOpenChange={setModalAccesoriosGestion}
+      />
+
+      {/* =========================================================
+          MODAL: SELECCIÓN RÁPIDA DE ACCESORIOS PARA FACTURACIÓN
+      ========================================================= */}
+      <SeleccionAccesoriosPosModal
+        open={modalSeleccionAccesoriosPos}
+        onOpenChange={setModalSeleccionAccesoriosPos}
+        trajeReferencia={accesorioTrajeReferencia}
+        onAgregarAlCarrito={(itemsNuevos) => {
+          setGridItems((prev) => [...prev, ...itemsNuevos]);
         }}
       />
     </div>
   );
 }
+

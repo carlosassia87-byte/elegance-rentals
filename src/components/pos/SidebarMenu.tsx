@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Bell,
   Database,
+  Crown,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
@@ -155,6 +156,17 @@ export function SidebarMenu({
                 <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100" />
               </button>
             )}
+
+            <button
+              onClick={() => handleItemClick("accesorios")}
+              className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-bold text-sm text-purple-900 bg-purple-50 hover:bg-purple-100 transition-all group border border-purple-200/70"
+            >
+              <div className="flex items-center gap-3">
+                <Crown className="h-5 w-5 text-purple-600 group-hover:scale-110 transition-transform" />
+                <span className="font-extrabold text-purple-900">Módulo Accesorios</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-200 text-purple-800 font-bold">NUEVO</span>
+            </button>
           </div>
 
           {/* SECCIÓN 2: CLIENTES */}

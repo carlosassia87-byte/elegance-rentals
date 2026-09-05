@@ -505,6 +505,9 @@ export async function registrarAlquilerFactura(
       VALORDEPOSITO: Number(item.VALORDEPOSITO) || 0,
       TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
       TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
+      ES_ACCESORIO: Boolean((item as any).ES_ACCESORIO),
+      ID_TRAJE_PADRE: (item as any).ID_TRAJE_PADRE || "",
+      PIEZAS_INCLUIDAS: (item as any).PIEZAS_INCLUIDAS || "",
     }));
 
     try {
@@ -521,9 +524,28 @@ export async function registrarAlquilerFactura(
     // 5. Guardar copia de respaldo persistente en LocalStorage
     saveLocalFactura(facturaInsertada as Factura, camposParaSupabase as CampoFactura[]);
 
-    // 5. Descontar Stock de cada ARTICULO en inventario
+    // 6. Descontar Stock de cada ARTICULO o ACCESORIO en inventario
     for (const item of items) {
-      if (item.DESCRIPCION) {
+      if ((item as any).ES_ACCESORIO || item.BARRAS?.startsWith("ACC-")) {
+        // Descontar de ACCESORIOS
+        try {
+          const { data: accRaw } = await supabase
+            .from("ACCESORIOS" as any)
+            .select("*")
+            .or(`CODBARRAS.eq.${item.BARRAS},DESCRIPCION.ilike.%${item.DESCRIPCION}%`)
+            .maybeSingle();
+
+          const acc = accRaw as any;
+          if (acc && acc.STOCK > 0) {
+            await supabase
+              .from("ACCESORIOS" as any)
+              .update({ STOCK: Math.max(0, acc.STOCK - item.CANTIDAD) })
+              .eq("IDACCESORIO", acc.IDACCESORIO);
+          }
+        } catch (errAcc) {
+          console.warn("No se pudo descontar stock de accesorio:", item.DESCRIPCION, errAcc);
+        }
+      } else if (item.DESCRIPCION) {
         try {
           const { data: artRaw } = await supabase
             .from("ARTICULO" as any)

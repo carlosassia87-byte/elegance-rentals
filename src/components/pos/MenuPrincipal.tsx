@@ -32,6 +32,7 @@ import {
   Bell,
   AlertTriangle,
   Database,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -216,6 +217,20 @@ export function MenuPrincipal({
                 {sidebarExpandido && <ChevronRight className="h-4 w-4 text-slate-400" />}
               </button>
             )}
+
+            <button
+              onClick={() => handleAccionConPermiso("accesorios", true, "Módulo de Accesorios")}
+              className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-purple-900 hover:bg-purple-50 transition-all group ${
+                sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
+              }`}
+              title="Catálogo y Gestión de Accesorios (Sombreros, Espadas, Máscaras, Pelucas...)"
+            >
+              <div className="flex items-center gap-3">
+                <Crown className="h-5 w-5 text-purple-600 group-hover:text-purple-800 shrink-0 transition-colors" />
+                {sidebarExpandido && <span className="font-extrabold text-purple-900">Módulo Accesorios</span>}
+              </div>
+              {sidebarExpandido && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-200 text-purple-800 font-black">NUEVO</span>}
+            </button>
           </div>
 
           {/* SECCIÓN 2: CLIENTES */}
