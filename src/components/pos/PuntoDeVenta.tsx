@@ -28,6 +28,8 @@ import {
   Users,
   Bell,
   Loader2,
+  Shirt,
+  RotateCcw,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -57,6 +59,7 @@ import {
   aplicarEscalaResolucion,
   type TerminalConfig,
   type EmpresaConfig,
+  type ResolucionConfig,
   EMPRESA_DEFAULT,
   TERMINAL_DEFAULT,
 } from "@/services/empresaCajaService";
@@ -579,6 +582,7 @@ export function PuntoDeVenta() {
   const transNum = parseFloat(cobroTransferencia) || 0;
   const totalPagado = efecNum + transNum;
   const cambioVSaldo = totalPagado - totalDepositoMasAlquiler;
+  const bAlquiler = totalDeposito > 0;
 
   // Verificar si el cliente tiene trajes en alquiler (3 días límite, $7.000/día de retraso) o notas
   async function verificarAlquileresYAlertarCliente(cli: Partial<Cliente>) {
@@ -1004,11 +1008,11 @@ export function PuntoDeVenta() {
       
       const numFacturaFinal = (resultado && resultado.factura) ? resultado.factura.NUMEROFACT : numeroRecibo;
 
-      const pagoReal = pagoEfecNum + pagoTransNum;
+      const pagoReal = efecNum + transNum;
       const fPagoStr =
-        pagoEfecNum > 0 && pagoTransNum > 0
+        efecNum > 0 && transNum > 0
           ? "MIXTO"
-          : pagoTransNum > 0
+          : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
       const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
@@ -1044,7 +1048,7 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
-        descuento: Number(descuentoGlobal) || 0,
+        descuento: descuentoNum,
         recibi: pagoReal,
         saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
@@ -1060,11 +1064,11 @@ export function PuntoDeVenta() {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
 
-      const pagoReal = pagoEfecNum + pagoTransNum;
+      const pagoReal = efecNum + transNum;
       const fPagoStr =
-        pagoEfecNum > 0 && pagoTransNum > 0
+        efecNum > 0 && transNum > 0
           ? "MIXTO"
-          : pagoTransNum > 0
+          : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
       const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
@@ -1099,7 +1103,7 @@ export function PuntoDeVenta() {
         totalAlquiler: totalAlquilerConDesc,
         totalDeposito: totalDeposito,
         totalGeneral: totalDepositoMasAlquiler,
-        descuento: Number(descuentoGlobal) || 0,
+        descuento: descuentoNum,
         recibi: pagoReal,
         saldo: saldoRestante,
         cambio: Math.max(0, cambioVSaldo),
