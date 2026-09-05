@@ -448,6 +448,15 @@ export function PuntoDeVenta() {
     }
   }, []);
 
+  // Sincronizar y actualizar automáticamente el consecutivo siempre que se ingrese al POS o cambie la caja
+  useEffect(() => {
+    if (vistaActiva === "pos") {
+      generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo).then((num) => {
+        if (num) setNumeroRecibo(num);
+      });
+    }
+  }, [vistaActiva, terminalConfig.nombreCaja, terminalConfig.prefijo]);
+
   function handleLogout() {
     logoutPos();
     setUsuarioActivo(null);

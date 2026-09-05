@@ -299,7 +299,7 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
         .from("FACTURA" as any)
         .select("NUMEROFACT, IDFACTURA")
         .order("IDFACTURA", { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (facts && facts.length > 0) {
         for (const f of facts as any[]) {
@@ -330,10 +330,15 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
       }
     } catch {}
 
-    return `${pfx}${maxNum + 1}`;
+    const sigNumero = maxNum + 1;
+    if (pfx && pfx.trim()) {
+      return `${pfx.trim()}${sigNumero}`;
+    }
+    return String(sigNumero).padStart(6, "0");
   } catch {
     const localFacts = getLocalFacturas();
-    return `${prefijoDefault}${localFacts.length + 1}`;
+    const sig = localFacts.length + 1;
+    return prefijoDefault ? `${prefijoDefault}${sig}` : String(sig).padStart(6, "0");
   }
 }
 
