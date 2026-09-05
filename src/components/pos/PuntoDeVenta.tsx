@@ -83,6 +83,7 @@ import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import { InventarioStockModal } from "./InventarioStockModal";
 import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
 import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
+import { MantenimientoMigracionModal } from "./MantenimientoMigracionModal";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 import {
   consultarAlquileresActivosCliente,
@@ -261,6 +262,7 @@ export function PuntoDeVenta() {
   const [modalInventarioStock, setModalInventarioStock] = useState(false);
   const [modalReimpresionFacturas, setModalReimpresionFacturas] = useState(false);
   const [modalAlertasRetrasos, setModalAlertasRetrasos] = useState(false);
+  const [modalMantenimiento, setModalMantenimiento] = useState(false);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
@@ -511,6 +513,9 @@ export function PuntoDeVenta() {
         break;
       case "gestion_usuarios":
         setModalUsuarios(true);
+        break;
+      case "mantenimiento_migracion":
+        setModalMantenimiento(true);
         break;
       default:
         break;
@@ -3705,6 +3710,18 @@ export function PuntoDeVenta() {
         cajeroNombre={cajero}
         onAbrirDevolucion={(numFact) => {
           setModalDevolucion(true);
+        }}
+      />
+
+      {/* =========================================================
+          MODAL: MANTENIMIENTO, RESETEO & MIGRACIONES EXCEL/SQL
+      ========================================================= */}
+      <MantenimientoMigracionModal
+        open={modalMantenimiento}
+        onOpenChange={setModalMantenimiento}
+        cajeroNombre={cajero}
+        onDatosActualizados={() => {
+          cargarArticulos();
         }}
       />
     </div>

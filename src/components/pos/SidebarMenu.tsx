@@ -23,6 +23,7 @@ import {
   Activity,
   RotateCcw,
   Bell,
+  Database,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
@@ -351,6 +352,19 @@ export function SidebarMenu({
                   <span>Resolución de Pantalla</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100" />
+              </button>
+            )}
+
+            {permisos.gestionUsuarios && (
+              <button
+                onClick={() => handleItemClick("mantenimiento_migracion")}
+                className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-black text-sm text-amber-950 bg-amber-50/70 hover:bg-amber-100 hover:text-amber-950 transition-all group border border-amber-200/60"
+              >
+                <div className="flex items-center gap-3">
+                  <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 transition-colors" />
+                  <span>Mantenimiento & Migración</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-amber-600" />
               </button>
             )}
           </div>

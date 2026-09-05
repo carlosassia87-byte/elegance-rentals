@@ -31,6 +31,7 @@ import {
   RotateCcw,
   Bell,
   AlertTriangle,
+  Database,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -448,6 +449,22 @@ export function MenuPrincipal({
                   {sidebarExpandido && <span>Multi-Cajas & Esta PC</span>}
                 </div>
                 {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
+              </button>
+            )}
+
+            {permisos.gestionUsuarios && (
+              <button
+                onClick={() => handleAccionConPermiso("mantenimiento_migracion", true, "Mantenimiento & Migración")}
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-amber-900 hover:bg-amber-50 transition-all group ${
+                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
+                }`}
+                title="Poner inventario en 0, reseteo del sistema y migración masiva por Excel / SQL"
+              >
+                <div className="flex items-center gap-3">
+                  <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 shrink-0 transition-colors" />
+                  {sidebarExpandido && <span className="font-extrabold text-amber-950">Mantenimiento & Migración</span>}
+                </div>
+                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-amber-600" />}
               </button>
             )}
           </div>
