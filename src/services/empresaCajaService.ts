@@ -80,7 +80,7 @@ export const TERMINAL_DEFAULT: TerminalConfig = {
 
 export const RESOLUCION_DEFAULT: ResolucionConfig = {
   modo: "estandar",
-  escalaPorcentaje: 108,
+  escalaPorcentaje: 100,
   forzarPantallaCompleta: false,
 };
 
@@ -329,30 +329,29 @@ export function aplicarEscalaResolucion(config: ResolucionConfig): void {
   try {
     localStorage.setItem(KEY_RESOLUCION, JSON.stringify(config));
 
-    let zoomFactor = 1.06;
+    let zoomFactor = 1.0;
     switch (config.modo) {
       case "compacta":
         zoomFactor = 0.95; // 95% para pantallas muy pequeñas
         break;
       case "estandar":
-        zoomFactor = 1.08; // 108% estándar amplio y legible
+        zoomFactor = 1.0; // 100% estándar nítido sin desborde
         break;
       case "hd":
-        zoomFactor = 1.20; // 120% para monitores grandes 1080p / 2K
+        zoomFactor = 1.10; // 110% para monitores grandes 1080p / 2K
         break;
       case "tactil":
-        zoomFactor = 1.15; // 115% amplio para touch
+        zoomFactor = 1.05; // 105% amplio para touch
         break;
       case "personalizada":
-        zoomFactor = Math.max(0.75, Math.min(1.6, (config.escalaPorcentaje || 108) / 100));
+        zoomFactor = Math.max(0.75, Math.min(1.4, (config.escalaPorcentaje || 100) / 100));
         break;
       default:
-        zoomFactor = 1.08;
+        zoomFactor = 1.0;
     }
 
     const root = document.documentElement;
     if (root) {
-      // Aplicar zoom en CSS a la raíz para un escalado nítido
       (root.style as any).zoom = `${zoomFactor}`;
       root.style.setProperty("--app-zoom", `${zoomFactor}`);
     }

@@ -441,9 +441,9 @@ export function MenuPrincipal({
       ========================================================================= */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#F8FAFC]">
         {/* Barra Superior Header */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/90 bg-white/95 px-6 py-3.5 shadow-xs backdrop-blur-md">
+        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 py-2.5 shadow-xs backdrop-blur-md gap-2 w-full max-w-full">
           {/* Botón rápido para expandir sidebar si está retraído */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {!sidebarExpandido && (
               <button
                 type="button"
@@ -464,17 +464,17 @@ export function MenuPrincipal({
           </div>
 
           {/* Estado de la Sesión */}
-          <div className="flex items-center gap-3 text-xs font-bold">
-            <div className="hidden md:flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-1.5 border border-slate-200 text-slate-600 text-[11px]">
-              <Clock className="h-3.5 w-3.5 text-emerald-600" />
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold shrink-0 ml-auto">
+            <div className="hidden lg:flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-1.5 border border-slate-200 text-slate-600 text-[11px]">
+              <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="capitalize">{fechaHoyStr}</span>
               <span>•</span>
               <span className="font-mono text-slate-900 font-extrabold">{horaActual}</span>
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800 text-[11px]">
-              <span className="font-black uppercase">{usuario.nombre}</span>
-              <span className="text-[10px] bg-emerald-600 px-1.5 py-0.2 rounded-md font-black text-white">{usuario.rol}</span>
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800 text-[11px] shrink-0">
+              <span className="font-black uppercase max-w-[130px] sm:max-w-none truncate">{usuario.nombre}</span>
+              <span className="text-[10px] bg-emerald-600 px-2 py-0.5 rounded-md font-black text-white shrink-0">{usuario.rol}</span>
             </div>
           </div>
         </header>

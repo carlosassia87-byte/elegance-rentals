@@ -135,6 +135,8 @@
 @layer base {
   html {
     font-size: 15px;
+    max-width: 100vw;
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -149,6 +151,8 @@
     color: var(--color-foreground);
     font-size: 0.9375rem; /* 15px base */
     line-height: 1.45;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   /* Quitar flechas de subir/bajar (spinners) de todos los campos numéricos en todos los módulos */
