@@ -123,6 +123,30 @@ export function DevolucionTrajesModal({
     return itemsSeleccionados.reduce((acc, it) => acc + (it.valorDeposito * it.cantidad), 0);
   }, [itemsSeleccionados]);
 
+  // Cálculo de retraso de 3 días y recargo de $7.000 / día
+  const infoRetraso = useMemo(() => {
+    if (!detalle?.fechaSalida) return null;
+    const dSalida = new Date(detalle.fechaSalida);
+    dSalida.setHours(0, 0, 0, 0);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const diffTime = Math.max(0, hoy.getTime() - dSalida.getTime());
+    const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diasPermitidos = 3;
+    const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
+    const costoPorDia = 7000;
+    const recargoSugerido = diasRetraso * costoPorDia;
+
+    return {
+      diasTranscurridos,
+      diasPermitidos,
+      diasRetraso,
+      costoPorDia,
+      recargoSugerido,
+      tieneRetraso: diasRetraso > 0,
+    };
+  }, [detalle]);
+
   const penalidadNum = parseFloat(deduccionPenalidad) || 0;
   const montoNetoReintegrar = Math.max(0, totalDepositoSeleccionado - penalidadNum);
 
@@ -391,16 +415,66 @@ export function DevolucionTrajesModal({
 
                 {/* SECCIÓN DE LIQUIDACIÓN Y REINTEGRO DE DINERO */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Deducciones / Penalidades */}
+                  {/* Deducciones / Penalidades / Mora por Retraso */}
                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                     <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-800 border-b pb-2">
                       <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      <span>2. Ajustes / Penalidades (Opcional)</span>
+                      <span>2. Ajustes, Retraso & Penalidades</span>
                     </div>
+
+                    {/* Alerta de Retraso de 3 Días & $7.000 / Día */}
+                    {infoRetraso?.tieneRetraso ? (
+                      <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 space-y-2 shadow-xs">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div className="text-xs text-amber-950">
+                            <p className="font-black text-amber-900">
+                              ⚠️ RETRASO DETECTADO: {infoRetraso.diasRetraso} día(s) de mora
+                            </p>
+                            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                              El cliente lleva <strong>{infoRetraso.diasTranscurridos} días</strong> con el traje (límite permitido: <strong>3 días</strong>). Costo: <strong>$7.000 COP / día</strong>.
+                              <br />
+                              Recargo acumulado: <strong className="text-rose-700 font-mono">${infoRetraso.recargoSugerido.toLocaleString("es-CO")} COP</strong>.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-200">
+                          <span className="text-[10px] font-black uppercase text-amber-900">¿Descontar del depósito?</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeduccionPenalidad(String(infoRetraso.recargoSugerido));
+                              setMotivoDeduccion(`Recargo por ${infoRetraso.diasRetraso} día(s) de retraso ($7.000/día)`);
+                              toast.info(`Descuento de $${infoRetraso.recargoSugerido.toLocaleString("es-CO")} aplicado`);
+                            }}
+                            className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 text-[11px] font-black shadow-xs transition-all active:scale-95"
+                          >
+                            ✓ Sí, Descontar ${infoRetraso.recargoSugerido.toLocaleString("es-CO")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeduccionPenalidad("0");
+                              setMotivoDeduccion("");
+                              toast.info("Mora condonada (Sin descuento)");
+                            }}
+                            className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-[11px] font-black shadow-xs transition-all active:scale-95"
+                          >
+                            ✕ Condonar Mora ($0)
+                          </button>
+                        </div>
+                      </div>
+                    ) : infoRetraso ? (
+                      <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-900 font-bold flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Entrega a tiempo (Día {infoRetraso.diasTranscurridos} de 3 permitidos). Sin recargo por mora.</span>
+                      </div>
+                    ) : null}
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Deducción por Daño / Retraso / Lavandería ($)
+                        Valor de Descuento / Penalidad a deducir del depósito ($)
                       </label>
                       <input
                         type="number"
@@ -414,11 +488,11 @@ export function DevolucionTrajesModal({
                     {penalidadNum > 0 && (
                       <div>
                         <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          Motivo de la deducción
+                          Motivo del descuento o deducción
                         </label>
                         <input
                           type="text"
-                          placeholder="Ej. Falta botón o penalidad de $5.000 por día de retraso"
+                          placeholder="Ej. Recargo por días de retraso o falta de accesorio"
                           value={motivoDeduccion}
                           onChange={(e) => setMotivoDeduccion(e.target.value)}
                           className="h-8 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none shadow-2xs"
@@ -428,7 +502,7 @@ export function DevolucionTrajesModal({
 
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Forma de Reintegro de Dinero
+                        Forma de Reintegro de Dinero al Cliente
                       </label>
                       <select
                         value={formaReintegro}

@@ -301,3 +301,152 @@ export async function registrarDevolucionCompleta(
     return { ok: false, comprobante: null };
   }
 }
+
+// 3. Consultar si un cliente tiene trajes actualmente en alquiler y calcular días de retraso & recargos ($7.000/día tras 3 días)
+export interface PrendaActivaAlquiler {
+  codigoBarras: string;
+  descripcion: string;
+  talla: string;
+  cantidad: number;
+  valorDeposito: number;
+}
+
+export interface AlquilerActivoClienteInfo {
+  numeroFactura: string;
+  fechaSalida: string;
+  fechaEntregaPactada: string;
+  diasTranscurridos: number;
+  diasPermitidos: number; // 3 días
+  diasRetraso: number; // Max(0, diasTranscurridos - 3)
+  costoPorDiaRetraso: number; // $7.000
+  recargoTotalRetraso: number; // diasRetraso * 7000
+  tieneRetraso: boolean;
+  prendas: PrendaActivaAlquiler[];
+  totalDepositoRetenido: number;
+}
+
+export async function consultarAlquileresActivosCliente(
+  cedula: string | number
+): Promise<AlquilerActivoClienteInfo[]> {
+  const cedulaStr = String(cedula || "").trim();
+  if (!cedulaStr || cedulaStr === "0" || cedulaStr === "—") return [];
+
+  try {
+    const alquileresActivos: AlquilerActivoClienteInfo[] = [];
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Leer overrides
+    let overrides: Record<string, any> = {};
+    try {
+      const rawOv = localStorage.getItem("elegance_estados_prendas_override");
+      if (rawOv) overrides = JSON.parse(rawOv);
+    } catch {}
+
+    // Buscar facturas del cliente
+    let facturas: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from("FACTURA" as any)
+        .select("*")
+        .eq("CCEDULA", cedulaStr)
+        .order("IDFACTURA", { ascending: false });
+
+      if (!error && data) {
+        facturas = data;
+      }
+    } catch {}
+
+    // Fallback local
+    const rawLocal = localStorage.getItem("elegance_local_facturas");
+    if (rawLocal) {
+      const localList: any[] = JSON.parse(rawLocal);
+      const matched = localList.filter((f) => String(f.CCEDULA || f.CEDULA) === cedulaStr);
+      for (const lf of matched) {
+        if (!facturas.some((f) => f.NUMEROFACT === lf.NUMEROFACT)) {
+          facturas.push(lf);
+        }
+      }
+    }
+
+    for (const f of facturas) {
+      if (f.MODO === "VENTA" || f.ESTADOCLIENTE === "VENTA") continue;
+
+      const numFact = f.NUMEROFACT;
+
+      // Obtener items de esta factura
+      let camposRaw: any[] = [];
+      try {
+        const { data: cData } = await supabase
+          .from("CAMPOFACTURA" as any)
+          .select("*")
+          .eq("NUMEROFACT", numFact);
+        if (cData && cData.length > 0) camposRaw = cData;
+      } catch {}
+
+      if (camposRaw.length === 0 && f.items && Array.isArray(f.items)) {
+        camposRaw = f.items;
+      }
+
+      // Filtrar prendas que estén en alquiler (no devueltas)
+      const prendasActivas: PrendaActivaAlquiler[] = [];
+      let totalDepActivo = 0;
+
+      for (const c of camposRaw) {
+        const cod = c.BARRAS || "";
+        const desc = c.DESCRIPCION || "TRAJE";
+        const keyOv = `${numFact}_${cod || desc}`;
+        const ov = overrides[keyOv];
+        const estadoActual = ov ? ov.estado : "EN ALQUILER";
+
+        if (estadoActual === "EN ALQUILER") {
+          const cant = Number(c.CANTIDAD || 1);
+          const dep = Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0);
+          prendasActivas.push({
+            codigoBarras: cod,
+            descripcion: desc,
+            talla: c.TALLA || "U",
+            cantidad: cant,
+            valorDeposito: dep,
+          });
+          totalDepActivo += dep * cant;
+        }
+      }
+
+      if (prendasActivas.length > 0) {
+        const fSalidaStr = f.FECHASALIDA || new Date().toISOString().split("T")[0];
+        const fEntradaStr = f.FECHAENTRADA || f.FECHAENTREGA || fSalidaStr;
+
+        const dSalida = new Date(fSalidaStr);
+        dSalida.setHours(0, 0, 0, 0);
+
+        // Calcular días transcurridos
+        const diffTime = Math.max(0, hoy.getTime() - dSalida.getTime());
+        const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diasPermitidos = 3;
+        const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
+        const costoPorDia = 7000;
+        const recargoTotal = diasRetraso * costoPorDia;
+
+        alquileresActivos.push({
+          numeroFactura: numFact,
+          fechaSalida: fSalidaStr,
+          fechaEntregaPactada: fEntradaStr,
+          diasTranscurridos,
+          diasPermitidos,
+          diasRetraso,
+          costoPorDiaRetraso: costoPorDia,
+          recargoTotalRetraso: recargoTotal,
+          tieneRetraso: diasRetraso > 0,
+          prendas: prendasActivas,
+          totalDepositoRetenido: totalDepActivo,
+        });
+      }
+    }
+
+    return alquileresActivos;
+  } catch (err) {
+    console.error("Error al consultar alquileres activos del cliente:", err);
+    return [];
+  }
+}

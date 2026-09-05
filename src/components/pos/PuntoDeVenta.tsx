@@ -71,6 +71,10 @@ import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
+import {
+  consultarAlquileresActivosCliente,
+  type AlquilerActivoClienteInfo,
+} from "@/services/devolucionesService";
 
 const ARTICULOS_INICIALES: Articulo[] = [
   { IDARTICULO: 1, DESCRIPCION: "ALICIA EN EL PAÍS DE LAS MARAVILLAS NIÑA EN ALQUILER VESTIDO TUTU", TALLA: "8", STOCK: 3, VALOR: 75000, CODBARRAS: "1001", VALORDEPOSITO: 35000 },
@@ -111,8 +115,10 @@ export function PuntoDeVenta() {
     SALDO: 0,
   });
 
-  // Alerta de Nota del Cliente
+  // Alerta de Nota del Cliente y Alquileres Activos
   const [notaAlertaVisible, setNotaAlertaVisible] = useState(false);
+  const [alquileresActivosCliente, setAlquileresActivosCliente] = useState<AlquilerActivoClienteInfo[]>([]);
+  const [facturaDevolucionSeleccionada, setFacturaDevolucionSeleccionada] = useState<string>("");
 
   // Modal: SELECCIONE LA OPERACION A REALIZAR
   const [modalOperacionVisible, setModalOperacionVisible] = useState(false);
@@ -519,6 +525,41 @@ export function PuntoDeVenta() {
   const totalPagado = efecNum + transNum;
   const cambioVSaldo = totalPagado - totalDepositoMasAlquiler;
 
+  // Verificar si el cliente tiene trajes en alquiler (3 días límite, $7.000/día de retraso) o notas
+  async function verificarAlquileresYAlertarCliente(cli: Partial<Cliente>) {
+    if (!cli.CEDULA || cli.CEDULA === 0) return;
+    try {
+      const alqs = await consultarAlquileresActivosCliente(cli.CEDULA);
+      setAlquileresActivosCliente(alqs);
+
+      const tieneNota = Boolean(cli.NOTA && cli.NOTA.trim() !== "");
+      const tieneAlquileres = alqs.length > 0;
+
+      if (tieneNota || tieneAlquileres) {
+        setNotaAlertaVisible(true);
+        if (alqs.some((a) => a.tieneRetraso)) {
+          const totalMora = alqs.reduce((acc, a) => acc + a.recargoTotalRetraso, 0);
+          toast.warning(
+            `⚠️ CLIENTE CON RETRASO EN ALQUILER (Mora: $${totalMora.toLocaleString("es-CO")})`,
+            { duration: 7000 }
+          );
+        } else if (tieneAlquileres) {
+          toast.info(`ℹ️ El cliente tiene ${alqs.length} traje(s) en alquiler actualmente`);
+        }
+      } else {
+        toast.success(`Cliente: ${cli.NOMBRE}`);
+        setModalOperacionVisible(true);
+      }
+    } catch (e) {
+      console.error(e);
+      if (cli.NOTA && cli.NOTA.trim() !== "") {
+        setNotaAlertaVisible(true);
+      } else {
+        setModalOperacionVisible(true);
+      }
+    }
+  }
+
   // Buscar cliente por cédula con Enter o botón Buscar
   async function handleBuscarCedulaDirecta(cedulaValor?: string | number) {
     const cedBuscada = cedulaValor ?? clienteForm.CEDULA;
@@ -530,13 +571,7 @@ export function PuntoDeVenta() {
     const cli = await buscarClientePorCedula(cedBuscada);
     if (cli) {
       setClienteForm(cli);
-      if (cli.NOTA && cli.NOTA.trim() !== "") {
-        setNotaAlertaVisible(true);
-        toast.warning(`⚠️ NOTA DEL CLIENTE: ${cli.NOTA}`, { duration: 7000 });
-      } else {
-        toast.success(`Cliente: ${cli.NOMBRE}`);
-        setModalOperacionVisible(true);
-      }
+      await verificarAlquileresYAlertarCliente(cli);
     } else {
       toast.info("Cédula no encontrada. Puedes registrar sus datos.");
       setModalCliente(true);
@@ -774,6 +809,8 @@ export function PuntoDeVenta() {
     setCobroTransferencia("0");
     setFilaSeleccionada(null);
     setNotaAlertaVisible(false);
+    setAlquileresActivosCliente([]);
+    setFacturaDevolucionSeleccionada("");
     setModalOperacionVisible(false);
     setEstadoTraje("EN ALQUILER");
     setOperacionSeleccionada("ALQUILER");
@@ -1189,21 +1226,39 @@ export function PuntoDeVenta() {
               </div>
             </div>
 
-            {/* BANNER DE NOTA */}
-            {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
-              <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-950 shadow-xs animate-pulse">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="flex items-center gap-1 rounded-md bg-amber-600 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide">
-                    <AlertTriangle className="h-3 w-3" /> NOTA:
-                  </span>
-                  <span className="truncate text-xs font-semibold">{clienteForm.NOTA}</span>
+            {/* BANNER DE NOTA Y TRAJES EN ALQUILER */}
+            {((clienteForm.NOTA && clienteForm.NOTA.trim() !== "") || alquileresActivosCliente.length > 0) && (
+              <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-950 shadow-xs">
+                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                  {alquileresActivosCliente.length > 0 && (
+                    <span className="flex items-center gap-1 rounded-md bg-teal-700 px-2 py-0.5 text-[10px] text-white uppercase font-black tracking-wide shrink-0">
+                      <Shirt className="h-3 w-3" /> ALQUILER ACTIVO ({alquileresActivosCliente.length})
+                    </span>
+                  )}
+
+                  {alquileresActivosCliente.some((a) => a.tieneRetraso) && (
+                    <span className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] text-white uppercase font-black tracking-wide shrink-0 animate-pulse">
+                      🔴 MORA $7.000/DÍA
+                    </span>
+                  )}
+
+                  {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" ? (
+                    <span className="truncate text-xs font-semibold text-slate-800">
+                      <strong>NOTA:</strong> {clienteForm.NOTA}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-800 truncate">
+                      Cliente tiene {alquileresActivosCliente.length} traje(s) en alquiler actualmente
+                    </span>
+                  )}
                 </div>
+
                 <button
                   type="button"
                   onClick={() => setNotaAlertaVisible(true)}
-                  className="ml-2 text-emerald-800 underline hover:text-emerald-950 whitespace-nowrap text-xs font-bold"
+                  className="ml-2 text-teal-800 underline hover:text-teal-950 whitespace-nowrap text-xs font-bold shrink-0"
                 >
-                  [Ver Completa]
+                  [Ver Detalle & Devolución]
                 </button>
               </div>
             )}
@@ -2036,27 +2091,134 @@ export function PuntoDeVenta() {
       </Dialog>
 
       {/* =========================================================================
-          MODAL DE ALERTA: NOTA DESTACADA DEL CLIENTE
+          MODAL DE ALERTA: ESTADO DE TRAJES EN ALQUILER & NOTA DEL CLIENTE
       ========================================================================= */}
       <Dialog open={notaAlertaVisible} onOpenChange={setNotaAlertaVisible}>
-        <DialogContent className="max-w-md bg-white p-0 border border-amber-300 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="flex items-center gap-2.5 px-5 py-3.5 bg-amber-500 text-white">
-            <AlertTriangle className="h-5 w-5 text-amber-100 animate-bounce" />
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider">Observación Importante del Cliente</h3>
-              <p className="text-[11px] text-amber-100 font-bold">
-                {clienteForm.NOMBRE} (C.C: {clienteForm.CEDULA})
-              </p>
+        <DialogContent className="max-w-lg lg:max-w-xl bg-white p-0 border border-amber-300 shadow-2xl rounded-2xl overflow-hidden max-h-[85vh] flex flex-col">
+          <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white shrink-0">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="h-5 w-5 text-amber-100 animate-bounce" />
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider">Información Importante del Cliente</h3>
+                <p className="text-[11px] text-amber-100 font-bold">
+                  {clienteForm.NOMBRE || "CLIENTE"} (C.C: {clienteForm.CEDULA || "—"})
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => setNotaAlertaVisible(false)}
+              className="rounded-lg bg-white/10 hover:bg-white/20 p-1 text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <div className="p-5 space-y-4 bg-amber-50/40">
-            <div className="rounded-xl bg-white p-4 border border-amber-200 text-xs text-slate-800 font-bold leading-relaxed shadow-2xs">
-              {clienteForm.NOTA}
-            </div>
+          <div className="p-5 space-y-4 bg-slate-50/60 overflow-y-auto flex-1 custom-scrollbar">
+            {/* 1. SECCIÓN DE TRAJES EN ALQUILER (SI TIENE) */}
+            {alquileresActivosCliente.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-900">
+                    <Shirt className="h-4 w-4 text-teal-600" />
+                    <span>Trajes Actualmente en Alquiler ({alquileresActivosCliente.length})</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                    Plazo límite: 3 días
+                  </span>
+                </div>
 
-            <div className="flex justify-end gap-2.5 pt-1">
+                <div className="space-y-2.5">
+                  {alquileresActivosCliente.map((alq, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-xl border transition-all ${
+                        alq.tieneRetraso
+                          ? "bg-rose-50/70 border-rose-300 shadow-2xs"
+                          : "bg-teal-50/60 border-teal-200 shadow-2xs"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1 pb-2 border-b border-slate-200/70">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-xs text-slate-900">
+                            Recibo #{alq.numeroFactura}
+                          </span>
+                          <span className="text-[10px] text-slate-600 font-semibold">
+                            Salida: <strong>{alq.fechaSalida}</strong> ({alq.diasTranscurridos} día{alq.diasTranscurridos === 1 ? "" : "s"})
+                          </span>
+                        </div>
+
+                        {alq.tieneRetraso ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white shadow-2xs">
+                            ⚠️ {alq.diasRetraso} día(s) retraso · Mora: ${alq.recargoTotalRetraso.toLocaleString("es-CO")}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✓ En Plazo (Día {alq.diasTranscurridos} de 3)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Lista de Prendas */}
+                      <div className="py-2 space-y-1 text-xs">
+                        {alq.prendas.map((p, pIdx) => (
+                          <div key={pIdx} className="flex justify-between items-center text-[11px]">
+                            <span className="font-bold text-slate-800 truncate max-w-[280px]">
+                              • {p.cantidad}x {p.descripcion} (Talla: {p.talla})
+                            </span>
+                            <span className="font-mono text-slate-600 font-semibold shrink-0">
+                              Depósito: ${ (p.valorDeposito * p.cantidad).toLocaleString("es-CO") }
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Aviso de costo por retraso ($7.000 / día) */}
+                      {alq.tieneRetraso && (
+                        <div className="mt-1 p-2 rounded-lg bg-white border border-rose-200 text-[10px] text-rose-900 font-semibold leading-relaxed">
+                          📌 <strong>Costo por mora:</strong> $7.000 COP por día transcurrido después de los 3 días permitidos. Se puede descontar del depósito o condonar al recibir el traje.
+                        </div>
+                      )}
+
+                      {/* Botón directo para devolver */}
+                      <div className="pt-2 flex justify-between items-center">
+                        <span className="text-[11px] font-black text-teal-900">
+                          Depósito en custodia: ${alq.totalDepositoRetenido.toLocaleString("es-CO")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFacturaDevolucionSeleccionada(alq.numeroFactura);
+                            setNotaAlertaVisible(false);
+                            setModalDevolucion(true);
+                          }}
+                          className="rounded-lg bg-teal-700 hover:bg-teal-800 text-white px-3 py-1 text-xs font-black uppercase shadow-xs transition-all active:scale-95 flex items-center gap-1"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Recibir Traje & Reintegrar Depósito
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. OBSERVACIÓN / NOTA MANUAL DEL CLIENTE */}
+            {clienteForm.NOTA && clienteForm.NOTA.trim() !== "" && (
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-black uppercase text-amber-900 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                  Nota / Observación Registrada en Ficha:
+                </span>
+                <div className="rounded-xl bg-white p-3.5 border border-amber-200 text-xs text-slate-800 font-bold leading-relaxed shadow-2xs">
+                  {clienteForm.NOTA}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2.5 pt-2 border-t border-slate-200">
               <button
+                type="button"
                 onClick={() => {
                   setNotaAlertaVisible(false);
                   setModalCliente(true);
@@ -2065,7 +2227,23 @@ export function PuntoDeVenta() {
               >
                 Editar Ficha
               </button>
+
+              {alquileresActivosCliente.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFacturaDevolucionSeleccionada(alquileresActivosCliente[0].numeroFactura);
+                    setNotaAlertaVisible(false);
+                    setModalDevolucion(true);
+                  }}
+                  className="rounded-xl bg-teal-600 hover:bg-teal-700 px-4 py-2 text-xs font-black text-white shadow-xs transition-all"
+                >
+                  Devolución & Depósito
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={() => {
                   setNotaAlertaVisible(false);
                   setModalOperacionVisible(true);
@@ -2334,16 +2512,10 @@ export function PuntoDeVenta() {
                         <td className="p-2.5 font-semibold text-slate-600">{c.TELEFONO}</td>
                         <td className="p-2.5 text-right">
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               setClienteForm(c);
                               setModalBuscarCli(false);
-                              if (c.NOTA && c.NOTA.trim() !== "") {
-                                setNotaAlertaVisible(true);
-                                toast.warning(`⚠️ NOTA: ${c.NOTA}`);
-                              } else {
-                                toast.success(`Cliente cargado: ${c.NOMBRE}`);
-                                setModalOperacionVisible(true);
-                              }
+                              await verificarAlquileresYAlertarCliente(c);
                             }}
                             className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1 text-xs font-bold text-white uppercase shadow-2xs transition-all"
                           >
@@ -2439,9 +2611,14 @@ export function PuntoDeVenta() {
         open={modalDevolucion}
         onOpenChange={setModalDevolucion}
         empresa={empresaConfig}
+        facturaPreseleccionada={facturaDevolucionSeleccionada}
         cajeroNombre={cajero}
         onDevolucionExitosa={() => {
-          handleLimpiar(true);
+          if (clienteForm.CEDULA) {
+            verificarAlquileresYAlertarCliente(clienteForm);
+          } else {
+            handleLimpiar(true);
+          }
         }}
       />
 
@@ -3323,15 +3500,9 @@ export function PuntoDeVenta() {
       <CatalogoClientesModal
         open={modalCatalogoClientes}
         onOpenChange={setModalCatalogoClientes}
-        onSeleccionarCliente={(cli) => {
+        onSeleccionarCliente={async (cli) => {
           setClienteForm(cli);
-          if (cli.NOTA && cli.NOTA.trim() !== "") {
-            setNotaAlertaVisible(true);
-            toast.warning(`⚠️ NOTA: ${cli.NOTA}`);
-          } else {
-            toast.success(`Cliente cargado: ${cli.NOMBRE}`);
-            setModalOperacionVisible(true);
-          }
+          await verificarAlquileresYAlertarCliente(cli);
         }}
         empresa={empresaConfig}
       />
