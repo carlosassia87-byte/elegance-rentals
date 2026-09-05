@@ -1159,64 +1159,12 @@ export function PuntoDeVenta() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setSidebarAbierto(true)}
-                    className="flex items-center justify-center rounded-xl bg-slate-900 hover:bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
-                    title="Abrir Menú Lateral de Opciones"
-                  >
-                    <Menu className="h-4 w-4" />
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setVistaActiva("menu")}
-                    className="flex items-center gap-1.5 rounded-xl bg-slate-800 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-900 shadow-xs border border-slate-700 transition-all active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2 text-xs font-bold text-white hover:bg-slate-900 shadow-xs border border-slate-700 transition-all active:scale-95"
                     title="Regresar a la Pantalla de Menú Principal"
                   >
                     <ChevronLeft className="h-4 w-4 text-emerald-400" />
-                    <span className="tracking-wide uppercase">MENÚ PRINCIPAL</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalAlertasRetrasos(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95 animate-pulse"
-                    title="Panel de Alertas de Trajes con Retraso y Mora (3 Días · $15.000/día)"
-                  >
-                    <Bell className="h-3.5 w-3.5" /> ALERTAS & MORA
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalInventarioStock(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95"
-                    title="Módulo de Inventario, Alimentación de Stock y Kardex de Trajes"
-                  >
-                    <Package className="h-3.5 w-3.5" /> INVENTARIO & STOCK
-                  </button>
-
-                  <button
-                    onClick={() => setModalArchivoArticulo(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-slate-700 hover:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all"
-                  >
-                    <Package className="h-3.5 w-3.5 text-blue-400" /> ARCHIVO ARTICULO
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalCatalogoClientes(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
-                    title="Directorio y Catálogo General de Clientes"
-                  >
-                    <Users className="h-3.5 w-3.5" /> CATÁLOGO CLIENTES
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalMovimientosTrajes(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition-all active:scale-95"
-                    title="Control de Movimientos y Estado de Trajes por Rango de Fechas"
-                  >
-                    <Activity className="h-3.5 w-3.5" /> MOVIMIENTOS & ESTADOS
+                    <span className="tracking-wide uppercase">VOLVER AL MENÚ</span>
                   </button>
                 </div>
 
