@@ -461,14 +461,22 @@ export async function registrarAlquilerFactura(
 // ==========================================
 // SERVICIO DE ABONOS Y ENTREGA VESTIDO APARTADO
 // ==========================================
+export interface ItemApartadoConEstado extends CampoFactura {
+  estadoPrenda: "DEVUELTO A TIENDA" | "EN BODEGA" | "EN ALQUILER";
+  fechaDevolucion?: string;
+  diasParaEntrega?: number;
+}
+
 export async function buscarFacturaApartado(numeroFact: string): Promise<{
   factura: Factura | null;
-  items: CampoFactura[];
+  items: ItemApartadoConEstado[];
   abonos: AbonoCliente[];
+  yaDevuelto: boolean;
+  totalDevuelto: number;
 }> {
   try {
     const term = numeroFact.trim().toUpperCase();
-    if (!term) return { factura: null, items: [], abonos: [] };
+    if (!term) return { factura: null, items: [], abonos: [], yaDevuelto: false, totalDevuelto: 0 };
 
     let facturaEncontrada: any = null;
     let itemsEncontrados: any[] = [];
@@ -540,17 +548,82 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
     }
 
     if (!facturaEncontrada) {
-      return { factura: null, items: [], abonos: [] };
+      return { factura: null, items: [], abonos: [], yaDevuelto: false, totalDevuelto: 0 };
     }
+
+    // 3. Consultar si ya tiene devoluciones / reintegros registrados
+    let totalDevuelto = 0;
+    try {
+      const { data: depsRaw } = await supabase
+        .from("DEPOSITOENTREGADO" as any)
+        .select("*")
+        .eq("NUMEROFACTURA", facturaEncontrada.NUMEROFACT);
+      if (depsRaw && depsRaw.length > 0) {
+        totalDevuelto = depsRaw.reduce((acc, d: any) => acc + (Number(d.VALOR) || 0), 0);
+      }
+    } catch {}
+
+    const rawLocalDeps = localStorage.getItem("elegance_local_depositos_entregados");
+    if (rawLocalDeps) {
+      try {
+        const localDepsList: any[] = JSON.parse(rawLocalDeps);
+        const matchDeps = localDepsList.filter((d) => d.NUMEROFACTURA === facturaEncontrada.NUMEROFACT);
+        if (matchDeps.length > 0 && totalDevuelto === 0) {
+          totalDevuelto = matchDeps.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
+        }
+      } catch {}
+    }
+
+    // 4. Leer mapa de estados de prendas override
+    let overrides: Record<string, any> = {};
+    try {
+      const rawOv = localStorage.getItem("elegance_estados_prendas_override");
+      if (rawOv) overrides = JSON.parse(rawOv);
+    } catch {}
+
+    const facturaDevuelta = totalDevuelto > 0 || facturaEncontrada.ESTADOCLIENTE === "DEVUELTO" || facturaEncontrada.ESTADOFIN === "DEVUELTO";
+
+    const itemsConEstado: ItemApartadoConEstado[] = itemsEncontrados.map((it) => {
+      const cod = it.BARRAS || "";
+      const desc = it.DESCRIPCION || "";
+      const keyOv = `${facturaEncontrada.NUMEROFACT}_${cod || desc}`;
+      const ov = overrides[keyOv];
+
+      let estadoPrenda: "DEVUELTO A TIENDA" | "EN BODEGA" | "EN ALQUILER" = "EN BODEGA";
+
+      if (ov?.estado === "DEVUELTO A TIENDA" || facturaDevuelta) {
+        estadoPrenda = "DEVUELTO A TIENDA";
+      } else if (
+        ov?.estado === "EN ALQUILER" ||
+        facturaEncontrada.ESTADOCLIENTE === "ENTREGADO" ||
+        facturaEncontrada.ESTADOFIN === "EN ALQUILER" ||
+        facturaEncontrada.MODO === "EN ALQUILER"
+      ) {
+        estadoPrenda = "EN ALQUILER";
+      } else {
+        estadoPrenda = "EN BODEGA";
+      }
+
+      return {
+        ...it,
+        estadoPrenda,
+        fechaDevolucion: ov?.fechaDevolucion,
+      };
+    });
+
+    const todasDevueltas = itemsConEstado.length > 0 && itemsConEstado.every((i) => i.estadoPrenda === "DEVUELTO A TIENDA");
+    const yaDevuelto = facturaDevuelta || todasDevueltas;
 
     return {
       factura: facturaEncontrada as Factura,
-      items: itemsEncontrados as CampoFactura[],
+      items: itemsConEstado,
       abonos: abonosEncontrados as AbonoCliente[],
+      yaDevuelto,
+      totalDevuelto,
     };
   } catch (err) {
     console.error("Error buscando factura de apartado:", err);
-    return { factura: null, items: [], abonos: [] };
+    return { factura: null, items: [], abonos: [], yaDevuelto: false, totalDevuelto: 0 };
   }
 }
 
@@ -616,12 +689,32 @@ export async function registrarAbonoCliente(params: {
   }
 }
 
-export async function registrarSalidaVestidoApartado(numeroFactura: string): Promise<boolean> {
+export async function registrarSalidaVestidoApartado(
+  numeroFactura: string,
+  fechaSalidaPersonalizada?: string,
+  fechaDevolucionPersonalizada?: string
+): Promise<{ ok: boolean; fechaSalida: string; fechaDevolucion: string }> {
   try {
+    const hoy = fechaSalidaPersonalizada || new Date().toISOString().split("T")[0];
+    
+    // Si no se pasa fecha de devolución, se cuentan automáticamente los 3 días hábiles/reglamentarios
+    let dDevolucion = fechaDevolucionPersonalizada;
+    if (!dDevolucion) {
+      const d = new Date(hoy + "T12:00:00");
+      d.setDate(d.getDate() + 3);
+      dDevolucion = d.toISOString().split("T")[0];
+    }
+
     try {
       await supabase
         .from("FACTURA" as any)
-        .update({ ESTADOCLIENTE: "ENTREGADO" })
+        .update({
+          ESTADOCLIENTE: "ENTREGADO",
+          ESTADOFIN: "EN ALQUILER",
+          MODO: "EN ALQUILER",
+          FECHASALIDA: hoy,
+          FECHAENTRADA: dDevolucion,
+        })
         .eq("NUMEROFACT", numeroFactura);
     } catch (e) {
       console.warn("Error actualizando salida en Supabase:", e);
@@ -632,13 +725,38 @@ export async function registrarSalidaVestidoApartado(numeroFactura: string): Pro
     const factIdx = facts.findIndex((f) => f.NUMEROFACT === numeroFactura);
     if (factIdx >= 0 && facts[factIdx]) {
       facts[factIdx]!.ESTADOCLIENTE = "ENTREGADO";
+      facts[factIdx]!.FECHASALIDA = hoy;
+      facts[factIdx]!.FECHAENTRADA = dDevolucion;
       localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
     }
 
-    return true;
+    // Actualizar mapa de estados de prendas override para esta factura a "EN ALQUILER"
+    try {
+      const rawOv = localStorage.getItem("elegance_estados_prendas_override");
+      const overrides = rawOv ? JSON.parse(rawOv) : {};
+
+      // Buscar ítems de esta factura en local
+      const rawCampos = localStorage.getItem(KEY_LOCAL_CAMPOS);
+      const allCampos: CampoFactura[] = rawCampos ? JSON.parse(rawCampos) : [];
+      const itemsFact = allCampos.filter((c) => c.NUMEROFACT === numeroFactura);
+
+      for (const item of itemsFact) {
+        const key = `${numeroFactura}_${item.BARRAS || item.DESCRIPCION}`;
+        overrides[key] = {
+          estado: "EN ALQUILER",
+          fechaSalida: hoy,
+          fechaEntregaPactada: dDevolucion,
+        };
+      }
+      localStorage.setItem("elegance_estados_prendas_override", JSON.stringify(overrides));
+    } catch (e) {
+      console.warn("Error actualizando override de prendas:", e);
+    }
+
+    return { ok: true, fechaSalida: hoy, fechaDevolucion: dDevolucion };
   } catch (err) {
     console.error("Error registrando salida de vestido:", err);
-    return false;
+    return { ok: false, fechaSalida: "", fechaDevolucion: "" };
   }
 }
 

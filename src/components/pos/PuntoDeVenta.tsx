@@ -44,6 +44,7 @@ import {
   buscarFacturaApartado,
   registrarAbonoCliente,
   registrarSalidaVestidoApartado,
+  type ItemApartadoConEstado,
 } from "@/services/posService";
 import {
   obtenerTerminalConfig,
@@ -188,11 +189,13 @@ export function PuntoDeVenta() {
   const [devFactura, setDevFactura] = useState("");
   const [devMonto, setDevMonto] = useState<number>(0);
 
-  // Estados del Módulo ENTREGA VESTIDO APARTADO (Abonos)
+  // Estados del Módulo ENTREGA VESTIDO APARTADO (Abonos & Reservas)
   const [apartadoBusqFactura, setApartadoBusqFactura] = useState("");
   const [apartadoFactura, setApartadoFactura] = useState<Factura | null>(null);
-  const [apartadoItems, setApartadoItems] = useState<CampoFactura[]>([]);
+  const [apartadoItems, setApartadoItems] = useState<ItemApartadoConEstado[]>([]);
   const [apartadoAbonos, setApartadoAbonos] = useState<AbonoCliente[]>([]);
+  const [apartadoYaDevuelto, setApartadoYaDevuelto] = useState(false);
+  const [apartadoTotalDevuelto, setApartadoTotalDevuelto] = useState(0);
   const [modalSubAbonar, setModalSubAbonar] = useState(false);
   const [modalSaldoPendienteAlerta, setModalSaldoPendienteAlerta] = useState(false);
   const [montoAlertaSaldo, setMontoAlertaSaldo] = useState(0);
@@ -271,22 +274,27 @@ export function PuntoDeVenta() {
   const abonoTotalActual = abonoEfecNum + abonoTransNum;
   const abonoTotalSaldoRestante = Math.max(0, apartadoSaldoRestante - abonoTotalActual);
 
-  async function handleConsultarApartado() {
-    if (!apartadoBusqFactura.trim()) {
+  async function handleConsultarApartado(factNum?: string) {
+    const query = (factNum ?? apartadoBusqFactura).trim();
+    if (!query) {
       toast.error("Ingresa el número de factura a consultar");
       return;
     }
-    const res = await buscarFacturaApartado(apartadoBusqFactura);
+    const res = await buscarFacturaApartado(query);
     if (!res.factura) {
       toast.error("Factura no encontrada");
       setApartadoFactura(null);
       setApartadoItems([]);
       setApartadoAbonos([]);
+      setApartadoYaDevuelto(false);
+      setApartadoTotalDevuelto(0);
       return;
     }
     setApartadoFactura(res.factura);
     setApartadoItems(res.items);
     setApartadoAbonos(res.abonos);
+    setApartadoYaDevuelto(res.yaDevuelto);
+    setApartadoTotalDevuelto(res.totalDevuelto);
 
     // Calcular si tiene saldo pendiente para mostrar la ventanita emergente WINDEV
     const totalVenta = Number(res.factura.FTOTALVENTADEPOSITO) || 0;
@@ -295,7 +303,9 @@ export function PuntoDeVenta() {
     const totAbonos = (res.abonos || []).reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
     const sRestante = Math.max(0, sAnterior - totAbonos);
 
-    if (sRestante > 0) {
+    if (res.yaDevuelto) {
+      toast.info(`ℹ️ Factura #${res.factura.NUMEROFACT}: ¡Prenda ya fue devuelta a tienda y depósito reintegrado!`, { duration: 5000 });
+    } else if (sRestante > 0) {
       setMontoAlertaSaldo(sRestante);
       setModalSaldoPendienteAlerta(true);
     } else {
@@ -329,13 +339,14 @@ export function PuntoDeVenta() {
       setApartadoAbonos((prev) => [...prev, abonoGuardado]);
       setModalSubAbonar(false);
 
-      // Preparar datos de la tira térmica 80mm (entregarvestido)
-      const dSalida = new Date();
-      const dEntrada = new Date();
+      // Fechas de salida y devolución (3 días hábiles)
+      const hoy = new Date().toISOString().split("T")[0];
+      const dSalida = new Date(hoy + "T12:00:00");
+      const dEntrada = new Date(hoy + "T12:00:00");
       dEntrada.setDate(dEntrada.getDate() + 3);
 
       const ticket = {
-        caja: "SERVIDOR",
+        caja: terminalConfig.nombreCaja || "SERVIDOR",
         cliente: apartadoFactura.CCLIENTE,
         cedula: apartadoFactura.CCEDULA || "",
         direccion: apartadoFactura.CDIRECCION || "cra 23",
@@ -357,12 +368,11 @@ export function PuntoDeVenta() {
       };
       setTicketAbonoData(ticket);
 
-      // Si el saldo restante es cero, preguntar salida de bodega
+      // Si el saldo restante es cero, preguntar automáticamente si entregar al cliente o sigue en bodega
       if (nuevoSaldo === 0) {
         setModalPreguntaSalida(true);
       } else {
-        // Registrar en bodega y abrir comprobante 80mm
-        await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
+        await handleConsultarApartado(apartadoFactura.NUMEROFACT);
         setModalImprimirAbono80mm(true);
       }
 
@@ -373,16 +383,30 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Confirmar salida de traje de bodega al tener saldo 0
+  // Confirmar salida de traje de bodega al tener saldo 0 (o desde botón manual)
   async function handleConfirmarSalidaBodega(darSalida: boolean) {
     if (!apartadoFactura) return;
     setModalPreguntaSalida(false);
 
     if (darSalida) {
-      await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
-      toast.success(`YA PUEDE SALIR EL TRAJE DE LA TIENDA (FACTURA # ${apartadoFactura.NUMEROFACT})`);
+      const hoy = new Date().toISOString().split("T")[0];
+      const dEntrada = new Date(hoy + "T12:00:00");
+      dEntrada.setDate(dEntrada.getDate() + 3);
+      const fechaDev = dEntrada.toISOString().split("T")[0];
+
+      const res = await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT, hoy, fechaDev);
+      if (res.ok) {
+        toast.success(
+          `👗 ¡PRENDA ENTREGADA AL CLIENTE! Pasa a EN ALQUILER. Comienzan 3 días de plazo hasta el ${dEntrada.toLocaleDateString("es-CO")}.`,
+          { duration: 6000 }
+        );
+      }
+    } else {
+      toast.info(`📦 Prenda guardada en bodega. Permanecerá hasta que el cliente venga a retirarla.`);
     }
 
+    // Refrescar inmediatamente los datos del apartado
+    await handleConsultarApartado(apartadoFactura.NUMEROFACT);
     setModalImprimirAbono80mm(true);
   }
 
@@ -2724,6 +2748,69 @@ export function PuntoDeVenta() {
           </div>
 
           <div className="p-5 flex-1 flex flex-col min-h-0 space-y-4 overflow-auto bg-slate-50/50">
+            {/* BANNER DINÁMICO DE ESTADO DE LA FACTURA / PRENDA */}
+            {apartadoFactura && (
+              <div className="rounded-2xl border px-4 py-2.5 shadow-xs flex items-center justify-between text-xs font-black transition-all">
+                {apartadoYaDevuelto ? (
+                  <div className="flex items-center gap-2.5 text-emerald-800 bg-emerald-50 border border-emerald-300 w-full p-2 rounded-xl">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-sm shrink-0">
+                      ✓
+                    </span>
+                    <div>
+                      <span className="font-extrabold uppercase tracking-wide">
+                        ¡PRENDA YA DEVUELTA A TIENDA!
+                      </span>
+                      <p className="text-[11px] font-bold text-emerald-700">
+                        Esta factura ya completó su ciclo de devolución y el depósito fue reintegrado al cliente.
+                      </p>
+                    </div>
+                  </div>
+                ) : apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER") ? (
+                  <div className="flex items-center gap-2.5 text-indigo-900 bg-indigo-50 border border-indigo-200 w-full p-2 rounded-xl">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white font-black text-sm shrink-0">
+                      👗
+                    </span>
+                    <div>
+                      <span className="font-extrabold uppercase tracking-wide">
+                        PRENDA EN ALQUILER (ENTREGADA AL CLIENTE)
+                      </span>
+                      <p className="text-[11px] font-bold text-indigo-700">
+                        Fecha Salida: {apartadoFactura.FECHASALIDA || "Hoy"} • Fecha Límite de Devolución (3 Días): {apartadoFactura.FECHAENTRADA || "En 3 días"}
+                      </p>
+                    </div>
+                  </div>
+                ) : apartadoSaldoRestante === 0 ? (
+                  <div className="flex items-center gap-2.5 text-emerald-900 bg-emerald-50 border border-emerald-200 w-full p-2 rounded-xl">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-sm shrink-0">
+                      📦
+                    </span>
+                    <div>
+                      <span className="font-extrabold uppercase tracking-wide">
+                        PRENDA PAGADA EN BODEGA (LISTA PARA ENTREGAR AL CLIENTE)
+                      </span>
+                      <p className="text-[11px] font-bold text-emerald-700">
+                        El saldo es $0. Al entregarla al cliente pasará a "EN ALQUILER" y comenzarán a contar los 3 días.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 text-amber-900 bg-amber-50 border border-amber-200 w-full p-2 rounded-xl">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-600 text-white font-black text-sm shrink-0">
+                      ⏳
+                    </span>
+                    <div>
+                      <span className="font-extrabold uppercase tracking-wide">
+                        RESERVA / APARTADO CON SALDO PENDIENTE
+                      </span>
+                      <p className="text-[11px] font-bold text-amber-800">
+                        Saldo por liquidar: ${apartadoSaldoRestante.toLocaleString()} • La prenda permanece en bodega.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* SECCIÓN SUPERIOR: FORMULARIO + BOTONES DE ACCIÓN */}
             <div className="flex items-start justify-between gap-4">
               {/* FORMULARIO DE CONSULTA DE FACTURA */}
@@ -2746,7 +2833,7 @@ export function PuntoDeVenta() {
                     />
                     <button
                       type="button"
-                      onClick={handleConsultarApartado}
+                      onClick={() => handleConsultarApartado()}
                       className="h-8 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 text-xs font-extrabold text-white shadow-sm active:scale-95 uppercase tracking-wider transition-all"
                     >
                       Buscar
@@ -2837,14 +2924,23 @@ export function PuntoDeVenta() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    disabled={apartadoYaDevuelto}
                     onClick={() => {
                       if (!apartadoFactura) {
                         toast.error("Busca primero una factura de apartado");
                         return;
                       }
+                      if (apartadoSaldoRestante <= 0) {
+                        toast.info("Esta factura ya tiene saldo $0");
+                        return;
+                      }
                       setModalSubAbonar(true);
                     }}
-                    className="h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-5 text-xs font-extrabold text-white shadow-sm active:scale-95 uppercase tracking-wider transition-all"
+                    className={`h-9 rounded-xl px-5 text-xs font-extrabold shadow-sm active:scale-95 uppercase tracking-wider transition-all ${
+                      apartadoYaDevuelto || apartadoSaldoRestante <= 0
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+                    }`}
                   >
                     + Nuevo Abono
                   </button>
@@ -2869,27 +2965,36 @@ export function PuntoDeVenta() {
                 {/* BOTÓN SALIDA DE VESTIDO CUANDO EL SALDO ES CERO */}
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
                     if (!apartadoFactura) {
                       toast.error("Busca primero la factura");
+                      return;
+                    }
+                    if (apartadoYaDevuelto) {
+                      toast.info("La prenda ya fue devuelta a la tienda");
                       return;
                     }
                     if (apartadoSaldoRestante > 0) {
                       toast.warning(`⚠️ No se puede entregar el vestido. Existe un saldo pendiente de $ ${apartadoSaldoRestante.toLocaleString()}`);
                       return;
                     }
-                    const ok = await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT);
-                    if (ok) {
-                      toast.success("¡Salida de vestido registrada con éxito! Prenda entregada.");
-                    }
+                    setModalPreguntaSalida(true);
                   }}
                   className={`h-10 rounded-xl px-4 text-xs font-extrabold shadow-sm active:scale-95 uppercase tracking-wider transition-all ${
-                    apartadoSaldoRestante === 0 && apartadoFactura
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    apartadoYaDevuelto
+                      ? "bg-emerald-100 text-emerald-800 cursor-default border border-emerald-300"
+                      : apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")
+                      ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                      : apartadoSaldoRestante === 0 && apartadoFactura
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse"
                       : "bg-slate-200 text-slate-500 cursor-not-allowed"
                   }`}
                 >
-                  Entregar Prenda (Saldo $0)
+                  {apartadoYaDevuelto
+                    ? "✓ Prenda Ya Devuelta"
+                    : apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")
+                    ? "👗 Prenda En Alquiler (Entregada)"
+                    : "Entregar Prenda (Saldo $0)"}
                 </button>
               </div>
             </div>
@@ -2951,7 +3056,7 @@ export function PuntoDeVenta() {
                 </div>
               </div>
 
-              {/* TABLA DERECHA: ARTICULOS */}
+              {/* TABLA DERECHA: ARTICULOS CON ESTADO / UBICACIÓN */}
               <div className="col-span-5 flex flex-col min-h-0">
                 <div className="py-1">
                   <h3 className="text-xs font-extrabold tracking-wider text-slate-800 uppercase">
@@ -2963,15 +3068,16 @@ export function PuntoDeVenta() {
                     <thead className="bg-slate-900 text-white font-extrabold uppercase text-[11px] tracking-wider sticky top-0">
                       <tr>
                         <th className="p-2.5 border-r border-slate-800">Descripción</th>
-                        <th className="p-2.5 border-r border-slate-800 text-center w-16">Cant</th>
-                        <th className="p-2.5 border-r border-slate-800 text-right w-24">Valor</th>
-                        <th className="p-2.5 text-right w-24">Total</th>
+                        <th className="p-2.5 border-r border-slate-800 text-center w-12">Cant</th>
+                        <th className="p-2.5 border-r border-slate-800 text-right w-20">Valor</th>
+                        <th className="p-2.5 border-r border-slate-800 text-right w-20">Total</th>
+                        <th className="p-2.5 text-center w-28">Estado / Ubicación</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {apartadoItems.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-16 text-center text-slate-400 text-xs font-semibold">
+                          <td colSpan={5} className="py-16 text-center text-slate-400 text-xs font-semibold">
                             Sin artículos cargados.
                           </td>
                         </tr>
@@ -2987,8 +3093,23 @@ export function PuntoDeVenta() {
                             <td className="p-2.5 text-right font-mono font-bold border-r border-slate-100">
                               ${Number(it.VALOR || 0).toLocaleString()}
                             </td>
-                            <td className="p-2.5 text-right font-mono font-black text-slate-900">
+                            <td className="p-2.5 text-right font-mono font-black text-slate-900 border-r border-slate-100">
                               ${Number(it.TOTAL || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              {it.estadoPrenda === "DEVUELTO A TIENDA" || apartadoYaDevuelto ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-black">
+                                  ✓ DEVUELTO
+                                </span>
+                              ) : it.estadoPrenda === "EN ALQUILER" || apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-100 text-indigo-800 px-2 py-0.5 text-[10px] font-black">
+                                  👗 EN ALQUILER
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-black">
+                                  📦 EN BODEGA
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))
@@ -3156,50 +3277,58 @@ export function PuntoDeVenta() {
       {/* =========================================================
           DIALOGO DE CONFIRMACIÓN: ¿Desea Darle Salida AL Traje De bodega?
       ========================================================= */}
+      {/* =========================================================
+          DIALOGO DE CONFIRMACIÓN: ¿Desea Entregar Prenda o Guardar en Bodega?
+      ========================================================= */}
       <Dialog open={modalPreguntaSalida} onOpenChange={setModalPreguntaSalida}>
-        <DialogContent className="max-w-sm bg-white p-0 border border-slate-200/90 shadow-2xl rounded-2xl overflow-hidden z-[99999]">
+        <DialogContent className="max-w-md bg-white p-0 border border-slate-300 shadow-2xl rounded-2xl overflow-hidden z-[99999]">
           <div className="flex items-center justify-between px-5 py-3.5 bg-slate-900 text-white select-none">
-            <span className="text-xs font-bold text-slate-100">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-100">
               Confirmar Entrega de Prenda
             </span>
             <button
               type="button"
               onClick={() => handleConfirmarSalidaBodega(false)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-white transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="p-5 flex items-start gap-4 bg-slate-50/50">
-            <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-700 font-bold">
-              ✓
-            </div>
+          <div className="p-6 space-y-4 bg-slate-50/50">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 text-2xl font-black shadow-2xs">
+                👗
+              </div>
 
-            <div className="space-y-1 font-sans text-xs text-slate-800">
-              <p className="font-bold text-sm text-slate-900">
-                ¿Desea Darle Salida a la Prenda de Bodega?
-              </p>
-              <p className="text-[11px] text-slate-600 font-medium">
-                El saldo restante es $0. El estado cambiará a EN ALQUILER.
-              </p>
+              <div className="space-y-1.5 font-sans text-xs text-slate-800">
+                <h4 className="font-black text-sm text-slate-900">
+                  ¡El saldo ha quedado en $0!
+                </h4>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  ¿Deseas <strong>entregar la prenda al cliente en este momento</strong> o permanece guardada en bodega?
+                </p>
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] font-bold text-amber-900 leading-snug">
+                  ⏰ <strong>Importante:</strong> Si sale ahora, pasará de <strong>BODEGA</strong> a <strong>EN ALQUILER</strong> y empezarán a contar los <strong>3 DÍAS reglamentarios</strong> para su devolución.
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 p-4 bg-white border-t border-slate-200">
+          <div className="flex items-center justify-end gap-2.5 p-4 bg-white border-t border-slate-200">
             <button
               type="button"
               onClick={() => handleConfirmarSalidaBodega(false)}
-              className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-200"
+              className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-all"
             >
-              No
+              📦 No, Sigue en Bodega
             </button>
             <button
               type="button"
               onClick={() => handleConfirmarSalidaBodega(true)}
-              className="rounded-xl bg-emerald-600 px-5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm"
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-black text-white shadow-sm active:scale-95 transition-all"
             >
-              Sí, Entregar
+              👗 Sí, Entregar al Cliente (Inicia 3 Días)
             </button>
           </div>
         </DialogContent>
