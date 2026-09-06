@@ -130,6 +130,18 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
   }
 }
 
+export async function contarClientesTotal(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from("CLIENTES" as any)
+      .select("*", { count: "exact", head: true });
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function listarTodosLosClientes(search = ""): Promise<Cliente[]> {
   try {
     let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE");
@@ -141,7 +153,7 @@ export async function listarTodosLosClientes(search = ""): Promise<Cliente[]> {
         query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
       }
     }
-    const { data, error } = await query.limit(300);
+    const { data, error } = await query.limit(5000);
     if (error) throw error;
     return (data as unknown as Cliente[]) ?? [];
   } catch (err) {
