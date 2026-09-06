@@ -43,6 +43,11 @@ import {
   type ResultadoImportacionExcel,
   type ResultadoEjecucionSql,
 } from "@/services/mantenimientoMigracionService";
+import {
+  TABLAS_IMPORTABLES,
+  descargarPlantillaTabla,
+  importarLoteTabla,
+} from "@/services/importacionTablasService";
 
 interface MantenimientoMigracionModalProps {
   open: boolean;
@@ -94,7 +99,7 @@ export function MantenimientoMigracionModal({
   const [procesandoPurga, setProcesandoPurga] = useState(false);
 
   // Estados de Operación: Migración Excel
-  const [tablaDestinoExcel, setTablaDestinoExcel] = useState<"ARTICULO" | "CLIENTES">("ARTICULO");
+  const [tablaDestinoExcel, setTablaDestinoExcel] = useState<string>("ARTICULO");
   const [modoImportacion, setModoImportacion] = useState<"upsert" | "insert">("upsert");
   const [archivoExcelSeleccionado, setArchivoExcelSeleccionado] = useState<File | null>(null);
   const [previewColumnas, setPreviewColumnas] = useState<string[]>([]);
@@ -252,20 +257,14 @@ export function MantenimientoMigracionModal({
     setResultadoExcel(null);
 
     try {
-      let resultado: ResultadoImportacionExcel;
-      if (tablaDestinoExcel === "ARTICULO") {
-        resultado = await importarLoteArticulos(previewFilas, modoImportacion);
-      } else {
-        resultado = await importarLoteClientes(previewFilas, modoImportacion);
-      }
-
+      const resultado = await importarLoteTabla(tablaDestinoExcel, previewFilas, modoImportacion);
       setResultadoExcel(resultado);
       if (resultado.insertados > 0 || resultado.actualizados > 0) {
         toast.success(`¡Importación exitosa! ${resultado.insertados + resultado.actualizados} registros procesados.`);
         await cargarEstadisticas();
         onDatosActualizados?.();
       } else {
-        toast.error("No se pudieron importar los registros. Revisa los detalles.");
+        toast.error("No se pudieron importar los registros. Revisa los detalles de error.");
       }
     } catch (err: any) {
       console.error(err);
@@ -885,14 +884,18 @@ UPDATE ARTICULO SET STOCK = 0;`
                   <select
                     value={tablaDestinoExcel}
                     onChange={(e) => {
-                      setTablaDestinoExcel(e.target.value as any);
+                      setTablaDestinoExcel(e.target.value);
                       setPreviewFilas([]);
                       setArchivoExcelSeleccionado(null);
+                      setResultadoExcel(null);
                     }}
                     className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="ARTICULO">Catálogo de Artículos / Trajes</option>
-                    <option value="CLIENTES">Directorio de Clientes</option>
+                    {TABLAS_IMPORTABLES.map((tab) => (
+                      <option key={tab.clave} value={tab.clave}>
+                        {tab.etiqueta} ({tab.tabla})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -914,7 +917,7 @@ UPDATE ARTICULO SET STOCK = 0;`
                   <div className="text-xs font-black uppercase text-emerald-950">Plantilla Oficial Excel:</div>
                   <button
                     type="button"
-                    onClick={() => descargarPlantillaExcel(tablaDestinoExcel)}
+                    onClick={() => descargarPlantillaTabla(tablaDestinoExcel)}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 text-xs font-black uppercase shadow-xs transition-all"
                   >
                     <Download className="h-3.5 w-3.5" />

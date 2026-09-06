@@ -23,6 +23,41 @@ export interface TablaImportable {
 
 export const TABLAS_IMPORTABLES: TablaImportable[] = [
   {
+    clave: "ARTICULO",
+    etiqueta: "Artículos / Trajes (Inventario)",
+    tabla: "ARTICULO",
+    conflicto: "CODBARRAS",
+    campoObligatorio: "DESCRIPCION",
+    campos: [
+      { destino: "CODBARRAS", alias: ["CODBARRAS", "CODIGO", "BARCODE", "REF", "REFERENCIA", "CODIGO_BARRAS"], tipo: "texto", ejemplo: "TRAJE-0001" },
+      { destino: "DESCRIPCION", alias: ["DESCRIPCION", "NOMBRE", "ARTICULO", "TRAJE", "DETALLE"], tipo: "texto", mayusculas: true, ejemplo: "DISFRAZ PIRATA CABALLERO" },
+      { destino: "TALLA", alias: ["TALLA", "SIZE", "TAMANO"], tipo: "texto", mayusculas: true, ejemplo: "M" },
+      { destino: "STOCK", alias: ["STOCK", "CANTIDAD", "EXISTENCIA", "CANT"], tipo: "entero", ejemplo: 3 },
+      { destino: "VALOR", alias: ["VALOR", "PRECIO", "VALOR_ALQUILER", "ALQUILER"], tipo: "numero", ejemplo: 85000 },
+      { destino: "VALORDEPOSITO", alias: ["VALORDEPOSITO", "DEPOSITO", "GARANTIA", "FIANZA"], tipo: "numero", ejemplo: 40000 },
+      { destino: "DETALLE", alias: ["DETALLE", "ACCESORIOS", "COMPLEMENTOS", "PIEZAS", "NOTAS"], tipo: "texto", ejemplo: "SOMBRERO, ESPADA, CHALECO" },
+      { destino: "ACTIVO", alias: ["ACTIVO", "ESTADO", "HABILITADO"], tipo: "booleano", ejemplo: "SI" },
+    ],
+  },
+  {
+    clave: "CLIENTES",
+    etiqueta: "Directorio de Clientes",
+    tabla: "CLIENTES",
+    conflicto: "CEDULA",
+    campoObligatorio: "NOMBRE",
+    campos: [
+      { destino: "CEDULA", alias: ["CEDULA", "DOCUMENTO", "NIT", "IDENTIFICACION", "CC", "DNI", "ID"], tipo: "entero", ejemplo: 1098613309 },
+      { destino: "NOMBRE", alias: ["NOMBRE", "CLIENTE", "NOMBRES", "RAZONSOCIAL", "RAZON_SOCIAL", "APELLIDOS"], tipo: "texto", mayusculas: true, ejemplo: "JUAN PEREZ GOMEZ" },
+      { destino: "DIRECCION", alias: ["DIRECCION", "DIR", "DOMICILIO", "DIRECCION_RESIDENCIA"], tipo: "texto", mayusculas: true, ejemplo: "CALLE 45 # 23-10 BUCARAMANGA" },
+      { destino: "TELEFONO", alias: ["TELEFONO", "CELULAR", "TEL", "MOVIL", "WHATSAPP", "TELEFONO_1"], tipo: "texto", ejemplo: "3001234567" },
+      { destino: "TELEFONO2", alias: ["TELEFONO2", "TEL2", "CELULAR2", "TELEFONO_2", "FIJO"], tipo: "texto", ejemplo: "3189876543" },
+      { destino: "EMPRESA", alias: ["EMPRESA", "EMPRESA_CLIENTE", "LUGAR_TRABAJO"], tipo: "texto", mayusculas: true, ejemplo: "PUBLICIDAD EXPRESS" },
+      { destino: "DIRECCIONEMP", alias: ["DIRECCIONEMP", "DIRECCION_EMPRESA", "DIREMP"], tipo: "texto", mayusculas: true, ejemplo: "CRA 27 # 36-12" },
+      { destino: "SALDO", alias: ["SALDO", "DEUDA", "SALDO_PENDIENTE"], tipo: "numero", ejemplo: 0 },
+      { destino: "NOTA", alias: ["NOTA", "NOTAS", "OBSERVACION", "OBSERVACIONES"], tipo: "texto", ejemplo: "CLIENTE FRECUENTE" },
+    ],
+  },
+  {
     clave: "ACCESORIOS",
     etiqueta: "Accesorios (complementos de trajes)",
     tabla: "ACCESORIOS",
