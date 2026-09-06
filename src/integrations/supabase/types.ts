@@ -53,6 +53,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ACCESORIOS: {
+        Row: {
+          ACTIVO: boolean | null
+          CATEGORIA: string | null
+          CODBARRAS: string | null
+          DESCRIPCION: string
+          FECHACREACION: string | null
+          IDACCESORIO: number
+          IDARTICULO_PADRE: number | null
+          NOTAS: string | null
+          STOCK: number | null
+          TALLA: string | null
+          VALOR: number | null
+          VALORDEPOSITO: number | null
+        }
+        Insert: {
+          ACTIVO?: boolean | null
+          CATEGORIA?: string | null
+          CODBARRAS?: string | null
+          DESCRIPCION: string
+          FECHACREACION?: string | null
+          IDACCESORIO?: number
+          IDARTICULO_PADRE?: number | null
+          NOTAS?: string | null
+          STOCK?: number | null
+          TALLA?: string | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Update: {
+          ACTIVO?: boolean | null
+          CATEGORIA?: string | null
+          CODBARRAS?: string | null
+          DESCRIPCION?: string
+          FECHACREACION?: string | null
+          IDACCESORIO?: number
+          IDARTICULO_PADRE?: number | null
+          NOTAS?: string | null
+          STOCK?: number | null
+          TALLA?: string | null
+          VALOR?: number | null
+          VALORDEPOSITO?: number | null
+        }
+        Relationships: []
+      }
       ARTICULO: {
         Row: {
           CODBARRAS: string | null
@@ -116,8 +161,11 @@ export type Database = {
           BARRAS: string | null
           CANTIDAD: number | null
           DESCRIPCION: string | null
+          ES_ACCESORIO: boolean | null
+          ID_TRAJE_PADRE: string | null
           IDFACTURA: number | null
           NUMEROFACT: string | null
+          PIEZAS_INCLUIDAS: string | null
           TOTAL: number | null
           TOTALALQUILER: number | null
           TOTALDEPOSITO: number | null
@@ -129,8 +177,11 @@ export type Database = {
           BARRAS?: string | null
           CANTIDAD?: number | null
           DESCRIPCION?: string | null
+          ES_ACCESORIO?: boolean | null
+          ID_TRAJE_PADRE?: string | null
           IDFACTURA?: number | null
           NUMEROFACT?: string | null
+          PIEZAS_INCLUIDAS?: string | null
           TOTAL?: number | null
           TOTALALQUILER?: number | null
           TOTALDEPOSITO?: number | null
@@ -142,8 +193,11 @@ export type Database = {
           BARRAS?: string | null
           CANTIDAD?: number | null
           DESCRIPCION?: string | null
+          ES_ACCESORIO?: boolean | null
+          ID_TRAJE_PADRE?: string | null
           IDFACTURA?: number | null
           NUMEROFACT?: string | null
+          PIEZAS_INCLUIDAS?: string | null
           TOTAL?: number | null
           TOTALALQUILER?: number | null
           TOTALDEPOSITO?: number | null
@@ -566,15 +620,7 @@ export type Database = {
           TOTAL_SALDO?: number | null
           VENDEDOR?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_factura_automatic"
-            columns: ["AUTOMATIC"]
-            isOneToOne: false
-            referencedRelation: "CAMPOFACTURA"
-            referencedColumns: ["AUTOMATIC"]
-          },
-        ]
+        Relationships: []
       }
       FACTURA1: {
         Row: {

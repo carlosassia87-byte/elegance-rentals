@@ -156,7 +156,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
           <span>CAJERO:</span>
-          <span style="font-weight: 900;">${cajeroNombre || "SUPERVISOR"}</span>
+          <span style="font-weight: 900;">${cajeroNombre || (terminal as any).nombreCajero || "SUPERVISOR"}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
           <span>FECHA DE CUADRE:</span>
