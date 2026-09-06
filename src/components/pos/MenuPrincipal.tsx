@@ -467,10 +467,11 @@ export function MenuPrincipal({
               </button>
             )}
 
-            {permisos.gestionUsuarios && (
+            {(permisos.gestionUsuarios || usuario.rol === "ADMINISTRADOR" || usuario.rol === "SUPER ADMIN") && (
               <button
+                type="button"
                 onClick={() => handleAccionConPermiso("mantenimiento_migracion", true, "Mantenimiento & Migración")}
-                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-amber-900 hover:bg-amber-50 transition-all group ${
+                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-amber-900 hover:bg-amber-50 transition-all group cursor-pointer ${
                   sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
                 }`}
                 title="Poner inventario en 0, reseteo del sistema y migración masiva por Excel / SQL"

@@ -3858,7 +3858,20 @@ export function PuntoDeVenta() {
           }
         }}
       />
+
+      {/* =========================================================
+          MODAL: MANTENIMIENTO, RESETEO & MIGRACIÓN DE DATOS (EXCEL / SQL)
+      ========================================================= */}
+      <MantenimientoMigracionModal
+        open={modalMantenimiento}
+        onOpenChange={setModalMantenimiento}
+        cajeroNombre={usuarioActivo?.nombre || cajero}
+        onDatosActualizados={() => {
+          cargarArticulos();
+        }}
+      />
     </div>
   );
 }
+
 
