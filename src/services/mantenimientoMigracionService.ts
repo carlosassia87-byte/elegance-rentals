@@ -208,8 +208,8 @@ export async function ponerTodoElInventarioEnCero(usuario = "ADMINISTRADOR"): Pr
 }> {
   try {
     // 1. Obtener todos los artículos para conocer el stock previo
-    const { data: arts, error: errFetch } = await supabase
-      .from("ARTICULO" as any)
+    const { data: arts, error: errFetch } = await (supabase
+      .from("ARTICULO" as any) as any)
       .select("*");
 
     let totalArts = 0;
@@ -217,17 +217,17 @@ export async function ponerTodoElInventarioEnCero(usuario = "ADMINISTRADOR"): Pr
     if (!errFetch && arts && arts.length > 0) {
       totalArts = arts.length;
       // Actualizar en Supabase a STOCK = 0
-      const { error: errUpdate } = await supabase
-        .from("ARTICULO" as any)
+      const { error: errUpdate } = await (supabase
+        .from("ARTICULO" as any) as any)
         .update({ STOCK: 0 })
         .neq("STOCK", 0); // Actualiza todos los que tengan stock > 0 o <> 0
 
       if (errUpdate) {
         console.warn("Error en update masivo Supabase, intentando uno a uno:", errUpdate);
         // Fallback actualización por lotes
-        for (const it of arts) {
+        for (const it of (arts as any[])) {
           if (it.STOCK !== 0) {
-            await supabase.from("ARTICULO" as any).update({ STOCK: 0 }).eq("IDARTICULO", it.IDARTICULO);
+            await (supabase.from("ARTICULO" as any) as any).update({ STOCK: 0 }).eq("IDARTICULO", it.IDARTICULO);
           }
         }
       }
@@ -301,8 +301,8 @@ export async function purgarDatosSeleccionados(
     // 1. Facturas y Campos Factura
     if (opciones.facturas) {
       try {
-        await supabase.from("CAMPOFACTURA" as any).delete().neq("NUMEROFACT", "___IMPOSSIBLE___");
-        const { count } = await supabase.from("FACTURA" as any).delete().neq("NUMEROFACT", "___IMPOSSIBLE___", { count: "exact" });
+        await (supabase.from("CAMPOFACTURA" as any) as any).delete().neq("NUMEROFACT", "___IMPOSSIBLE___");
+        const { count } = await (supabase.from("FACTURA" as any) as any).delete({ count: "exact" }).neq("NUMEROFACT", "___IMPOSSIBLE___");
         resultado.resumen.facturasEliminadas = count ?? 1;
       } catch (e) {
         console.warn("Error borrando facturas supabase:", e);
@@ -315,7 +315,7 @@ export async function purgarDatosSeleccionados(
     // 2. Abonos de Clientes
     if (opciones.abonos) {
       try {
-        const { count } = await supabase.from("ABONO_CLIENTE" as any).delete().neq("NUMEROABONO", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("ABONO_CLIENTE" as any) as any).delete({ count: "exact" }).neq("NUMEROABONO", "___IMPOSSIBLE___");
         resultado.resumen.abonosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando abonos supabase:", e);
@@ -326,7 +326,7 @@ export async function purgarDatosSeleccionados(
     // 3. Depósitos Devueltos
     if (opciones.depositosDevueltos) {
       try {
-        const { count } = await supabase.from("depositoentregado" as any).delete().neq("NUMEROFACTURA", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("depositoentregado" as any) as any).delete({ count: "exact" }).neq("NUMEROFACTURA", "___IMPOSSIBLE___");
         resultado.resumen.depositosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando depósitos supabase:", e);
@@ -337,7 +337,7 @@ export async function purgarDatosSeleccionados(
     // 4. Gastos
     if (opciones.gastos) {
       try {
-        const { count } = await supabase.from("gastos" as any).delete().neq("NUMEROGASTO", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("gastos" as any) as any).delete({ count: "exact" }).neq("NUMEROGASTO", "___IMPOSSIBLE___");
         resultado.resumen.gastosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando gastos supabase:", e);
@@ -348,7 +348,7 @@ export async function purgarDatosSeleccionados(
     // 5. Movimientos / Kardex
     if (opciones.movimientosKardex) {
       try {
-        const { count } = await supabase.from("MOVIMIENTOS_INVENTARIO" as any).delete().neq("CODBARRAS", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("MOVIMIENTOS_INVENTARIO" as any) as any).delete({ count: "exact" }).neq("CODBARRAS", "___IMPOSSIBLE___");
         resultado.resumen.movimientosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando movimientos kardex supabase:", e);
@@ -365,7 +365,7 @@ export async function purgarDatosSeleccionados(
     // 7. Catálogo de Artículos (OPCIONAL)
     if (opciones.articulos) {
       try {
-        const { count } = await supabase.from("ARTICULO" as any).delete().neq("CODBARRAS", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("ARTICULO" as any) as any).delete({ count: "exact" }).neq("CODBARRAS", "___IMPOSSIBLE___");
         resultado.resumen.articulosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando artículos supabase:", e);
@@ -376,7 +376,7 @@ export async function purgarDatosSeleccionados(
     // 8. Catálogo de Clientes (OPCIONAL)
     if (opciones.clientes) {
       try {
-        const { count } = await supabase.from("CLIENTES" as any).delete().neq("NOMBRE", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await (supabase.from("CLIENTES" as any) as any).delete({ count: "exact" }).neq("NOMBRE", "___IMPOSSIBLE___");
         resultado.resumen.clientesEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando clientes supabase:", e);
@@ -621,8 +621,9 @@ export async function importarLoteArticulos(
     const articulosActuales = JSON.parse(localStorage.getItem(LOCAL_KEYS.ARTICULOS) || "[]");
     const mapaActual = new Map(articulosActuales.map((a: any) => [a.CODBARRAS, a]));
     for (const art of articulosNormalizados) {
+      const prev = mapaActual.get(art.CODBARRAS!) as any;
       mapaActual.set(art.CODBARRAS!, {
-        IDARTICULO: art.IDARTICULO || (mapaActual.get(art.CODBARRAS!)?.IDARTICULO || Date.now() + Math.floor(Math.random() * 1000)),
+        IDARTICULO: art.IDARTICULO || (prev?.IDARTICULO || Date.now() + Math.floor(Math.random() * 1000)),
         ...art,
       });
     }
@@ -634,7 +635,10 @@ export async function importarLoteArticulos(
   return resultado;
 }
 
-// Importar Lote de Clientes
+// ==========================================
+// 4. MIGRACIÓN / IMPORTACIÓN EN MASA DE CLIENTES
+// ==========================================
+
 export async function importarLoteClientes(
   filas: any[],
   modo: "upsert" | "insert" = "upsert"
