@@ -225,7 +225,7 @@ export async function ponerTodoElInventarioEnCero(usuario = "ADMINISTRADOR"): Pr
       if (errUpdate) {
         console.warn("Error en update masivo Supabase, intentando uno a uno:", errUpdate);
         // Fallback actualización por lotes
-        for (const it of arts) {
+        for (const it of (arts as any[])) {
           if (it.STOCK !== 0) {
             await supabase.from("ARTICULO" as any).update({ STOCK: 0 }).eq("IDARTICULO", it.IDARTICULO);
           }
@@ -302,7 +302,7 @@ export async function purgarDatosSeleccionados(
     if (opciones.facturas) {
       try {
         await supabase.from("CAMPOFACTURA" as any).delete().neq("NUMEROFACT", "___IMPOSSIBLE___");
-        const { count } = await supabase.from("FACTURA" as any).delete().neq("NUMEROFACT", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("FACTURA" as any).delete({ count: "exact" }).neq("NUMEROFACT", "___IMPOSSIBLE___");
         resultado.resumen.facturasEliminadas = count ?? 1;
       } catch (e) {
         console.warn("Error borrando facturas supabase:", e);
@@ -315,7 +315,7 @@ export async function purgarDatosSeleccionados(
     // 2. Abonos de Clientes
     if (opciones.abonos) {
       try {
-        const { count } = await supabase.from("ABONO_CLIENTE" as any).delete().neq("NUMEROABONO", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("ABONO_CLIENTE" as any).delete({ count: "exact" }).neq("NUMEROABONO", "___IMPOSSIBLE___");
         resultado.resumen.abonosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando abonos supabase:", e);
@@ -326,7 +326,7 @@ export async function purgarDatosSeleccionados(
     // 3. Depósitos Devueltos
     if (opciones.depositosDevueltos) {
       try {
-        const { count } = await supabase.from("depositoentregado" as any).delete().neq("NUMEROFACTURA", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("depositoentregado" as any).delete({ count: "exact" }).neq("NUMEROFACTURA", "___IMPOSSIBLE___");
         resultado.resumen.depositosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando depósitos supabase:", e);
@@ -337,7 +337,7 @@ export async function purgarDatosSeleccionados(
     // 4. Gastos
     if (opciones.gastos) {
       try {
-        const { count } = await supabase.from("gastos" as any).delete().neq("NUMEROGASTO", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("gastos" as any).delete({ count: "exact" }).neq("NUMEROGASTO", "___IMPOSSIBLE___");
         resultado.resumen.gastosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando gastos supabase:", e);
@@ -348,7 +348,7 @@ export async function purgarDatosSeleccionados(
     // 5. Movimientos / Kardex
     if (opciones.movimientosKardex) {
       try {
-        const { count } = await supabase.from("MOVIMIENTOS_INVENTARIO" as any).delete().neq("CODBARRAS", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("MOVIMIENTOS_INVENTARIO" as any).delete({ count: "exact" }).neq("CODBARRAS", "___IMPOSSIBLE___");
         resultado.resumen.movimientosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando movimientos kardex supabase:", e);
@@ -365,7 +365,7 @@ export async function purgarDatosSeleccionados(
     // 7. Catálogo de Artículos (OPCIONAL)
     if (opciones.articulos) {
       try {
-        const { count } = await supabase.from("ARTICULO" as any).delete().neq("CODBARRAS", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("ARTICULO" as any).delete({ count: "exact" }).neq("CODBARRAS", "___IMPOSSIBLE___");
         resultado.resumen.articulosEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando artículos supabase:", e);
@@ -376,7 +376,7 @@ export async function purgarDatosSeleccionados(
     // 8. Catálogo de Clientes (OPCIONAL)
     if (opciones.clientes) {
       try {
-        const { count } = await supabase.from("CLIENTES" as any).delete().neq("NOMBRE", "___IMPOSSIBLE___", { count: "exact" });
+        const { count } = await supabase.from("CLIENTES" as any).delete({ count: "exact" }).neq("NOMBRE", "___IMPOSSIBLE___");
         resultado.resumen.clientesEliminados = count ?? 1;
       } catch (e) {
         console.warn("Error borrando clientes supabase:", e);
@@ -619,7 +619,7 @@ export async function importarLoteArticulos(
   // Sincronizar también con LocalStorage
   try {
     const articulosActuales = JSON.parse(localStorage.getItem(LOCAL_KEYS.ARTICULOS) || "[]");
-    const mapaActual = new Map(articulosActuales.map((a: any) => [a.CODBARRAS, a]));
+    const mapaActual = new Map<any, any>(articulosActuales.map((a: any) => [a.CODBARRAS, a]));
     for (const art of articulosNormalizados) {
       mapaActual.set(art.CODBARRAS!, {
         IDARTICULO: art.IDARTICULO || (mapaActual.get(art.CODBARRAS!)?.IDARTICULO || Date.now() + Math.floor(Math.random() * 1000)),
@@ -723,7 +723,7 @@ export async function importarLoteClientes(
   // LocalStorage sync
   try {
     const clientesActuales = JSON.parse(localStorage.getItem(LOCAL_KEYS.CLIENTES) || "[]");
-    const mapaActual = new Map(clientesActuales.map((c: any) => [c.CEDULA, c]));
+    const mapaActual = new Map<any, any>(clientesActuales.map((c: any) => [c.CEDULA, c]));
     for (const cli of clientesNormalizados) {
       mapaActual.set(cli.CEDULA!, {
         IDCLIENTES: cli.IDCLIENTES || (mapaActual.get(cli.CEDULA!)?.IDCLIENTES || Date.now() + Math.floor(Math.random() * 1000)),
