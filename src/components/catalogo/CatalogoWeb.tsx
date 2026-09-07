@@ -22,8 +22,9 @@ import {
   ShoppingBag,
   ExternalLink,
 } from "lucide-react";
-import type { Articulo } from "@/types/database.types";
+import type { Articulo, Accesorio } from "@/types/database.types";
 import { listarArticulos } from "@/services/posService";
+import { listarAccesorios } from "@/services/accesoriosService";
 import { obtenerConfiguracionEmpresa, type EmpresaConfig, EMPRESA_DEFAULT } from "@/services/empresaCajaService";
 
 interface CatalogoWebProps {
@@ -45,8 +46,12 @@ const CATEGORIAS_FILTRO = [
 
 export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   const [articulos, setArticulos] = useState<Articulo[]>([]);
+  const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
   const [empresa, setEmpresa] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
   const [cargando, setCargando] = useState(true);
+
+  // Sección: trajes o accesorios
+  const [seccion, setSeccion] = useState<"TRAJES" | "ACCESORIOS">("TRAJES");
 
   // Filtros
   const [busqueda, setBusqueda] = useState("");
@@ -65,11 +70,13 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   async function cargarCatalogo() {
     setCargando(true);
     try {
-      const [arts, emp] = await Promise.all([
-        listarArticulos(),
+      const [arts, accs, emp] = await Promise.all([
+        listarArticulos("", 2000),
+        listarAccesorios(),
         obtenerConfiguracionEmpresa(),
       ]);
       setArticulos(arts);
+      setAccesorios(accs.filter((a) => a.ACTIVO !== false));
       setEmpresa(emp);
     } catch (e) {
       console.error("Error cargando catálogo web:", e);
@@ -128,12 +135,44 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       });
   }, [articulos, busqueda, categoriaSeleccionada, filtroTalla, soloDisponibles, ordenPrecio]);
 
+  // Accesorios filtrados (búsqueda + talla + disponibilidad + orden)
+  const accesoriosFiltrados = useMemo(() => {
+    return accesorios
+      .filter((acc) => {
+        if (busqueda.trim()) {
+          const q = busqueda.toLowerCase().trim();
+          const match =
+            (acc.DESCRIPCION || "").toLowerCase().includes(q) ||
+            (acc.CODBARRAS || "").toLowerCase().includes(q) ||
+            (acc.CATEGORIA || "").toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        if (filtroTalla !== "TODAS") {
+          const t = (acc.TALLA || "").trim().toUpperCase();
+          if (t !== filtroTalla && t !== "U") return false;
+        }
+        if (soloDisponibles && Number(acc.STOCK || 0) <= 0) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (ordenPrecio === "menor") return Number(a.VALOR || 0) - Number(b.VALOR || 0);
+        if (ordenPrecio === "mayor") return Number(b.VALOR || 0) - Number(a.VALOR || 0);
+        return 0;
+      });
+  }, [accesorios, busqueda, filtroTalla, soloDisponibles, ordenPrecio]);
+
+  // Número de WhatsApp: preferimos el celular (empieza por 3)
+  const telefonoWhatsApp = useMemo(() => {
+    const candidatos = [empresa.telefono2, empresa.telefono1]
+      .map((t) => (t || "").replace(/\D/g, ""))
+      .filter(Boolean);
+    const celular = candidatos.find((t) => t.startsWith("3") && t.length >= 10);
+    const elegido = celular || candidatos[0] || "3151234567";
+    return elegido.startsWith("57") ? elegido : `57${elegido}`;
+  }, [empresa.telefono1, empresa.telefono2]);
+
   // WhatsApp Link Generador
   function handleApartarPorWhatsApp(art: Articulo) {
-    const rawTel = empresa.telefono1 || "3151234567";
-    const cleanTel = rawTel.replace(/\D/g, "");
-    const telFinal = cleanTel.startsWith("57") ? cleanTel : `57${cleanTel}`;
-
     const texto = encodeURIComponent(
       `¡Hola! 👋 Vi en su catálogo web el traje:\n\n` +
       `🎭 *${art.DESCRIPCION}*\n` +
@@ -143,7 +182,18 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       `Me gustaría consultar disponibilidad para apartarlo. ¿Tienen disponible para esa fecha?`
     );
 
-    window.open(`https://wa.me/${telFinal}?text=${texto}`, "_blank");
+    window.open(`https://wa.me/${telefonoWhatsApp}?text=${texto}`, "_blank");
+  }
+
+  function handleApartarAccesorioPorWhatsApp(acc: Accesorio) {
+    const texto = encodeURIComponent(
+      `¡Hola! 👋 Vi en su catálogo web el accesorio:\n\n` +
+      `🎩 *${acc.DESCRIPCION}*\n` +
+      `🏷️ Código: *${acc.CODBARRAS || "S/C"}*\n` +
+      `💰 Alquiler: *$${Number(acc.VALOR || 0).toLocaleString("es-CO")}*\n\n` +
+      `¿Está disponible para apartarlo?`
+    );
+    window.open(`https://wa.me/${telefonoWhatsApp}?text=${texto}`, "_blank");
   }
 
   return (
@@ -328,6 +378,74 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
             <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-sm font-bold text-slate-400">Cargando catálogo en tiempo real...</p>
           </div>
+        ) : seccion === "ACCESORIOS" ? (
+          accesoriosFiltrados.length === 0 ? (
+            <div className="py-20 text-center space-y-3 bg-slate-800/40 rounded-3xl border border-slate-800 p-8 max-w-lg mx-auto">
+              <PackageOpen className="mx-auto h-14 w-14 text-slate-500" />
+              <h3 className="text-lg font-black text-white">Aún no hay accesorios publicados</h3>
+              <p className="text-xs text-slate-400">
+                Pronto verás sombreros, pelucas, máscaras, capas y más complementos para tu disfraz.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {accesoriosFiltrados.map((acc) => {
+                const disponible = Number(acc.STOCK || 0) > 0;
+                return (
+                  <div
+                    key={acc.IDACCESORIO ?? acc.CODBARRAS}
+                    className="group flex flex-col rounded-3xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 shadow-lg transition-all p-5 space-y-3"
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                      <span className="uppercase text-indigo-400 font-bold tracking-wide">
+                        {acc.CATEGORIA || "ACCESORIO"}
+                      </span>
+                      <span>{acc.CODBARRAS || "S/C"}</span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-white leading-snug line-clamp-2">{acc.DESCRIPCION}</h4>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
+                          disponible ? "bg-emerald-500/90 text-white" : "bg-rose-600/90 text-white"
+                        }`}
+                      >
+                        {disponible ? "Disponible" : "Agotado"}
+                      </span>
+                      <span className="rounded-xl bg-slate-950/70 border border-slate-700 px-2 py-0.5 text-[11px] font-black text-indigo-300">
+                        Talla: {acc.TALLA || "U"}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-700/60 flex items-baseline justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Alquiler</div>
+                        <div className="text-lg font-black text-indigo-400">
+                          ${Number(acc.VALOR || 0).toLocaleString("es-CO")}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Depósito</div>
+                        <div className="text-xs font-bold text-amber-400">
+                          +${Number(acc.VALORDEPOSITO || 0).toLocaleString("es-CO")}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleApartarAccesorioPorWhatsApp(acc)}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 py-2.5 text-xs font-black text-white shadow-md transition-all active:scale-95"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-white" />
+                      <span>Apartar</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : articulosFiltrados.length === 0 ? (
           <div className="py-20 text-center space-y-3 bg-slate-800/40 rounded-3xl border border-slate-800 p-8 max-w-lg mx-auto">
             <PackageOpen className="mx-auto h-14 w-14 text-slate-500" />
