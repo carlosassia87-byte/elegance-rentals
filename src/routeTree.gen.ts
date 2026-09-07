@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as SuitsIdRouteImport } from './routes/suits.$id'
 import { Route as AuthenticatedAdminRentalsRouteImport } from './routes/_authenticated/admin.rentals'
@@ -31,6 +32,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogoRoute = CatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -69,6 +75,7 @@ const AuthenticatedAdminSuitsIdEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/catalogo': typeof CatalogoRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/suits/$id': typeof SuitsIdRouteWithChildren
   '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/catalogo': typeof CatalogoRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/suits/$id': typeof SuitsIdRouteWithChildren
   '/admin/rentals': typeof AuthenticatedAdminRentalsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/catalogo': typeof CatalogoRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/suits/$id': typeof SuitsIdRouteWithChildren
   '/_authenticated/admin/rentals': typeof AuthenticatedAdminRentalsRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/catalogo'
     | '/admin'
     | '/suits/$id'
     | '/admin/rentals'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/catalogo'
     | '/admin'
     | '/suits/$id'
     | '/admin/rentals'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/catalogo'
     | '/_authenticated/admin'
     | '/suits/$id'
     | '/_authenticated/admin/rentals'
@@ -136,6 +148,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CatalogoRoute: typeof CatalogoRoute
   SuitsIdRoute: typeof SuitsIdRouteWithChildren
 }
 
@@ -160,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalogo': {
+      id: '/catalogo'
+      path: '/catalogo'
+      fullPath: '/catalogo'
+      preLoaderRoute: typeof CatalogoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CatalogoRoute: CatalogoRoute,
   SuitsIdRoute: SuitsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

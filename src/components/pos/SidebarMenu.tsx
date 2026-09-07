@@ -25,6 +25,7 @@ import {
   Bell,
   Database,
   Crown,
+  Globe,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
@@ -166,6 +167,20 @@ export function SidebarMenu({
                 <span className="font-extrabold text-purple-900">Módulo Accesorios</span>
               </div>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-200 text-purple-800 font-bold">NUEVO</span>
+            </button>
+
+            <button
+              onClick={() => {
+                window.open("/catalogo", "_blank");
+                onClose();
+              }}
+              className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-bold text-sm text-indigo-900 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200/70"
+            >
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5 text-indigo-600 group-hover:scale-110 transition-transform" />
+                <span className="font-extrabold text-indigo-900">🌐 Catálogo Web Online</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-200 text-indigo-800 font-bold">CLIENTES</span>
             </button>
           </div>
 

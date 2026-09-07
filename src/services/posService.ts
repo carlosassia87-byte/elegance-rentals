@@ -243,6 +243,20 @@ export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
   }
 }
 
+export async function toggleDisponibilidadArticulo(idArticulo: number, disponible: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("ARTICULO" as any)
+      .update({ DISPONIBLE: disponible })
+      .eq("IDARTICULO", idArticulo);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Error actualizando disponibilidad del artículo:", err);
+    return false;
+  }
+}
+
 // Claves de persistencia de respaldo
 const KEY_LOCAL_FACTURAS = "elegance_local_facturas";
 const KEY_LOCAL_CAMPOS = "elegance_local_campos_factura";

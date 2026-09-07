@@ -117,6 +117,11 @@ export interface DatosAlimentarInventario {
   costoUnitario?: number;
   notas?: string;
   usuario: string;
+  imagenUrl?: string;
+  disponible?: boolean;
+  categoria?: string;
+  destacado?: boolean;
+  descripcionWeb?: string;
 }
 
 export async function alimentarInventario(
@@ -145,6 +150,11 @@ export async function alimentarInventario(
     STOCK: stockNuevo,
     VALOR: Number(datos.valorAlquiler) || 0,
     VALORDEPOSITO: Number(datos.valorDeposito) || 0,
+    IMAGEN_URL: datos.imagenUrl ?? articuloExistente?.IMAGEN_URL,
+    DISPONIBLE: datos.disponible !== undefined ? datos.disponible : (articuloExistente?.DISPONIBLE ?? true),
+    CATEGORIA: (datos.categoria || articuloExistente?.CATEGORIA || "GENERAL").trim().toUpperCase(),
+    DESTACADO: datos.destacado !== undefined ? datos.destacado : (articuloExistente?.DESTACADO ?? false),
+    DESCRIPCION_WEB: datos.descripcionWeb ?? articuloExistente?.DESCRIPCION_WEB,
   };
 
   const articuloGuardado = await guardarArticulo(articuloParaGuardar);

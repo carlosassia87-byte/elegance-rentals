@@ -9,6 +9,11 @@ export interface Articulo {
   CODBARRAS: string;
   IDCAMPOFACTURA?: number | undefined;
   VALORDEPOSITO: number;
+  IMAGEN_URL?: string | undefined;
+  DISPONIBLE?: boolean | undefined;
+  CATEGORIA?: string | undefined;
+  DESTACADO?: boolean | undefined;
+  DESCRIPCION_WEB?: string | undefined;
 }
 
 export interface Cliente {

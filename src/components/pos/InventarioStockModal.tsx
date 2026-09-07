@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   X,
   Package,
@@ -24,10 +24,16 @@ import {
   Calendar,
   UserCheck,
   Tag,
+  Image as ImageIcon,
+  UploadCloud,
+  Globe,
+  Star,
+  Check,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Articulo } from "@/types/database.types";
-import { listarArticulos, eliminarArticulo } from "@/services/posService";
+import { listarArticulos, eliminarArticulo, toggleDisponibilidadArticulo, guardarArticulo } from "@/services/posService";
 import {
   alimentarInventario,
   ajustarStockManual,
@@ -36,6 +42,7 @@ import {
   type MovimientoInventario,
   type TipoMovimientoInventario,
 } from "@/services/inventarioService";
+import { subirFotoArticulo } from "@/services/storageService";
 
 interface InventarioStockModalProps {
   isOpen: boolean;
@@ -87,6 +94,15 @@ export function InventarioStockModal({
   const [formNotas, setFormNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  // Campos Web y Foto
+  const [formImagenUrl, setFormImagenUrl] = useState("");
+  const [formDisponible, setFormDisponible] = useState(true);
+  const [formCategoria, setFormCategoria] = useState("GENERAL");
+  const [formDestacado, setFormDestacado] = useState(false);
+  const [formDescripcionWeb, setFormDescripcionWeb] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Formulario de Ajuste Manual
   const [ajusteArticuloId, setAjusteArticuloId] = useState<number | null>(null);
   const [ajusteNuevoStock, setAjusteNuevoStock] = useState<number>(0);
@@ -129,7 +145,7 @@ export function InventarioStockModal({
     toast.info(`Código sugerido: ${cod}`);
   }
 
-  // Al seleccionar un artículo existente para reponer stock
+  // Al seleccionar un artículo existente para reponer stock o editar
   function handleSeleccionarParaReponer(art: Articulo) {
     setModoAlimentar("existente");
     setArticuloSeleccionadoId(art.IDARTICULO);
@@ -138,9 +154,64 @@ export function InventarioStockModal({
     setFormTalla(art.TALLA || "M");
     setFormValorAlquiler(art.VALOR || 0);
     setFormValorDeposito(art.VALORDEPOSITO || 0);
+    setFormImagenUrl(art.IMAGEN_URL || "");
+    setFormDisponible(art.DISPONIBLE !== false);
+    setFormCategoria(art.CATEGORIA || "GENERAL");
+    setFormDestacado(Boolean(art.DESTACADO));
+    setFormDescripcionWeb(art.DESCRIPCION_WEB || "");
     setFormCantidad(1);
     setFormMotivo(`Reposición / Entrada adicional de existencias`);
     setTabActiva("alimentar");
+  }
+
+  // Subir foto desde el PC local
+  async function handleSubirFotoLocal(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor selecciona un archivo de imagen válido (JPG, PNG, WebP).");
+      return;
+    }
+
+    setSubiendoFoto(true);
+    const toastId = toast.loading("Optimizando y subiendo imagen desde tu equipo...");
+    try {
+      const url = await subirFotoArticulo(file, formCodBarras || "ART");
+      setFormImagenUrl(url);
+      toast.success("¡Foto cargada exitosamente!", { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Error al subir la imagen", { id: toastId });
+    } finally {
+      setSubiendoFoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  // Toggle rápido de disponibilidad en la grilla del catálogo
+  async function handleToggleDisponibilidad(art: Articulo) {
+    const nuevoEstado = art.DISPONIBLE === false ? true : false;
+    
+    // Actualizar estado local inmediato en UI
+    setArticulos((prev) =>
+      prev.map((a) => (a.IDARTICULO === art.IDARTICULO ? { ...a, DISPONIBLE: nuevoEstado } : a))
+    );
+
+    try {
+      const ok = await toggleDisponibilidadArticulo(art.IDARTICULO, nuevoEstado);
+      if (ok) {
+        toast.success(
+          nuevoEstado
+            ? `"${art.DESCRIPCION}" marcado como DISPONIBLE en la web`
+            : `"${art.DESCRIPCION}" marcado como NO DISPONIBLE en la web`
+        );
+      } else {
+        toast.error("No se pudo actualizar en la base de datos");
+      }
+    } catch {
+      toast.error("Error cambiando disponibilidad");
+    }
   }
 
   // Al seleccionar un artículo para ajuste manual
@@ -181,6 +252,11 @@ export function InventarioStockModal({
         motivo: formMotivo,
         notas: formNotas,
         usuario: usuarioActivo,
+        imagenUrl: formImagenUrl,
+        disponible: formDisponible,
+        categoria: formCategoria,
+        destacado: formDestacado,
+        descripcionWeb: formDescripcionWeb,
       });
 
       toast.success(`¡Inventario alimentado con éxito! (+${formCantidad} unds)`);
@@ -190,6 +266,11 @@ export function InventarioStockModal({
       setFormCodBarras("");
       setFormCantidad(1);
       setFormNotas("");
+      setFormImagenUrl("");
+      setFormDisponible(true);
+      setFormCategoria("GENERAL");
+      setFormDestacado(false);
+      setFormDescripcionWeb("");
       setArticuloSeleccionadoId(null);
       setModoAlimentar("nuevo");
       
@@ -506,20 +587,22 @@ export function InventarioStockModal({
               <table className="w-full border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-700 uppercase font-black tracking-wider">
                   <tr>
-                    <th className="px-4 py-3">Cód. Barras</th>
+                    <th className="px-3 py-3 text-center">Foto</th>
+                    <th className="px-3 py-3">Cód. Barras</th>
                     <th className="px-4 py-3">Descripción de la Prenda</th>
                     <th className="px-3 py-3 text-center">Talla</th>
-                    <th className="px-4 py-3 text-right">Stock Físico</th>
-                    <th className="px-4 py-3 text-right">Valor Alquiler</th>
-                    <th className="px-4 py-3 text-right">Valor Depósito</th>
-                    <th className="px-4 py-3 text-center">Estado</th>
+                    <th className="px-3 py-3 text-center">Categoría</th>
+                    <th className="px-3 py-3 text-right">Stock Físico</th>
+                    <th className="px-3 py-3 text-right">Alquiler</th>
+                    <th className="px-3 py-3 text-right">Depósito</th>
+                    <th className="px-3 py-3 text-center">Disponible Web</th>
                     <th className="px-4 py-3 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {articulosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={10} className="py-12 text-center text-slate-400">
                         <Package className="mx-auto h-12 w-12 text-slate-300 mb-2" />
                         <p className="font-bold text-sm">No se encontraron artículos en el inventario</p>
                         <p className="text-xs text-slate-400 mt-1">
@@ -532,24 +615,67 @@ export function InventarioStockModal({
                       const stock = Number(art.STOCK || 0);
                       const esAgotado = stock <= 0;
                       const esBajo = stock > 0 && stock <= 2;
+                      const estaDisponibleWeb = art.DISPONIBLE !== false && stock > 0;
 
                       return (
                         <tr key={art.IDARTICULO} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-2.5 font-mono font-bold text-slate-700">
+                          {/* Miniatura Foto */}
+                          <td className="px-3 py-2 text-center">
+                            {art.IMAGEN_URL ? (
+                              <img
+                                src={art.IMAGEN_URL}
+                                alt={art.DESCRIPCION}
+                                className="h-10 w-10 object-cover rounded-lg border border-slate-200 mx-auto shadow-2xs hover:scale-110 transition-transform cursor-pointer"
+                                onClick={() => handleSeleccionarParaReponer(art)}
+                                title="Ver / Cambiar foto"
+                              />
+                            ) : (
+                              <div
+                                onClick={() => handleSeleccionarParaReponer(art)}
+                                className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto text-slate-400 hover:bg-slate-200 cursor-pointer"
+                                title="Sin foto - Haz clic para agregar"
+                              >
+                                <ImageIcon className="h-4 w-4" />
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Código de barras */}
+                          <td className="px-3 py-2.5 font-mono font-bold text-slate-700">
                             <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 border border-slate-200">
                               <Barcode className="h-3.5 w-3.5 text-slate-500" />
                               {art.CODBARRAS || "S/C"}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 font-bold text-slate-900">{art.DESCRIPCION}</td>
+
+                          {/* Descripción */}
+                          <td className="px-4 py-2.5">
+                            <div className="font-bold text-slate-900">{art.DESCRIPCION}</div>
+                            {art.DESTACADO && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase text-amber-600 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5">
+                                <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" /> Destacado
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Talla */}
                           <td className="px-3 py-2.5 text-center">
-                            <span className="rounded-lg bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 font-black text-indigo-700">
+                            <span className="rounded-lg bg-indigo-50 border border-indigo-200 px-2 py-0.5 font-black text-indigo-700">
                               {art.TALLA || "ESTÁNDAR"}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono font-black text-sm">
+
+                          {/* Categoría */}
+                          <td className="px-3 py-2.5 text-center">
+                            <span className="rounded-lg bg-slate-100 border border-slate-200 px-2 py-0.5 font-bold text-slate-600 text-[10px] uppercase">
+                              {art.CATEGORIA || "GENERAL"}
+                            </span>
+                          </td>
+
+                          {/* Stock */}
+                          <td className="px-3 py-2.5 text-right font-mono font-black text-xs">
                             <span
-                              className={`px-2.5 py-0.5 rounded-lg ${
+                              className={`px-2 py-0.5 rounded-lg ${
                                 esAgotado
                                   ? "bg-rose-100 text-rose-800"
                                   : esBajo
@@ -560,36 +686,42 @@ export function InventarioStockModal({
                               {stock} unds
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono font-bold text-blue-700">
+
+                          {/* Precios */}
+                          <td className="px-3 py-2.5 text-right font-mono font-bold text-blue-700">
                             ${Number(art.VALOR || 0).toLocaleString("es-CO")}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-700">
+                          <td className="px-3 py-2.5 text-right font-mono font-bold text-amber-700">
                             ${Number(art.VALORDEPOSITO || 0).toLocaleString("es-CO")}
                           </td>
-                          <td className="px-4 py-2.5 text-center">
-                            {esAgotado ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[10px] font-black text-rose-700">
-                                <AlertTriangle className="h-3 w-3" /> AGOTADO
-                              </span>
-                            ) : esBajo ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-black text-amber-700">
-                                <AlertTriangle className="h-3 w-3" /> STOCK BAJO
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-black text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> DISPONIBLE
-                              </span>
-                            )}
+
+                          {/* Switch Disponibilidad Web */}
+                          <td className="px-3 py-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleDisponibilidad(art)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black transition-all border shadow-2xs ${
+                                art.DISPONIBLE !== false
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                                  : "bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200"
+                              }`}
+                              title="Haz clic para alternar si este producto se muestra disponible en la web"
+                            >
+                              <span className={`h-2 w-2 rounded-full ${art.DISPONIBLE !== false ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                              {art.DISPONIBLE !== false ? "DISPONIBLE" : "NO DISPONIBLE"}
+                            </button>
                           </td>
+
+                          {/* Acciones */}
                           <td className="px-4 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleSeleccionarParaReponer(art)}
                                 className="rounded-lg bg-emerald-50 border border-emerald-200 p-1.5 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all shadow-2xs"
-                                title="Alimentar / Reponer Stock a este traje"
+                                title="Editar / Alimentar Stock / Cambiar Foto"
                               >
-                                <PlusCircle className="h-4 w-4" />
+                                <Edit className="h-4 w-4" />
                               </button>
                               <button
                                 type="button"
@@ -787,6 +919,141 @@ export function InventarioStockModal({
                 </div>
               </div>
 
+              {/* SECCIÓN WEB Y FOTO DEL TRAJE */}
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-indigo-700" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950">
+                      Catálogo Web & Foto del Traje
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                    Visible en la Tienda Online
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Uploader de Foto desde PC */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-700">Foto del Traje / Disfraz:</label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleSubirFotoLocal}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    {formImagenUrl ? (
+                      <div className="relative rounded-2xl border-2 border-dashed border-indigo-300 p-2 bg-white flex items-center gap-3">
+                        <img
+                          src={formImagenUrl}
+                          alt="Previsualización"
+                          className="h-16 w-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 truncate">Foto lista para guardar</p>
+                          <p className="text-[10px] text-slate-500">Cargada y optimizada</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={subiendoFoto}
+                              className="text-[10px] font-black text-indigo-600 hover:underline"
+                            >
+                              Cambiar foto
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => setFormImagenUrl("")}
+                              className="text-[10px] font-black text-rose-600 hover:underline"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-white p-4 text-center cursor-pointer transition-all hover:bg-indigo-50/30 group"
+                      >
+                        <UploadCloud className="mx-auto h-7 w-7 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                        <p className="text-xs font-black text-slate-700 mt-1">
+                          {subiendoFoto ? "Cargando imagen..." : "Haz clic para subir foto desde tu PC"}
+                        </p>
+                        <p className="text-[10px] text-slate-400">Archivos JPG, PNG o WebP</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Categoría y Disponibilidad Web */}
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black uppercase text-slate-700">Categoría del Traje:</label>
+                      <select
+                        value={formCategoria}
+                        onChange={(e) => setFormCategoria(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none"
+                      >
+                        <option value="SUPERHÉROES">Superhéroes & Cómics</option>
+                        <option value="PRINCESAS Y CUENTOS">Princesas & Fantasía</option>
+                        <option value="TRAJES DE GALA">Trajes de Gala & Novias</option>
+                        <option value="ÉPOCA Y COLONIAL">Época & Colonial</option>
+                        <option value="HALLOWEEN Y TERROR">Halloween & Terror</option>
+                        <option value="NAVIDAD">Navidad & Temporada</option>
+                        <option value="TRADICIONAL / TÍPICO">Tradicional / Folclórico</option>
+                        <option value="INFANTIL">Disfraces Infantiles</option>
+                        <option value="GENERAL">General / Otros</option>
+                      </select>
+                    </div>
+
+                    {/* Switches */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <label className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formDisponible}
+                          onChange={(e) => setFormDisponible(e.target.checked)}
+                          className="h-4 w-4 rounded text-indigo-600 focus:ring-0 cursor-pointer"
+                        />
+                        <span className="text-[11px] font-black text-slate-800">
+                          {formDisponible ? "✅ Disponible Web" : "❌ No Disponible"}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2 rounded-xl bg-white p-2.5 border border-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formDestacado}
+                          onChange={(e) => setFormDestacado(e.target.checked)}
+                          className="h-4 w-4 rounded text-amber-500 focus:ring-0 cursor-pointer"
+                        />
+                        <span className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Destacado
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Descripción Web / Piezas Incluidas */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black uppercase text-slate-700">
+                    Piezas Incluidas / Descripción Detallada para Clientes en la Web:
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Ej: Incluye capa con broche dorado, antifaz, cinturón con accesorios y cubrebotas. Talla ajustable."
+                    value={formDescripcionWeb}
+                    onChange={(e) => setFormDescripcionWeb(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
               {/* Motivo y Tipo de Entrada */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -824,7 +1091,7 @@ export function InventarioStockModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={guardando}
+                  disabled={guardando || subiendoFoto}
                   className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-6 py-2.5 text-xs font-black text-white shadow-md transition-all active:scale-95 disabled:opacity-50"
                 >
                   <CheckCircle2 className="h-4 w-4" />
