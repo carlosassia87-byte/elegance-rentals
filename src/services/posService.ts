@@ -176,13 +176,13 @@ export async function eliminarCliente(id: number): Promise<boolean> {
 // ==========================================
 // SERVICIO DE ARTÍCULOS / TRAJES / DISFRACES
 // ==========================================
-export async function listarArticulos(search = ""): Promise<Articulo[]> {
+export async function listarArticulos(search = "", limite = 100): Promise<Articulo[]> {
   try {
     let query = supabase.from("ARTICULO" as any).select("*").order("DESCRIPCION");
     if (search.trim()) {
       query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,TALLA.ilike.%${search}%`);
     }
-    const { data, error } = await query.limit(100);
+    const { data, error } = await query.limit(limite);
     if (error) throw error;
     return (data as unknown as Articulo[]) ?? [];
   } catch (err) {
