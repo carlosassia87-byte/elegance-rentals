@@ -567,6 +567,18 @@ export function MenuPrincipal({
 
           {/* Estado de la Sesión y Notificaciones */}
           <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold shrink-0 ml-auto">
+            {/* Botón Acceso Rápido Catálogo Web */}
+            <button
+              type="button"
+              onClick={() => window.open("/catalogo", "_blank")}
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
+              title="Abrir Catálogo Web de Disfraces en una nueva pestaña"
+            >
+              <Globe className="h-4 w-4 text-indigo-200" />
+              <span>Catálogo Web</span>
+              <ExternalLink className="h-3 w-3 opacity-80" />
+            </button>
+
             {/* Botón Campana de Alertas de Retraso */}
             <button
               type="button"
