@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   Database,
   Crown,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -230,6 +232,24 @@ export function MenuPrincipal({
                 {sidebarExpandido && <span className="font-extrabold text-purple-900">Módulo Accesorios</span>}
               </div>
               {sidebarExpandido && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-200 text-purple-800 font-black">NUEVO</span>}
+            </button>
+
+            <button
+              onClick={() => window.open("/catalogo", "_blank")}
+              className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-indigo-950 bg-indigo-50/80 hover:bg-indigo-100 transition-all group border border-indigo-200/80 ${
+                sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
+              }`}
+              title="Abrir Catálogo Web Online en una nueva pestaña"
+            >
+              <div className="flex items-center gap-3">
+                <Globe className="h-5 w-5 text-indigo-600 group-hover:scale-110 shrink-0 transition-transform" />
+                {sidebarExpandido && <span className="font-extrabold text-indigo-950">Catálogo Web Online</span>}
+              </div>
+              {sidebarExpandido && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600 text-white font-black flex items-center gap-1">
+                  WEB <ExternalLink className="h-2.5 w-2.5" />
+                </span>
+              )}
             </button>
           </div>
 
@@ -635,9 +655,9 @@ export function MenuPrincipal({
             </p>
           </div>
 
-          {/* Botón Principal Central: INGRESAR AL PUNTO DE VENTA */}
-          {permisos.posVentas !== false && (
-            <div className="w-full max-w-md pt-2">
+          {/* Botones Principales Centrales */}
+          <div className="w-full max-w-md pt-2 space-y-3">
+            {permisos.posVentas !== false && (
               <button
                 type="button"
                 onClick={() => handleAccionConPermiso("pos", true, "Punto de Venta")}
@@ -647,8 +667,18 @@ export function MenuPrincipal({
                 <span>Ingresar al Punto de Venta</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1.5 transition-transform" />
               </button>
-            </div>
-          )}
+            )}
+
+            <button
+              type="button"
+              onClick={() => window.open("/catalogo", "_blank")}
+              className="w-full flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-3.5 px-6 text-white font-black text-sm uppercase tracking-wider shadow-md shadow-indigo-600/20 hover:from-indigo-700 hover:to-pink-700 hover:scale-[1.01] active:scale-98 transition-all group border border-indigo-400/30"
+            >
+              <Globe className="h-5 w-5 text-white group-hover:rotate-12 transition-transform" />
+              <span>🌐 Ver Catálogo Web de Trajes</span>
+              <ExternalLink className="h-4 w-4 opacity-80" />
+            </button>
+          </div>
 
           {/* Indicadores de Estado en la parte inferior */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl pt-4">
