@@ -79,6 +79,7 @@ import { ConfiguracionCajasModal } from "./ConfiguracionCajasModal";
 import { CierreCajaModal } from "./CierreCajaModal";
 import { PosLogin } from "./PosLogin";
 import { MenuPrincipal } from "./MenuPrincipal";
+import { CatalogoWeb } from "@/components/catalogo/CatalogoWeb";
 import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
@@ -278,7 +279,7 @@ export function PuntoDeVenta() {
 
   // Estados de Navegación de Pantalla y Sesión de Cajero
   const sesionInicial = obtenerSesionPos();
-  const [vistaActiva, setVistaActiva] = useState<"login" | "menu" | "pos">(sesionInicial ? "menu" : "login");
+  const [vistaActiva, setVistaActiva] = useState<"login" | "menu" | "pos" | "catalogo">(sesionInicial ? "menu" : "login");
   const [usuarioActivo, setUsuarioActivo] = useState<UsuarioPos | null>(sesionInicial?.usuario || null);
 
   const apartadoTotalAbonado = useMemo(() => {
@@ -514,6 +515,9 @@ export function PuntoDeVenta() {
     switch (accion) {
       case "pos":
         setVistaActiva("pos");
+        break;
+      case "catalogo_web":
+        setVistaActiva("catalogo");
         break;
       case "pos_nuevo":
         handleLimpiar();
@@ -1214,12 +1218,18 @@ export function PuntoDeVenta() {
           onNavegar={(modulo) => {
             if (modulo === "pos") {
               setVistaActiva("pos");
+            } else if (modulo === "catalogo_web") {
+              setVistaActiva("catalogo");
             } else {
               handleMenuAccion(modulo);
             }
           }}
           onLogout={handleLogout}
         />
+      ) : vistaActiva === "catalogo" ? (
+        <div className="h-screen w-full overflow-y-auto bg-slate-900">
+          <CatalogoWeb onIrAlPos={() => setVistaActiva("menu")} />
+        </div>
       ) : (
         <div className="flex h-screen w-full flex-col bg-[#F8FAFC] font-sans text-slate-800 select-none overflow-hidden p-3 gap-2.5">
           {/* =========================================================================

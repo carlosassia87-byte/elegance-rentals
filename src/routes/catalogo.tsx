@@ -13,11 +13,6 @@ export const Route = createFileRoute("/catalogo")({
 });
 
 function CatalogoPage() {
-  const navigate = useNavigate();
-
-  return (
-    <CatalogoWeb
-      onIrAlPos={() => navigate({ to: "/" })}
-    />
-  );
+  return <CatalogoWeb />;
 }
+

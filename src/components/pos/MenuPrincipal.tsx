@@ -235,11 +235,11 @@ export function MenuPrincipal({
             </button>
 
             <button
-              onClick={() => window.open("/catalogo", "_blank")}
+              onClick={() => onNavegar("catalogo_web")}
               className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-indigo-950 bg-indigo-50/80 hover:bg-indigo-100 transition-all group border border-indigo-200/80 ${
                 sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
               }`}
-              title="Abrir Catálogo Web Online en una nueva pestaña"
+              title="Abrir Catálogo Web de Trajes y Disfraces"
             >
               <div className="flex items-center gap-3">
                 <Globe className="h-5 w-5 text-indigo-600 group-hover:scale-110 shrink-0 transition-transform" />
@@ -247,7 +247,7 @@ export function MenuPrincipal({
               </div>
               {sidebarExpandido && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-600 text-white font-black flex items-center gap-1">
-                  WEB <ExternalLink className="h-2.5 w-2.5" />
+                  VER
                 </span>
               )}
             </button>
@@ -570,13 +570,12 @@ export function MenuPrincipal({
             {/* Botón Acceso Rápido Catálogo Web */}
             <button
               type="button"
-              onClick={() => window.open("/catalogo", "_blank")}
+              onClick={() => onNavegar("catalogo_web")}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all active:scale-95"
-              title="Abrir Catálogo Web de Disfraces en una nueva pestaña"
+              title="Abrir Catálogo Web de Disfraces"
             >
               <Globe className="h-4 w-4 text-indigo-200" />
               <span>Catálogo Web</span>
-              <ExternalLink className="h-3 w-3 opacity-80" />
             </button>
 
             {/* Botón Campana de Alertas de Retraso */}
@@ -683,12 +682,11 @@ export function MenuPrincipal({
 
             <button
               type="button"
-              onClick={() => window.open("/catalogo", "_blank")}
+              onClick={() => onNavegar("catalogo_web")}
               className="w-full flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-3.5 px-6 text-white font-black text-sm uppercase tracking-wider shadow-md shadow-indigo-600/20 hover:from-indigo-700 hover:to-pink-700 hover:scale-[1.01] active:scale-98 transition-all group border border-indigo-400/30"
             >
               <Globe className="h-5 w-5 text-white group-hover:rotate-12 transition-transform" />
               <span>🌐 Ver Catálogo Web de Trajes</span>
-              <ExternalLink className="h-4 w-4 opacity-80" />
             </button>
           </div>
 

@@ -170,10 +170,7 @@ export function SidebarMenu({
             </button>
 
             <button
-              onClick={() => {
-                window.open("/catalogo", "_blank");
-                onClose();
-              }}
+              onClick={() => handleItemClick("catalogo_web")}
               className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-bold text-sm text-indigo-900 bg-indigo-50 hover:bg-indigo-100 transition-all group border border-indigo-200/70"
             >
               <div className="flex items-center gap-3">
