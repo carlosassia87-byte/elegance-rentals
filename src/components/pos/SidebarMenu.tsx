@@ -382,7 +382,7 @@ export function SidebarMenu({
               </button>
             )}
 
-            {(permisos.gestionUsuarios || usuario?.rol === "ADMINISTRADOR" || usuario?.rol === "SUPER ADMIN") && (
+            {(permisos.gestionUsuarios || usuario?.rol === "ADMIN" || usuario?.rol === "SUPER ADMIN") && (
               <button
                 type="button"
                 onClick={() => handleItemClick("mantenimiento_migracion")}
