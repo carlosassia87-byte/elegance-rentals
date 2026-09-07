@@ -1240,16 +1240,6 @@ export function PuntoDeVenta() {
                     <ChevronLeft className="h-4 w-4 text-emerald-400" />
                     <span className="tracking-wide uppercase">VOLVER AL MENÚ</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => window.open("/catalogo", "_blank")}
-                    className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow-xs border border-indigo-500 transition-all active:scale-95"
-                    title="Abrir Catálogo Web de Disfraces en una nueva pestaña"
-                  >
-                    <Globe className="h-4 w-4 text-indigo-200" />
-                    <span className="tracking-wide uppercase">CATÁLOGO WEB</span>
-                  </button>
                 </div>
 
                 <div className="flex items-center gap-2">
