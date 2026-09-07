@@ -135,12 +135,44 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       });
   }, [articulos, busqueda, categoriaSeleccionada, filtroTalla, soloDisponibles, ordenPrecio]);
 
+  // Accesorios filtrados (búsqueda + talla + disponibilidad + orden)
+  const accesoriosFiltrados = useMemo(() => {
+    return accesorios
+      .filter((acc) => {
+        if (busqueda.trim()) {
+          const q = busqueda.toLowerCase().trim();
+          const match =
+            (acc.DESCRIPCION || "").toLowerCase().includes(q) ||
+            (acc.CODBARRAS || "").toLowerCase().includes(q) ||
+            (acc.CATEGORIA || "").toLowerCase().includes(q);
+          if (!match) return false;
+        }
+        if (filtroTalla !== "TODAS") {
+          const t = (acc.TALLA || "").trim().toUpperCase();
+          if (t !== filtroTalla && t !== "U") return false;
+        }
+        if (soloDisponibles && Number(acc.STOCK || 0) <= 0) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (ordenPrecio === "menor") return Number(a.VALOR || 0) - Number(b.VALOR || 0);
+        if (ordenPrecio === "mayor") return Number(b.VALOR || 0) - Number(a.VALOR || 0);
+        return 0;
+      });
+  }, [accesorios, busqueda, filtroTalla, soloDisponibles, ordenPrecio]);
+
+  // Número de WhatsApp: preferimos el celular (empieza por 3)
+  const telefonoWhatsApp = useMemo(() => {
+    const candidatos = [empresa.telefono2, empresa.telefono1]
+      .map((t) => (t || "").replace(/\D/g, ""))
+      .filter(Boolean);
+    const celular = candidatos.find((t) => t.startsWith("3") && t.length >= 10);
+    const elegido = celular || candidatos[0] || "3151234567";
+    return elegido.startsWith("57") ? elegido : `57${elegido}`;
+  }, [empresa.telefono1, empresa.telefono2]);
+
   // WhatsApp Link Generador
   function handleApartarPorWhatsApp(art: Articulo) {
-    const rawTel = empresa.telefono1 || "3151234567";
-    const cleanTel = rawTel.replace(/\D/g, "");
-    const telFinal = cleanTel.startsWith("57") ? cleanTel : `57${cleanTel}`;
-
     const texto = encodeURIComponent(
       `¡Hola! 👋 Vi en su catálogo web el traje:\n\n` +
       `🎭 *${art.DESCRIPCION}*\n` +
@@ -150,7 +182,18 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       `Me gustaría consultar disponibilidad para apartarlo. ¿Tienen disponible para esa fecha?`
     );
 
-    window.open(`https://wa.me/${telFinal}?text=${texto}`, "_blank");
+    window.open(`https://wa.me/${telefonoWhatsApp}?text=${texto}`, "_blank");
+  }
+
+  function handleApartarAccesorioPorWhatsApp(acc: Accesorio) {
+    const texto = encodeURIComponent(
+      `¡Hola! 👋 Vi en su catálogo web el accesorio:\n\n` +
+      `🎩 *${acc.DESCRIPCION}*\n` +
+      `🏷️ Código: *${acc.CODBARRAS || "S/C"}*\n` +
+      `💰 Alquiler: *$${Number(acc.VALOR || 0).toLocaleString("es-CO")}*\n\n` +
+      `¿Está disponible para apartarlo?`
+    );
+    window.open(`https://wa.me/${telefonoWhatsApp}?text=${texto}`, "_blank");
   }
 
   return (
