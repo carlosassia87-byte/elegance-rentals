@@ -22,8 +22,9 @@ import {
   ShoppingBag,
   ExternalLink,
 } from "lucide-react";
-import type { Articulo } from "@/types/database.types";
+import type { Articulo, Accesorio } from "@/types/database.types";
 import { listarArticulos } from "@/services/posService";
+import { listarAccesorios } from "@/services/accesoriosService";
 import { obtenerConfiguracionEmpresa, type EmpresaConfig, EMPRESA_DEFAULT } from "@/services/empresaCajaService";
 
 interface CatalogoWebProps {
