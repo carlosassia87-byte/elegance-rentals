@@ -100,30 +100,45 @@ export type Database = {
       }
       ARTICULO: {
         Row: {
+          CATEGORIA: string | null
           CODBARRAS: string | null
           DESCRIPCION: string | null
+          DESCRIPCION_WEB: string | null
+          DESTACADO: boolean | null
+          DISPONIBLE: boolean | null
           IDARTICULO: number
           IDCAMPOFACTURA: number | null
+          IMAGEN_URL: string | null
           STOCK: number | null
           TALLA: string | null
           VALOR: number | null
           VALORDEPOSITO: number | null
         }
         Insert: {
+          CATEGORIA?: string | null
           CODBARRAS?: string | null
           DESCRIPCION?: string | null
+          DESCRIPCION_WEB?: string | null
+          DESTACADO?: boolean | null
+          DISPONIBLE?: boolean | null
           IDARTICULO?: number
           IDCAMPOFACTURA?: number | null
+          IMAGEN_URL?: string | null
           STOCK?: number | null
           TALLA?: string | null
           VALOR?: number | null
           VALORDEPOSITO?: number | null
         }
         Update: {
+          CATEGORIA?: string | null
           CODBARRAS?: string | null
           DESCRIPCION?: string | null
+          DESCRIPCION_WEB?: string | null
+          DESTACADO?: boolean | null
+          DISPONIBLE?: boolean | null
           IDARTICULO?: number
           IDCAMPOFACTURA?: number | null
+          IMAGEN_URL?: string | null
           STOCK?: number | null
           TALLA?: string | null
           VALOR?: number | null
