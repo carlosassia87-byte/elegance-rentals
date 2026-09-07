@@ -487,7 +487,7 @@ export function MenuPrincipal({
               </button>
             )}
 
-            {(permisos.gestionUsuarios || usuario.rol === "ADMINISTRADOR" || usuario.rol === "SUPER ADMIN") && (
+            {(permisos.gestionUsuarios || usuario.rol === "ADMIN" || usuario.rol === "SUPER ADMIN") && (
               <button
                 type="button"
                 onClick={() => handleAccionConPermiso("mantenimiento_migracion", true, "Mantenimiento & Migración")}
