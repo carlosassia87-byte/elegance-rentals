@@ -46,8 +46,12 @@ const CATEGORIAS_FILTRO = [
 
 export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   const [articulos, setArticulos] = useState<Articulo[]>([]);
+  const [accesorios, setAccesorios] = useState<Accesorio[]>([]);
   const [empresa, setEmpresa] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
   const [cargando, setCargando] = useState(true);
+
+  // Sección: trajes o accesorios
+  const [seccion, setSeccion] = useState<"TRAJES" | "ACCESORIOS">("TRAJES");
 
   // Filtros
   const [busqueda, setBusqueda] = useState("");
@@ -66,11 +70,13 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   async function cargarCatalogo() {
     setCargando(true);
     try {
-      const [arts, emp] = await Promise.all([
-        listarArticulos(),
+      const [arts, accs, emp] = await Promise.all([
+        listarArticulos("", 2000),
+        listarAccesorios(),
         obtenerConfiguracionEmpresa(),
       ]);
       setArticulos(arts);
+      setAccesorios(accs.filter((a) => a.ACTIVO !== false));
       setEmpresa(emp);
     } catch (e) {
       console.error("Error cargando catálogo web:", e);
