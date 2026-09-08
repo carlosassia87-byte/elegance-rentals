@@ -47,17 +47,55 @@ const ARTICULOS_RESPALDO: Articulo[] = [
   { IDARTICULO: 8, DESCRIPCION: "DRÁCULA NIÑO: PANTALÓN, CAMISA, CHAQUETÍN, CORBATÍN CINTURÓN, CAPA, SOMBRERO", TALLA: "14", STOCK: 5, VALOR: 90000, CODBARRAS: "1008", VALORDEPOSITO: 45000, CATEGORIA: "HALLOWEEN Y TERROR", DISPONIBLE: true, DESTACADO: true },
 ];
 
-const CATEGORIAS_FILTRO = [
-  { id: "TODAS", label: "✨ Todos los Trajes" },
-  { id: "SUPERHÉROES", label: "🦸 Superhéroes & Cómics" },
-  { id: "PRINCESAS Y CUENTOS", label: "👑 Princesas & Fantasía" },
-  { id: "TRAJES DE GALA", label: "👔 Trajes de Gala & Novias" },
-  { id: "ÉPOCA Y COLONIAL", label: "🎩 Época & Colonial" },
-  { id: "HALLOWEEN Y TERROR", label: "🎃 Halloween & Terror" },
-  { id: "NAVIDAD", label: "🎄 Navidad & Temporada" },
-  { id: "TRADICIONAL / TÍPICO", label: "💃 Tradicional & Típico" },
-  { id: "INFANTIL", label: "🧸 Infantiles" },
-  { id: "GENERAL", label: "🎭 Otros" },
+export interface StoryCategory {
+  id: string;
+  label: string;
+  sublabel?: string;
+  emoji: string;
+  bgGradient: string;
+  keywords: string[];
+}
+
+export const HISTORIAS_DESTACADAS: StoryCategory[] = [
+  { id: "TODAS", label: "✨ Todos", sublabel: "Catálogo", emoji: "🎭", bgGradient: "from-amber-400 to-rose-500", keywords: [] },
+  { id: "SUPERHEROES", label: "Superhéroes", sublabel: "Marvel & DC", emoji: "🦸", bgGradient: "from-red-600 via-blue-600 to-yellow-500", keywords: ["superheroe", "batman", "spiderman", "superman", "iron man", "capitan", "hulk", "thor", "flash", "marvel", "dc"] },
+  { id: "PRINCESAS", label: "Princesas", sublabel: "Disney & Realeza", emoji: "👑", bgGradient: "from-pink-400 to-purple-600", keywords: ["princesa", "reina", "corona", "cenicienta", "blancanieves", "rapunzel", "aurora", "bella", "elsa", "anna", "vestido"] },
+  { id: "PIRATAS", label: "Piratas", sublabel: "Alta Mar & Corsarios", emoji: "🏴‍☠️", bgGradient: "from-slate-900 to-red-800", keywords: ["pirata", "corsario", "barba", "garfio", "bucanero", "parche"] },
+  { id: "STAR_WARS", label: "Star Wars", sublabel: "Galáctico", emoji: "⚔️", bgGradient: "from-slate-900 to-amber-500", keywords: ["star wars", "vader", "jedi", "yoda", "trooper", "anakin"] },
+  { id: "MEDUSA", label: "MEDUSA", sublabel: "Mitología", emoji: "🐍", bgGradient: "from-emerald-600 to-teal-800", keywords: ["medusa", "mitologia", "grecia", "serpiente"] },
+  { id: "ENCANTO", label: "Encanto Disney", sublabel: "Fantasía", emoji: "🦋", bgGradient: "from-yellow-400 to-emerald-500", keywords: ["encanto", "mirabel", "isabela", "bruno", "disney", "madrigal", "colombia"] },
+  { id: "PAW_PATROL", label: "Patrulla canina", sublabel: "Infantil", emoji: "🐶", bgGradient: "from-blue-500 to-red-500", keywords: ["paw", "patrol", "patrulla", "chase", "marshall", "skye"] },
+  { id: "CATRINAS", label: "Catrinas", sublabel: "Día de Muertos", emoji: "💀", bgGradient: "from-purple-500 to-pink-500", keywords: ["catrina", "calavera", "muertos", "mexico", "mexicana"] },
+  { id: "MARIO_BROS", label: "Mario bros", sublabel: "Videojuegos", emoji: "🍄", bgGradient: "from-red-500 to-blue-500", keywords: ["mario", "luigi", "peach", "bowser", "toad", "yoshi"] },
+  { id: "IT_DAMA", label: "IT DAMA", sublabel: "Terror & Payasos", emoji: "🎈", bgGradient: "from-red-600 to-slate-900", keywords: ["it", "pennywise", "payaso", "terror", "payasa", "halloween"] },
+  { id: "CHUKI_NOVIAS", label: "Chuki/Novias", sublabel: "Terror Clásico", emoji: "🔪", bgGradient: "from-blue-600 to-rose-600", keywords: ["chucky", "chuki", "tiffany", "novia", "muneco", "terror"] },
+  { id: "DIABLAS", label: "Diablas", sublabel: "Fantasía", emoji: "😈", bgGradient: "from-red-600 to-purple-800", keywords: ["diabla", "demonio", "diablo", "fuego", "rojo"] },
+  { id: "ACCESORIOS", label: "Accesorios", sublabel: "Tienda", emoji: "🎩", bgGradient: "from-indigo-600 to-slate-800", keywords: ["accesorio", "peluca", "mascara", "espada", "sombrero", "corona", "capa"] },
+  { id: "AVATAR_ANIME", label: "AVATAR & ANI...", sublabel: "Películas & Anime", emoji: "💙", bgGradient: "from-cyan-500 to-blue-700", keywords: ["avatar", "anime", "manga", "goku", "naruto", "japon"] },
+  { id: "JACK_COCO", label: "Jack/coco/an...", sublabel: "Fantasía Animada", emoji: "🎃", bgGradient: "from-indigo-600 to-slate-900", keywords: ["jack", "skellington", "coco", "anime", "manga"] },
+  { id: "BRUJAS_CATRINAS", label: "Brujas/catrinas", sublabel: "Halloween", emoji: "🧙‍♀️", bgGradient: "from-purple-800 to-slate-900", keywords: ["bruja", "hechicera", "magia", "catrina", "calavera", "halloween"] },
+  { id: "MONSTRUO_DINO", label: "Monstruo/din...", sublabel: "Infantiles", emoji: "🦖", bgGradient: "from-emerald-500 to-teal-700", keywords: ["monstruo", "dinosaurio", "dino", "rex", "dragon"] },
+  { id: "DEPORTE_HOMB", label: "Deporte Hom...", sublabel: "Atletas & Retro", emoji: "🏆", bgGradient: "from-amber-500 to-red-600", keywords: ["deporte", "boxeo", "beisbol", "futbol", "piloto", "trofeo"] },
+  { id: "BOTARGAS", label: "BOTARGAS", sublabel: "Muñecos & Show", emoji: "🐭", bgGradient: "from-slate-900 to-slate-700", keywords: ["botarga", "mickey", "minnie", "disney", "muneco", "personaje"] },
+  { id: "PILOTOS_MARIN", label: "Pilotós&marin...", sublabel: "Uniformes", emoji: "👨‍✈️", bgGradient: "from-blue-900 to-slate-800", keywords: ["piloto", "marinero", "marino", "aviador", "uniforme", "capitan"] },
+  { id: "ANIMALES_NINOS", label: "Animales Niños", sublabel: "Granja & Selva", emoji: "🦁", bgGradient: "from-amber-400 to-emerald-600", keywords: ["animal", "leon", "tigre", "oso", "conejo", "vaca", "perro", "gato"] },
+  { id: "CHEFF", label: "Cheff", sublabel: "Profesiones", emoji: "👨‍🍳", bgGradient: "from-sky-400 to-indigo-600", keywords: ["chef", "cocinero", "cheff", "cocina", "pastelero"] },
+  { id: "NATIVOS_HOMB", label: "Nativos homb...", sublabel: "Culturas & Tribus", emoji: "🪶", bgGradient: "from-amber-700 to-red-800", keywords: ["nativo", "indio", "apache", "cherokee", "plumas", "tribu"] },
+  { id: "NAVIDAD", label: "Navidad 🎄", sublabel: "Temporada Navideña", emoji: "🎄", bgGradient: "from-emerald-600 to-red-600", keywords: ["navidad", "santa", "claus", "duende", "reno", "papa noel"] },
+  { id: "CIRCO_NINOS", label: "Circo Niños/as", sublabel: "Magia & Carpa", emoji: "🎪", bgGradient: "from-red-500 to-amber-400", keywords: ["circo", "payaso", "mago", "trapecista", "domador", "arlequin"] },
+  { id: "ASTRONAUTA", label: "Astronauta", sublabel: "Espacial", emoji: "🚀", bgGradient: "from-blue-600 to-slate-900", keywords: ["astronauta", "espacio", "cohete", "nasa", "galaxia"] },
+  { id: "FLOR_FRUTA", label: "Flor&fruta", sublabel: "Comparsas & Frutas", emoji: "🍓", bgGradient: "from-emerald-500 to-rose-500", keywords: ["flor", "fruta", "manzana", "fresa", "vegetal", "naturaleza"] },
+  { id: "TIPICOS_DAMA", label: "Tipicos Dama", sublabel: "Folclor Nacional", emoji: "💃", bgGradient: "from-yellow-400 to-blue-600", keywords: ["tipico", "folclor", "cumbia", "salsa", "bambuco", "colombiano", "joropo"] },
+  { id: "TIPICOS_HOMBRE", label: "Típicos Hombre", sublabel: "Llanero & Andino", emoji: "🤠", bgGradient: "from-amber-500 to-amber-700", keywords: ["llanero", "ruana", "poncho", "sombrero", "tipico", "salsa", "folclor"] },
+  { id: "SEXI_DAMA", label: "Sexi Dama", sublabel: "Colección Glamour", emoji: "🐰", bgGradient: "from-pink-600 to-purple-900", keywords: ["sexi", "dama", "coneja", "gatubela", "corset", "glamour"] },
+  { id: "SOMB_ALPAR", label: "Somb/alpar/al...", sublabel: "Sombreros & Accesorios", emoji: "👒", bgGradient: "from-amber-600 to-amber-800", keywords: ["sombrero", "alpargata", "poncho", "ruana", "accesorio"] },
+  { id: "ARABE_ALADIN", label: "Arabe/aladinh...", sublabel: "Mil y una noches", emoji: "🕌", bgGradient: "from-amber-500 to-purple-600", keywords: ["arabe", "aladino", "musulman", "jazmin", "sultan", "genio"] },
+  { id: "EPOCA_HOMBRE", label: "Epoca Hombre", sublabel: "Colonial & Retro", emoji: "🎩", bgGradient: "from-amber-700 to-slate-800", keywords: ["epoca", "colonial", "retro", "caballero", "musulman", "vintage"] },
+  { id: "EPOCA_DAMA", label: "Época Dama", sublabel: "Vestidos Coloniales", emoji: "👗", bgGradient: "from-purple-600 to-rose-400", keywords: ["epoca", "colonial", "dama antigua", "mirinaque", "corset", "polka"] },
+  { id: "FABULAS_CUEN", label: "Fabulas&cuen...", sublabel: "Infantil & Teatro", emoji: "📖", bgGradient: "from-sky-400 to-indigo-600", keywords: ["fabula", "cuento", "alicia", "mago", "oz", "lobo", "caperucita", "princesa"] },
+  { id: "DISCO_70S_80S", label: "Disco 70s/80s", sublabel: "Fiesta Retro", emoji: "🪩", bgGradient: "from-fuchsia-600 to-cyan-500", keywords: ["disco", "retro", "70", "80", "hippie", "abastracto", "rock"] },
+  { id: "VAQUEROS", label: "Vaqueros & Western", sublabel: "Lejano Oeste", emoji: "🌵", bgGradient: "from-amber-800 to-yellow-600", keywords: ["vaquero", "cowboy", "sheriff", "western", "pistolero"] },
+  { id: "GALA_NOVIAS", label: "Gala & Novias", sublabel: "Alta Costura", emoji: "💍", bgGradient: "from-slate-700 to-rose-300", keywords: ["gala", "novia", "novio", "smoking", "etiqueta", "boda", "fiesta"] },
 ];
 
 export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
@@ -124,10 +162,19 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
           if (!matchDesc && !matchCod && !matchCat && !matchTalla) return false;
         }
 
-        // Categoría
+        // Categoría (Compatibilidad con Historias de Instagram y Categorías de BD)
         if (categoriaSeleccionada !== "TODAS") {
+          const historia = HISTORIAS_DESTACADAS.find((h) => h.id === categoriaSeleccionada);
           const catArt = (art.CATEGORIA || "GENERAL").trim().toUpperCase();
-          if (catArt !== categoriaSeleccionada) return false;
+          const descArt = (art.DESCRIPCION || "").toLowerCase();
+
+          if (historia && historia.keywords.length > 0) {
+            const coincideKeyword = historia.keywords.some((kw) => descArt.includes(kw.toLowerCase()));
+            const coincideCat = catArt === categoriaSeleccionada || descArt.includes(historia.label.toLowerCase());
+            if (!coincideKeyword && !coincideCat) return false;
+          } else {
+            if (catArt !== categoriaSeleccionada) return false;
+          }
         }
 
         // Talla
@@ -346,31 +393,91 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       </section>
 
       {/* =========================================================================
-          BARRA DE CATEGORÍAS Y FILTROS (Tema Claro del POS)
+          CARRUSEL DE HISTORIAS DESTACADAS (IDÉNTICO A LA PÁGINA OFICIAL DE INSTAGRAM)
       ========================================================================= */}
       {seccion === "TRAJES" && (
-        <section className="sticky top-16 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3 shadow-2xs">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2.5">
-            {/* Categorías en Carrusel Horizontal */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {CATEGORIAS_FILTRO.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    categoriaSeleccionada === cat.id
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
+        <section className="bg-white border-b border-slate-200 py-3.5 shadow-2xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+            {/* Título de Temáticas */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  Explorar por Temáticas & Destacados
+                </h3>
+              </div>
+              <span className="text-[11px] font-bold text-slate-400">
+                {HISTORIAS_DESTACADAS.length} Colecciones
+              </span>
+            </div>
+
+            {/* Carrusel Circular de Historias con Gradiente Oficial Instagram */}
+            <div className="flex items-start gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-none select-none">
+              {HISTORIAS_DESTACADAS.map((historia) => {
+                const seleccionada = categoriaSeleccionada === historia.id;
+                return (
+                  <button
+                    key={historia.id}
+                    type="button"
+                    onClick={() => {
+                      setCategoriaSeleccionada(historia.id);
+                      if (historia.id !== "TODAS") {
+                        setBusqueda("");
+                      }
+                    }}
+                    className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
+                  >
+                    {/* Anillo de Historia */}
+                    <div
+                      className={`relative p-0.5 rounded-full transition-all duration-300 transform group-hover:scale-105 ${
+                        seleccionada
+                          ? "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600 shadow-md ring-2 ring-emerald-500 ring-offset-2 scale-105"
+                          : "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600/70 hover:from-yellow-500 hover:to-purple-600 shadow-xs"
+                      }`}
+                    >
+                      {/* Borde Blanco Separador */}
+                      <div className="p-0.5 bg-white rounded-full">
+                        {/* Círculo Interior */}
+                        <div
+                          className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br ${historia.bgGradient} text-white shadow-inner transition-transform`}
+                        >
+                          <span className="text-2xl sm:text-3xl drop-shadow-md">
+                            {historia.emoji}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Badge pequeño de seleccionado */}
+                      {seleccionada && (
+                        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-md border-2 border-white">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Texto de la Historia */}
+                    <div className="text-center max-w-[72px] sm:max-w-[80px]">
+                      <span
+                        className={`block text-[11px] sm:text-xs leading-tight font-extrabold truncate ${
+                          seleccionada ? "text-slate-950 underline underline-offset-2" : "text-slate-700 group-hover:text-slate-900"
+                        }`}
+                        title={historia.label}
+                      >
+                        {historia.label}
+                      </span>
+                      {historia.sublabel && (
+                        <span className="block text-[9px] text-slate-400 font-medium truncate">
+                          {historia.sublabel}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Filtros Secundarios: Talla, Disponibilidad, Orden */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100">
               <div className="flex flex-wrap items-center gap-3">
                 {/* Filtro por Talla */}
                 <div className="flex items-center gap-1.5">
