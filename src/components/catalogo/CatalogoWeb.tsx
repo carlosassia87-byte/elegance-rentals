@@ -795,7 +795,7 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
                         }}
-                      />)
+                      />
                     ) : (
                       <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-400 gap-2 p-4 text-center">
                         <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
