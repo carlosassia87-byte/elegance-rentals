@@ -1227,7 +1227,7 @@ export function PuntoDeVenta() {
           onLogout={handleLogout}
         />
       ) : vistaActiva === "catalogo" ? (
-        <div className="h-screen w-full overflow-y-auto bg-slate-900">
+        <div className="h-screen w-full overflow-y-auto bg-[#F8FAFC]">
           <CatalogoWeb onIrAlPos={() => setVistaActiva("menu")} />
         </div>
       ) : (
