@@ -151,6 +151,35 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
 
   // Referencia para desplazamiento del Carrusel de Historias
   const carruselRef = useRef<HTMLDivElement>(null);
+  const [autoScrollPausado, setAutoScrollPausado] = useState(false);
+
+  // Auto-scroll continuo y suave del carrusel
+  useEffect(() => {
+    const el = carruselRef.current;
+    if (!el) return;
+
+    let animId: number;
+    let direccion = 1; // 1: hacia adelante, -1: hacia atrás
+
+    const velocidad = 0.65; // píxeles por frame
+
+    function step() {
+      if (!autoScrollPausado && el) {
+        el.scrollLeft += velocidad * direccion;
+
+        // Si llega al final, cambia suavemente de dirección o resetea
+        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 2) {
+          direccion = -1;
+        } else if (el.scrollLeft <= 0) {
+          direccion = 1;
+        }
+      }
+      animId = requestAnimationFrame(step);
+    }
+
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, [autoScrollPausado]);
 
   useEffect(() => {
     cargarCatalogo();
@@ -577,6 +606,10 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
               {/* Carrusel Circular de Historias con Gradiente Oficial Instagram */}
               <div
                 ref={carruselRef}
+                onMouseEnter={() => setAutoScrollPausado(true)}
+                onMouseLeave={() => setAutoScrollPausado(false)}
+                onTouchStart={() => setAutoScrollPausado(true)}
+                onTouchEnd={() => setAutoScrollPausado(false)}
                 onWheel={(e) => {
                   if (carruselRef.current && e.deltaY !== 0) {
                     carruselRef.current.scrollLeft += e.deltaY;
