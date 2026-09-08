@@ -57,7 +57,9 @@ export interface StoryCategory {
 }
 
 export const HISTORIAS_DESTACADAS: StoryCategory[] = [
-  { id: "TODAS", label: "✨ Todos", sublabel: "Catálogo General", emoji: "🎭", bgGradient: "from-amber-400 to-rose-500", keywords: [] },
+  { id: "TODAS", label: "🎭 Catálogo", sublabel: "Todo el Inventario", emoji: "✨", bgGradient: "from-amber-400 to-rose-500", keywords: [] },
+  { id: "LO_MAS_ALQUILADO", label: "🔥 Más Alquilado", sublabel: "Tendencias & Populares", emoji: "🔥", bgGradient: "from-orange-500 via-rose-500 to-red-600", keywords: ["destacado", "popular", "salsa", "alicia", "pirata", "dracula", "mago", "superman", "batman", "spiderman", "princesa"] },
+  { id: "NUEVOS", label: "✨ Lo Nuevo", sublabel: "Recién Llegados", emoji: "🆕", bgGradient: "from-emerald-400 via-teal-500 to-cyan-600", keywords: ["nuevo", "estreno", "coleccion", "2026", "reciente"] },
   { id: "SUPERHEROES", label: "Superhéroes", sublabel: "Marvel & DC", emoji: "🦸", bgGradient: "from-red-600 via-blue-600 to-yellow-500", keywords: ["superheroe", "batman", "spiderman", "superman", "iron man", "capitan", "hulk", "thor", "flash", "marvel", "dc", "avengers", "wonder woman", "mujer maravilla"] },
   { id: "BABY_HEROES", label: "Baby heroes", sublabel: "Bebés & Niños", emoji: "🦸‍♂️", bgGradient: "from-sky-400 to-indigo-600", keywords: ["baby", "bebe", "heroe", "superman", "batman", "spiderman", "iron man", "capitan", "infantil"] },
   { id: "FORMULA_1", label: "Formula 1", sublabel: "Carreras & Pilotos", emoji: "🏎️", bgGradient: "from-red-600 to-slate-900", keywords: ["formula 1", "f1", "carreras", "piloto", "ferrari", "red bull", "mercedes", "pista"] },
@@ -213,9 +215,11 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   const conteoPorHistoria = useMemo(() => {
     const counts: Record<string, number> = {};
     counts["TODAS"] = articulos.length;
+    counts["LO_MAS_ALQUILADO"] = articulos.filter((a) => a.DESTACADO || (a.STOCK && a.STOCK > 0)).length;
+    counts["NUEVOS"] = articulos.slice(-20).length;
 
     HISTORIAS_DESTACADAS.forEach((historia) => {
-      if (historia.id === "TODAS") return;
+      if (historia.id === "TODAS" || historia.id === "LO_MAS_ALQUILADO" || historia.id === "NUEVOS") return;
       const count = articulos.filter((art) => {
         const desc = (art.DESCRIPCION || "").toLowerCase();
         const cat = (art.CATEGORIA || "").toUpperCase();
@@ -248,6 +252,16 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
 
         // Categoría (Compatibilidad con Historias de Instagram y Categorías de BD)
         if (categoriaSeleccionada !== "TODAS") {
+          if (categoriaSeleccionada === "LO_MAS_ALQUILADO") {
+            // Trajes populares o destacados
+            return Boolean(art.DESTACADO) || Number(art.STOCK || 0) >= 3;
+          }
+
+          if (categoriaSeleccionada === "NUEVOS") {
+            // Últimos trajes registrados / IDs más recientes
+            return true; // Se ordenarán con los últimos primero
+          }
+
           const historia = HISTORIAS_DESTACADAS.find((h) => h.id === categoriaSeleccionada);
           const catArt = (art.CATEGORIA || "GENERAL").trim().toUpperCase();
           const descArt = (art.DESCRIPCION || "").toLowerCase();
@@ -276,7 +290,19 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
         return true;
       })
       .sort((a, b) => {
-        // Primero destacados
+        // Si está en categoría NUEVOS, mostrar los de ID más alto primero
+        if (categoriaSeleccionada === "NUEVOS") {
+          return Number(b.IDARTICULO || 0) - Number(a.IDARTICULO || 0);
+        }
+
+        // Si está en LO_MAS_ALQUILADO, los destacados y con mayor disponibilidad primero
+        if (categoriaSeleccionada === "LO_MAS_ALQUILADO") {
+          if (a.DESTACADO && !b.DESTACADO) return -1;
+          if (!a.DESTACADO && b.DESTACADO) return 1;
+          return Number(b.STOCK || 0) - Number(a.STOCK || 0);
+        }
+
+        // Primero destacados por defecto
         if (a.DESTACADO && !b.DESTACADO) return -1;
         if (!a.DESTACADO && b.DESTACADO) return 1;
 
@@ -421,31 +447,67 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
             Explora nuestro inventario de prendas en tiempo real, verifica disponibilidad de tallas y aparta tu vestido en minutos directamente por WhatsApp.
           </p>
 
-          {/* Pestañas: Trajes vs Accesorios */}
-          <div className="flex justify-center gap-2 pt-2">
+          {/* Pestañas Principales y Filtros Rápidos */}
+          <div className="flex flex-wrap justify-center items-center gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setSeccion("TRAJES")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black transition-all ${
-                seccion === "TRAJES"
+              onClick={() => {
+                setSeccion("TRAJES");
+                setCategoriaSeleccionada("TODAS");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                seccion === "TRAJES" && categoriaSeleccionada === "TODAS"
                   ? "bg-slate-900 text-white shadow-sm"
                   : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
               }`}
             >
               <Sparkles className="h-4 w-4 text-emerald-400" />
-              <span>Trajes & Vestidos ({articulosFiltrados.length})</span>
+              <span>Trajes & Vestidos ({articulos.length})</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSeccion("TRAJES");
+                setCategoriaSeleccionada("LO_MAS_ALQUILADO");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                seccion === "TRAJES" && categoriaSeleccionada === "LO_MAS_ALQUILADO"
+                  ? "bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-sm"
+                  : "bg-orange-50 text-orange-900 border border-orange-200 hover:bg-orange-100"
+              }`}
+            >
+              <span className="text-base">🔥</span>
+              <span>Lo Más Alquilado</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSeccion("TRAJES");
+                setCategoriaSeleccionada("NUEVOS");
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                seccion === "TRAJES" && categoriaSeleccionada === "NUEVOS"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
+                  : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <span className="text-base">✨</span>
+              <span>Lo Nuevo</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setSeccion("ACCESORIOS")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-black transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
                 seccion === "ACCESORIOS"
                   ? "bg-purple-800 text-white shadow-sm"
                   : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
               }`}
             >
               <Crown className="h-4 w-4 text-amber-300" />
-              <span>Accesorios & Complementos ({accesoriosFiltrados.length})</span>
+              <span>Accesorios ({accesoriosFiltrados.length})</span>
             </button>
           </div>
 
