@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   Sparkles,
@@ -146,6 +146,9 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
 
   // Modal de Detalle
   const [articuloDetalle, setArticuloDetalle] = useState<Articulo | null>(null);
+
+  // Referencia para desplazamiento del Carrusel de Historias
+  const carruselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     cargarCatalogo();
@@ -492,73 +495,115 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
               </span>
             </div>
 
-            {/* Carrusel Circular de Historias con Gradiente Oficial Instagram */}
-            <div className="flex items-start gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-none select-none">
-              {HISTORIAS_DESTACADAS.map((historia) => {
-                const seleccionada = categoriaSeleccionada === historia.id;
-                return (
-                  <button
-                    key={historia.id}
-                    type="button"
-                    onClick={() => {
-                      setCategoriaSeleccionada(historia.id);
-                      if (historia.id !== "TODAS") {
-                        setBusqueda("");
-                      }
-                    }}
-                    className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none"
-                  >
-                    {/* Anillo de Historia */}
-                    <div
-                      className={`relative p-0.5 rounded-full transition-all duration-300 transform group-hover:scale-105 ${
-                        seleccionada
-                          ? "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600 shadow-md ring-2 ring-emerald-500 ring-offset-2 scale-105"
-                          : "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600/70 hover:from-yellow-500 hover:to-purple-600 shadow-xs"
-                      }`}
+            {/* Contenedor con Botones de Navegación Flechas y Scroll Suave */}
+            <div className="relative group/carousel">
+              {/* Botón Flecha Izquierda */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (carruselRef.current) {
+                    carruselRef.current.scrollBy({ left: -320, behavior: "smooth" });
+                  }
+                }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow-lg border border-slate-200 hover:bg-slate-900 hover:text-white transition-all active:scale-95"
+                title="Desplazar a la izquierda"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              {/* Carrusel Circular de Historias con Gradiente Oficial Instagram */}
+              <div
+                ref={carruselRef}
+                onWheel={(e) => {
+                  if (carruselRef.current && e.deltaY !== 0) {
+                    carruselRef.current.scrollLeft += e.deltaY;
+                  }
+                }}
+                className="flex items-start gap-4 sm:gap-6 overflow-x-auto pb-3 pt-1 px-1 scroll-smooth select-none cursor-grab active:cursor-grabbing no-scrollbar"
+                style={{ scrollbarWidth: "thin" }}
+              >
+                {HISTORIAS_DESTACADAS.map((historia) => {
+                  const seleccionada = categoriaSeleccionada === historia.id;
+                  const totalTrajes = conteoPorHistoria[historia.id] ?? 0;
+
+                  return (
+                    <button
+                      key={historia.id}
+                      type="button"
+                      onClick={() => {
+                        setCategoriaSeleccionada(historia.id);
+                        if (historia.id !== "TODAS") {
+                          setBusqueda("");
+                        }
+                      }}
+                      className="flex flex-col items-center gap-1.5 shrink-0 group focus:outline-none transition-transform"
                     >
-                      {/* Borde Blanco Separador */}
-                      <div className="p-0.5 bg-white rounded-full">
-                        {/* Círculo Interior */}
-                        <div
-                          className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br ${historia.bgGradient} text-white shadow-inner transition-transform`}
-                        >
-                          <span className="text-2xl sm:text-3xl drop-shadow-md">
-                            {historia.emoji}
-                          </span>
+                      {/* Anillo de Historia */}
+                      <div
+                        className={`relative p-0.5 rounded-full transition-all duration-300 transform group-hover:scale-110 ${
+                          seleccionada
+                            ? "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600 shadow-md ring-3 ring-emerald-500 ring-offset-2 scale-105"
+                            : "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600/70 hover:from-yellow-500 hover:to-purple-600 shadow-xs"
+                        }`}
+                      >
+                        {/* Borde Blanco Separador */}
+                        <div className="p-0.5 bg-white rounded-full">
+                          {/* Círculo Interior */}
+                          <div
+                            className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br ${historia.bgGradient} text-white shadow-inner transition-transform`}
+                          >
+                            <span className="text-2xl sm:text-3xl drop-shadow-md select-none">
+                              {historia.emoji}
+                            </span>
+                          </div>
                         </div>
+
+                        {/* Badge de seleccionado o conteo */}
+                        {seleccionada ? (
+                          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-md border-2 border-white">
+                            ✓
+                          </span>
+                        ) : totalTrajes > 0 ? (
+                          <span className="absolute -bottom-1 -right-1 flex min-w-[20px] px-1 h-4 items-center justify-center rounded-full bg-slate-900 text-emerald-400 text-[9px] font-extrabold shadow-sm border border-white">
+                            {totalTrajes}
+                          </span>
+                        ) : null}
                       </div>
 
-                      {/* Badge de seleccionado o conteo */}
-                      {seleccionada ? (
-                        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-md border-2 border-white">
-                          ✓
+                      {/* Texto de la Historia */}
+                      <div className="text-center max-w-[76px] sm:max-w-[84px]">
+                        <span
+                          className={`block text-[11px] sm:text-xs leading-tight font-extrabold truncate ${
+                            seleccionada ? "text-emerald-700 underline underline-offset-2" : "text-slate-700 group-hover:text-slate-900"
+                          }`}
+                          title={historia.label}
+                        >
+                          {historia.label}
                         </span>
-                      ) : (conteoPorHistoria[historia.id] !== undefined && conteoPorHistoria[historia.id] > 0) ? (
-                        <span className="absolute -bottom-1 -right-1 flex min-w-[20px] px-1 h-4 items-center justify-center rounded-full bg-slate-900 text-emerald-400 text-[9px] font-extrabold shadow-sm border border-white">
-                          {conteoPorHistoria[historia.id]}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Texto de la Historia */}
-                    <div className="text-center max-w-[76px] sm:max-w-[84px]">
-                      <span
-                        className={`block text-[11px] sm:text-xs leading-tight font-extrabold truncate ${
-                          seleccionada ? "text-emerald-700 underline underline-offset-2" : "text-slate-700 group-hover:text-slate-900"
-                        }`}
-                        title={historia.label}
-                      >
-                        {historia.label}
-                      </span>
-                      {conteoPorHistoria[historia.id] !== undefined && (
                         <span className={`block text-[9px] font-bold truncate ${seleccionada ? "text-emerald-600" : "text-slate-400"}`}>
-                          {conteoPorHistoria[historia.id]} {conteoPorHistoria[historia.id] === 1 ? "traje" : "trajes"}
+                          {totalTrajes} {totalTrajes === 1 ? "traje" : "trajes"}
                         </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Botón Flecha Derecha */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (carruselRef.current) {
+                    carruselRef.current.scrollBy({ left: 320, behavior: "smooth" });
+                  }
+                }}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-800 shadow-lg border border-slate-200 hover:bg-slate-900 hover:text-white transition-all active:scale-95"
+                title="Desplazar a la derecha"
+                aria-label="Siguiente"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
 
             {/* Filtros Secundarios: Talla, Disponibilidad, Orden */}
