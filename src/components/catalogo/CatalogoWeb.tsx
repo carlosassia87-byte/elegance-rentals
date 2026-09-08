@@ -154,16 +154,35 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
   async function cargarCatalogo() {
     setCargando(true);
     try {
+      // 1. Obtener de Supabase con límite alto (10.000)
       const [arts, accs, emp] = await Promise.all([
-        listarArticulos("", 5000),
+        listarArticulos("", 10000),
         listarAccesorios(),
         obtenerConfiguracionEmpresa(),
       ]);
+
+      let articulosTotales: Articulo[] = [];
+
       if (arts && arts.length > 0) {
-        setArticulos(arts);
+        articulosTotales = arts;
+      } else {
+        // Fallback a localStorage si la base de datos está en modo offline o sincronización
+        try {
+          const localArts = JSON.parse(localStorage.getItem("ARTICULO") || localStorage.getItem("LOCAL_ARTICULOS") || "[]");
+          if (localArts && localArts.length > 0) {
+            articulosTotales = localArts;
+          }
+        } catch (e) {
+          console.warn("Error leyendo artículos locales:", e);
+        }
+      }
+
+      if (articulosTotales.length > 0) {
+        setArticulos(articulosTotales);
       } else {
         setArticulos(ARTICULOS_RESPALDO);
       }
+
       if (accs && accs.length > 0) {
         setAccesorios(accs.filter((a) => a.ACTIVO !== false));
       }
@@ -172,11 +191,43 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       }
     } catch (e) {
       console.error("Error cargando catálogo web:", e);
-      setArticulos(ARTICULOS_RESPALDO);
+      try {
+        const localArts = JSON.parse(localStorage.getItem("ARTICULO") || localStorage.getItem("LOCAL_ARTICULOS") || "[]");
+        if (localArts && localArts.length > 0) {
+          setArticulos(localArts);
+        } else {
+          setArticulos(ARTICULOS_RESPALDO);
+        }
+      } catch {
+        setArticulos(ARTICULOS_RESPALDO);
+      }
     } finally {
       setCargando(false);
     }
   }
+
+  // Mapa de cantidad de trajes disponibles por historia/categoría
+  const conteoPorHistoria = useMemo(() => {
+    const counts: Record<string, number> = {};
+    counts["TODAS"] = articulos.length;
+
+    HISTORIAS_DESTACADAS.forEach((historia) => {
+      if (historia.id === "TODAS") return;
+      const count = articulos.filter((art) => {
+        const desc = (art.DESCRIPCION || "").toLowerCase();
+        const cat = (art.CATEGORIA || "").toUpperCase();
+        if (historia.keywords.length > 0) {
+          const matchKw = historia.keywords.some((kw) => desc.includes(kw.toLowerCase()));
+          const matchCat = cat === historia.id || desc.includes(historia.label.toLowerCase());
+          return matchKw || matchCat;
+        }
+        return cat === historia.id;
+      }).length;
+      counts[historia.id] = count;
+    });
+
+    return counts;
+  }, [articulos]);
 
   // Filtrado y ordenamiento de artículos
   const articulosFiltrados = useMemo(() => {
@@ -477,27 +528,31 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
                         </div>
                       </div>
 
-                      {/* Badge pequeño de seleccionado */}
-                      {seleccionada && (
+                      {/* Badge de seleccionado o conteo */}
+                      {seleccionada ? (
                         <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-md border-2 border-white">
                           ✓
                         </span>
-                      )}
+                      ) : (conteoPorHistoria[historia.id] !== undefined && conteoPorHistoria[historia.id] > 0) ? (
+                        <span className="absolute -bottom-1 -right-1 flex min-w-[20px] px-1 h-4 items-center justify-center rounded-full bg-slate-900 text-emerald-400 text-[9px] font-extrabold shadow-sm border border-white">
+                          {conteoPorHistoria[historia.id]}
+                        </span>
+                      ) : null}
                     </div>
 
                     {/* Texto de la Historia */}
-                    <div className="text-center max-w-[72px] sm:max-w-[80px]">
+                    <div className="text-center max-w-[76px] sm:max-w-[84px]">
                       <span
                         className={`block text-[11px] sm:text-xs leading-tight font-extrabold truncate ${
-                          seleccionada ? "text-slate-950 underline underline-offset-2" : "text-slate-700 group-hover:text-slate-900"
+                          seleccionada ? "text-emerald-700 underline underline-offset-2" : "text-slate-700 group-hover:text-slate-900"
                         }`}
                         title={historia.label}
                       >
                         {historia.label}
                       </span>
-                      {historia.sublabel && (
-                        <span className="block text-[9px] text-slate-400 font-medium truncate">
-                          {historia.sublabel}
+                      {conteoPorHistoria[historia.id] !== undefined && (
+                        <span className={`block text-[9px] font-bold truncate ${seleccionada ? "text-emerald-600" : "text-slate-400"}`}>
+                          {conteoPorHistoria[historia.id]} {conteoPorHistoria[historia.id] === 1 ? "traje" : "trajes"}
                         </span>
                       )}
                     </div>
