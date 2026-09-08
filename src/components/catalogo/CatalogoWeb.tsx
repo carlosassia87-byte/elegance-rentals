@@ -389,18 +389,16 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
 
           {/* Contacto Rápido */}
           <div className="flex items-center gap-3">
-            {empresa.telefono1 && (
-              <a
-                href={`https://wa.me/57${empresa.telefono1.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-all shadow-2xs"
-              >
-                <MessageCircle className="h-4 w-4 text-emerald-600" />
-                <span className="hidden sm:inline">WhatsApp: {empresa.telefono1}</span>
-                <span className="sm:hidden">WhatsApp</span>
-              </a>
-            )}
+            <a
+              href={`https://wa.me/${telefonoWhatsApp}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-all shadow-2xs"
+            >
+              <MessageCircle className="h-4 w-4 text-emerald-600" />
+              <span className="hidden sm:inline">WhatsApp: {telefonoWhatsApp.replace(/^57/, "")}</span>
+              <span className="sm:hidden">WhatsApp</span>
+            </a>
           </div>
         </div>
       </header>
@@ -479,9 +477,11 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
       {/* =========================================================================
           CARRUSEL DE HISTORIAS DESTACADAS (IDÉNTICO A LA PÁGINA OFICIAL DE INSTAGRAM)
       ========================================================================= */}
-      {seccion === "TRAJES" && (
+      {!cargando && (
         <section className="bg-white border-b border-slate-200 py-3.5 shadow-2xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+            {seccion === "TRAJES" && (
+            <>
             {/* Título de Temáticas */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -605,6 +605,9 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
+            </>
+            )}
+
 
             {/* Filtros Secundarios: Talla, Disponibilidad, Orden */}
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100">
@@ -662,7 +665,7 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
                   <option value="mayor">Mayor precio de alquiler</option>
                 </select>
                 <span className="text-slate-500 font-bold hidden sm:inline text-xs">
-                  ({articulosFiltrados.length} trajes)
+                  ({seccion === "TRAJES" ? `${articulosFiltrados.length} trajes` : `${accesoriosFiltrados.length} accesorios`})
                 </span>
               </div>
             </div>
@@ -778,7 +781,7 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
 
               return (
                 <div
-                  key={art.IDARTICULO}
+                  key={`${art.IDARTICULO ?? "x"}-${art.CODBARRAS ?? ""}`}
                   className="group relative flex flex-col rounded-2xl bg-white hover:bg-slate-50/40 border border-slate-200/90 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden"
                 >
                   {/* Foto con Badge de Disponibilidad y Destacado */}
@@ -789,7 +792,10 @@ export function CatalogoWeb({ onIrAlPos }: CatalogoWebProps) {
                         alt={art.DESCRIPCION}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
-                      />
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />)
                     ) : (
                       <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-400 gap-2 p-4 text-center">
                         <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
