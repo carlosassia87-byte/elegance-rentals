@@ -159,10 +159,10 @@ export function PuntoDeVenta() {
     IDARTICULO: 0,
     DESCRIPCION: "",
     TALLA: "",
-    STOCK: 0,
+    STOCK: 1,
     VALOR: 0,
     VALORDEPOSITO: 0,
-    CODBARRAS: "1538",
+    CODBARRAS: "",
   });
 
   // Cantidad y Refs para Navegación por Teclado
@@ -782,10 +782,10 @@ export function PuntoDeVenta() {
       IDARTICULO: 0,
       DESCRIPCION: "",
       TALLA: "",
-      STOCK: 0,
+      STOCK: 1,
       VALOR: 0,
       VALORDEPOSITO: 0,
-      CODBARRAS: "1538",
+      CODBARRAS: "",
     });
     setModalArticuloAlta(true);
   }
@@ -799,17 +799,42 @@ export function PuntoDeVenta() {
   // Guardar Artículo en BD (ALTA_DE_ARTICULOS EXACTO A WINDEV)
   async function handleGuardarArticuloAlta(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    if (!articuloForm.DESCRIPCION || !articuloForm.DESCRIPCION.trim()) {
-      toast.error("Ingresa la descripción del artículo");
+
+    // 1. Validar Nombre / Descripción
+    const nombre = articuloForm.DESCRIPCION?.trim();
+    if (!nombre) {
+      toast.error("⚠️ El Nombre / Descripción es obligatorio", {
+        description: "Por favor ingresa el nombre o descripción del artículo para continuar.",
+      });
+      return;
+    }
+
+    // 2. Validar Valor Alquiler
+    const valorAlquiler = Number(articuloForm.VALOR);
+    if (!articuloForm.VALOR || isNaN(valorAlquiler) || valorAlquiler <= 0) {
+      toast.error("⚠️ El Valor de Alquiler es obligatorio", {
+        description: "Ingresa un valor de alquiler mayor a $0 para guardar la prenda.",
+      });
+      return;
+    }
+
+    // 3. Validar Código de Barras
+    const codBarras = articuloForm.CODBARRAS?.trim();
+    if (!codBarras) {
+      toast.error("⚠️ El Código de Barras es obligatorio", {
+        description: "Ingresa un código de barras o referencia para identificar el artículo.",
+      });
       return;
     }
 
     try {
       const artGuardado = await guardarArticulo({
         ...articuloForm,
-        VALOR: Number(articuloForm.VALOR) || 0,
+        DESCRIPCION: nombre,
+        CODBARRAS: codBarras,
+        VALOR: valorAlquiler,
         VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
-        STOCK: Number(articuloForm.STOCK) || 0,
+        STOCK: Number(articuloForm.STOCK) ?? 1,
       });
 
       if (artGuardado) {
@@ -825,21 +850,27 @@ export function PuntoDeVenta() {
       } else {
         const nuevo: Articulo = {
           IDARTICULO: articuloForm.IDARTICULO || Date.now(),
-          DESCRIPCION: articuloForm.DESCRIPCION,
+          DESCRIPCION: nombre,
           TALLA: articuloForm.TALLA || "",
-          STOCK: Number(articuloForm.STOCK) || 0,
-          VALOR: Number(articuloForm.VALOR) || 0,
+          STOCK: Number(articuloForm.STOCK) ?? 1,
+          VALOR: valorAlquiler,
           VALORDEPOSITO: Number(articuloForm.VALORDEPOSITO) || 0,
-          CODBARRAS: articuloForm.CODBARRAS || "1538",
+          CODBARRAS: codBarras,
         };
         setArticulos((prev) => [nuevo, ...prev]);
       }
 
-      toast.success("¡Artículo guardado exitosamente!");
+      toast.success("¡Artículo guardado exitosamente!", {
+        description: `Se guardó "${nombre}" correctamente en el inventario.`,
+      });
       setModalArticuloAlta(false);
       cargarArticulos();
-    } catch {
-      toast.error("Error guardando artículo");
+    } catch (err: any) {
+      console.error("Error al guardar artículo:", err);
+      const errorMsg = err?.message || "No se pudo conectar con la base de datos o hubo un error inesperado.";
+      toast.error("❌ Error al guardar el artículo", {
+        description: errorMsg,
+      });
     }
   }
 
@@ -2077,10 +2108,10 @@ export function PuntoDeVenta() {
                   />
                 </div>
 
-                {/* 2. ARTICULO */}
+                {/* 2. ARTICULO / NOMBRE */}
                 <div className="flex items-start">
-                  <span className="w-36 pt-1 text-xs font-bold text-slate-700 uppercase">
-                    Descripción / Piezas
+                  <span className="w-36 pt-1 text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                    Descripción / Nombre <span className="text-rose-500 font-black">*</span>
                   </span>
                   <textarea
                     rows={3}
@@ -2094,13 +2125,14 @@ export function PuntoDeVenta() {
 
                 {/* 3. VALOR (ALQUILER) */}
                 <div className="flex items-center">
-                  <span className="w-36 text-xs font-bold text-slate-700 uppercase">
-                    Valor Alquiler
+                  <span className="w-36 text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                    Valor Alquiler <span className="text-rose-500 font-black">*</span>
                   </span>
                   <div className="relative flex items-center">
                     <input
                       type="number"
                       min={0}
+                      required
                       placeholder="0"
                       value={articuloForm.VALOR || ""}
                       onChange={(e) => setArticuloForm((p) => ({ ...p, VALOR: Number(e.target.value) || 0 }))}
@@ -2118,7 +2150,7 @@ export function PuntoDeVenta() {
                   <input
                     type="number"
                     min={0}
-                    value={articuloForm.STOCK ?? 0}
+                    value={articuloForm.STOCK ?? 1}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, STOCK: Math.max(0, parseInt(e.target.value) || 0) }))}
                     className="h-8 w-28 rounded-xl border border-slate-300 bg-slate-50 px-3 text-right font-mono text-xs font-black text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none shadow-2xs"
                   />
@@ -2127,7 +2159,7 @@ export function PuntoDeVenta() {
                 {/* 5. TALLA */}
                 <div className="flex items-center">
                   <span className="w-36 text-xs font-bold text-slate-700 uppercase">
-                    Talla
+                    Talla <span className="text-slate-400 font-normal text-[10px]">(Opcional)</span>
                   </span>
                   <input
                     type="text"
@@ -2140,11 +2172,12 @@ export function PuntoDeVenta() {
 
                 {/* 6. BARRAS */}
                 <div className="flex items-center">
-                  <span className="w-36 text-xs font-bold text-slate-700 uppercase">
-                    Código de Barras
+                  <span className="w-36 text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                    Código de Barras <span className="text-rose-500 font-black">*</span>
                   </span>
                   <input
                     type="text"
+                    required
                     placeholder="Código de barras o referencia"
                     value={articuloForm.CODBARRAS || ""}
                     onChange={(e) => setArticuloForm((p) => ({ ...p, CODBARRAS: e.target.value }))}
@@ -2155,7 +2188,7 @@ export function PuntoDeVenta() {
                 {/* 7. VALOR DEPOSITO */}
                 <div className="flex items-center">
                   <span className="w-36 text-xs font-bold text-slate-700 uppercase">
-                    Valor Depósito (Fianza)
+                    Valor Depósito <span className="text-slate-400 font-normal text-[10px]">(Fianza)</span>
                   </span>
                   <div className="relative flex items-center">
                     <input
