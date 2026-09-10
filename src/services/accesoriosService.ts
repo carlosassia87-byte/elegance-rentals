@@ -143,7 +143,7 @@ export async function listarAccesorios(search = "", categoria = "TODAS"): Promis
       query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,CATEGORIA.ilike.%${search}%`);
     }
 
-    const { data, error } = await query.limit(300);
+    const { data, error } = await query.limit(50000);
 
     if (!error && data && data.length > 0) {
       saveLocalAccesorios(data as unknown as Accesorio[]);
