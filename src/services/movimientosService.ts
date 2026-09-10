@@ -3,10 +3,9 @@ import type { Articulo, Factura, CampoFactura } from "@/types/database.types";
 
 export type EstadoPrenda =
   | "EN ALQUILER"
+  | "ENTREGADO"
   | "EN BODEGA"
-  | "DEVUELTO A TIENDA"
-  | "VENTA"
-  | "ABONO / APARTADO";
+  | "VENTA";
 
 export interface ItemMovimiento {
   id: string | number;
@@ -36,7 +35,7 @@ export interface OperacionClienteMovimiento {
   clienteCedula: string;
   clienteTelefono: string;
   clienteDireccion: string;
-  tipoOperacion: "ALQUILER" | "VENTA" | "APARTADO / ABONO";
+  tipoOperacion: "ALQUILER" | "VENTA";
   totalAlquiler: number;
   totalDeposito: number;
   totalVentaDeposito: number;
@@ -44,7 +43,7 @@ export interface OperacionClienteMovimiento {
   pagoTransferencia: number;
   saldoPendiente: number;
   estadoGeneral: string;
-  estadoCliente: string;
+  estadoCliente: "EN ALQUILER" | "ENTREGADO" | "EN BODEGA" | "VENTA" | string;
   vendedor?: string;
   items: ItemMovimiento[];
 }
@@ -52,17 +51,16 @@ export interface OperacionClienteMovimiento {
 export interface FiltrosMovimientos {
   fechaInicio: string;
   fechaFin: string;
-  estado: string; // "TODOS" | EstadoPrenda
+  estado: string; // "TODOS" | "EN ALQUILER" | "ENTREGADO" | "EN BODEGA"
   busqueda: string;
 }
 
 export interface ResumenMetricasMovimientos {
   totalOperaciones: number;
   totalPrendasEnAlquiler: number;
-  totalPrendasDevueltas: number;
+  totalPrendasEntregadas: number;
   totalPrendasEnBodega: number;
   totalPrendasVenta: number;
-  totalPrendasApartadas: number;
   totalDineroAlquiler: number;
   totalDineroDepositos: number;
   totalSaldoPorCobrar: number;
@@ -91,7 +89,7 @@ export function guardarEstadoPrendaOverride(
     const key = `${numeroFact}_${codigoBarras || descripcion}`;
     current[key] = {
       estado: nuevoEstado,
-      fechaDevolucion: nuevoEstado === "DEVUELTO A TIENDA" ? new Date().toISOString().split("T")[0] : undefined,
+      fechaDevolucion: nuevoEstado === "ENTREGADO" ? new Date().toISOString().split("T")[0] : undefined,
     };
     localStorage.setItem(KEY_ESTADOS_PRENDAS, JSON.stringify(current));
   } catch {}
@@ -130,15 +128,15 @@ export async function consultarMovimientos(
         const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
         const saldo = Math.max(0, Number(f.TOTAL_SALDO || f.SALDOANTERIOR || (totalVenta - pagado)));
 
-        // Estado del cliente tal como está en la BD
-        const estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
-
-        let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" = "ALQUILER";
-        if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") {
-          tipo = "VENTA";
-        } else if (estadoCliRaw === "APARTADO" || f.MODO === "APARTADO" || (saldo > 0 && estadoCliRaw !== "EN ALQUILER" && estadoCliRaw !== "ALQUILER" && estadoCliRaw !== "DEVUELTO")) {
-          tipo = "APARTADO / ABONO";
+        // Estado del cliente tal como está en la BD Windev
+        let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+        if (!estadoCliRaw) {
+          estadoCliRaw = f.MODO === "VENTA" ? "VENTA" : "EN ALQUILER";
+        } else if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA") {
+          estadoCliRaw = "ENTREGADO";
         }
+
+        const tipo: "ALQUILER" | "VENTA" = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
 
         operacionesMap.set(numFact, {
           idFactura: Number(f.IDFACTURA),
@@ -158,7 +156,7 @@ export async function consultarMovimientos(
           pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
           saldoPendiente: saldo,
           estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
-          estadoCliente: estadoCliRaw || (tipo === "VENTA" ? "VENTA" : "EN ALQUILER"),
+          estadoCliente: estadoCliRaw,
           vendedor: f.VENDEDOR || "CAJERO",
           items: [],
         });
@@ -187,11 +185,14 @@ export async function consultarMovimientos(
           const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
           const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
           const saldo = Math.max(0, Number(f.TOTAL_SALDO || (totalVenta - pagado)));
-          const estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+          let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+          if (!estadoCliRaw) {
+            estadoCliRaw = f.MODO === "VENTA" ? "VENTA" : "EN ALQUILER";
+          } else if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA") {
+            estadoCliRaw = "ENTREGADO";
+          }
 
-          let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" = "ALQUILER";
-          if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") tipo = "VENTA";
-          else if (estadoCliRaw === "APARTADO" || f.MODO === "APARTADO" || (saldo > 0 && estadoCliRaw !== "EN ALQUILER" && estadoCliRaw !== "ALQUILER")) tipo = "APARTADO / ABONO";
+          const tipo: "ALQUILER" | "VENTA" = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
 
           operacionesMap.set(numFact, {
             idFactura: Number(f.IDFACTURA) || Date.now(),
@@ -211,7 +212,7 @@ export async function consultarMovimientos(
             pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
             saldoPendiente: saldo,
             estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
-            estadoCliente: estadoCliRaw || (tipo === "VENTA" ? "VENTA" : "EN ALQUILER"),
+            estadoCliente: estadoCliRaw,
             vendedor: f.VENDEDOR || "CAJERO",
             items: [],
           });
@@ -241,13 +242,13 @@ export async function consultarMovimientos(
           let estadoPrenda: EstadoPrenda = "EN ALQUILER";
           const ec = op.estadoCliente.toUpperCase();
 
-          if (ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
-            estadoPrenda = "DEVUELTO A TIENDA";
+          if (ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
+            estadoPrenda = "ENTREGADO";
           } else if (ec === "VENTA" || op.tipoOperacion === "VENTA") {
             estadoPrenda = "VENTA";
-          } else if (ec === "APARTADO" || ec === "EN BODEGA" || (op.saldoPendiente > 0 && op.tipoOperacion === "APARTADO / ABONO")) {
-            estadoPrenda = "ABONO / APARTADO";
-          } else if (ec === "EN ALQUILER" || ec === "ALQUILER") {
+          } else if (ec === "EN BODEGA") {
+            estadoPrenda = "EN BODEGA";
+          } else {
             estadoPrenda = "EN ALQUILER";
           }
 
@@ -295,7 +296,8 @@ export async function consultarMovimientos(
 
               let estadoPrenda: EstadoPrenda = "EN ALQUILER";
               if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
-              else if (op.saldoPendiente > 0) estadoPrenda = "ABONO / APARTADO";
+              else if (op.estadoCliente === "ENTREGADO") estadoPrenda = "ENTREGADO";
+              else if (op.estadoCliente === "EN BODEGA") estadoPrenda = "EN BODEGA";
 
               if (override) estadoPrenda = override.estado;
 
@@ -331,7 +333,8 @@ export async function consultarMovimientos(
 
       let estadoPrenda: EstadoPrenda = "EN ALQUILER";
       if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
-      else if (op.saldoPendiente > 0) estadoPrenda = "ABONO / APARTADO";
+      else if (op.estadoCliente === "ENTREGADO") estadoPrenda = "ENTREGADO";
+      else if (op.estadoCliente === "EN BODEGA") estadoPrenda = "EN BODEGA";
 
       if (override) estadoPrenda = override.estado;
 
@@ -361,10 +364,9 @@ export async function consultarMovimientos(
   const metricas: ResumenMetricasMovimientos = {
     totalOperaciones: todasOperaciones.length,
     totalPrendasEnAlquiler: 0,
-    totalPrendasDevueltas: 0,
+    totalPrendasEntregadas: 0,
     totalPrendasEnBodega: 0,
     totalPrendasVenta: 0,
-    totalPrendasApartadas: 0,
     totalDineroAlquiler: 0,
     totalDineroDepositos: 0,
     totalSaldoPorCobrar: 0,
@@ -380,17 +382,14 @@ export async function consultarMovimientos(
         case "EN ALQUILER":
           metricas.totalPrendasEnAlquiler += it.cantidad;
           break;
-        case "DEVUELTO A TIENDA":
-          metricas.totalPrendasDevueltas += it.cantidad;
+        case "ENTREGADO":
+          metricas.totalPrendasEntregadas += it.cantidad;
           break;
         case "EN BODEGA":
           metricas.totalPrendasEnBodega += it.cantidad;
           break;
         case "VENTA":
           metricas.totalPrendasVenta += it.cantidad;
-          break;
-        case "ABONO / APARTADO":
-          metricas.totalPrendasApartadas += it.cantidad;
           break;
       }
     });
@@ -399,7 +398,7 @@ export async function consultarMovimientos(
   // Aplicar Filtro de Estado
   if (filtros.estado && filtros.estado !== "TODOS") {
     todasOperaciones = todasOperaciones.filter((op) =>
-      op.items.some((it) => it.estadoPrenda === filtros.estado)
+      op.items.some((it) => it.estadoPrenda === filtros.estado) || op.estadoCliente === filtros.estado
     );
   }
 
@@ -428,14 +427,22 @@ export async function consultarMovimientos(
   };
 }
 
-// Marcar un traje/prenda como Devuelto a Tienda y actualizar stock
+// Marcar un traje/prenda como Devuelto a Tienda (ENTREGADO) y actualizar stock
 export async function marcarTrajeDevuelto(
   numeroFact: string,
   codigoBarras: string,
   descripcion: string
 ): Promise<boolean> {
   try {
-    guardarEstadoPrendaOverride(numeroFact, codigoBarras, descripcion, "DEVUELTO A TIENDA");
+    guardarEstadoPrendaOverride(numeroFact, codigoBarras, descripcion, "ENTREGADO");
+
+    // Actualizar FACTURA en Supabase si corresponde
+    try {
+      await supabase
+        .from("FACTURA" as any)
+        .update({ ESTADOCLIENTE: "ENTREGADO" })
+        .eq("NUMEROFACT", numeroFact);
+    } catch {}
 
     // Reincorporar stock en ARTICULO si existe
     try {
