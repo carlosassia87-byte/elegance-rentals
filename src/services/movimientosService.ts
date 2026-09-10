@@ -57,6 +57,10 @@ export interface FiltrosMovimientos {
 
 export interface ResumenMetricasMovimientos {
   totalOperaciones: number;
+  totalFacturasEnAlquiler: number;
+  totalFacturasEntregadas: number;
+  totalFacturasEnBodega: number;
+  totalFacturasVenta: number;
   totalPrendasEnAlquiler: number;
   totalPrendasEntregadas: number;
   totalPrendasEnBodega: number;
@@ -363,6 +367,10 @@ export async function consultarMovimientos(
   // Calcular Métricas Globales
   const metricas: ResumenMetricasMovimientos = {
     totalOperaciones: todasOperaciones.length,
+    totalFacturasEnAlquiler: 0,
+    totalFacturasEntregadas: 0,
+    totalFacturasEnBodega: 0,
+    totalFacturasVenta: 0,
     totalPrendasEnAlquiler: 0,
     totalPrendasEntregadas: 0,
     totalPrendasEnBodega: 0,
@@ -376,6 +384,20 @@ export async function consultarMovimientos(
     metricas.totalDineroAlquiler += op.totalAlquiler;
     metricas.totalDineroDepositos += op.totalDeposito;
     metricas.totalSaldoPorCobrar += op.saldoPendiente;
+
+    const ec = (op.estadoCliente || "").toUpperCase();
+    if (ec === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) {
+      metricas.totalFacturasEnAlquiler++;
+    }
+    if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) {
+      metricas.totalFacturasEntregadas++;
+    }
+    if (ec === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) {
+      metricas.totalFacturasEnBodega++;
+    }
+    if (ec === "VENTA" || op.tipoOperacion === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) {
+      metricas.totalFacturasVenta++;
+    }
 
     op.items.forEach((it) => {
       switch (it.estadoPrenda) {

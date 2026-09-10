@@ -474,8 +474,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "EN_ALQUILER" ? "bg-black/20 text-white" : "bg-amber-200 text-amber-950"
                     }`}
+                    title={`${metricas.totalFacturasEnAlquiler} Facturas (${metricas.totalPrendasEnAlquiler} prendas)`}
                   >
-                    {metricas.totalPrendasEnAlquiler}
+                    {metricas.totalFacturasEnAlquiler}
                   </span>
                 </button>
 
@@ -493,8 +494,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "ENTREGADO" ? "bg-black/20 text-white" : "bg-emerald-200 text-emerald-950"
                     }`}
+                    title={`${metricas.totalFacturasEntregadas} Facturas (${metricas.totalPrendasEntregadas} prendas)`}
                   >
-                    {metricas.totalPrendasEntregadas}
+                    {metricas.totalFacturasEntregadas}
                   </span>
                 </button>
 
@@ -512,8 +514,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "EN_BODEGA" ? "bg-black/20 text-white" : "bg-blue-200 text-blue-950"
                     }`}
+                    title={`${metricas.totalFacturasEnBodega} Facturas (${metricas.totalPrendasEnBodega} prendas)`}
                   >
-                    {metricas.totalPrendasEnBodega}
+                    {metricas.totalFacturasEnBodega}
                   </span>
                 </button>
 
@@ -550,8 +553,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "VENTA" ? "bg-black/20 text-white" : "bg-purple-200 text-purple-950"
                     }`}
+                    title={`${metricas.totalFacturasVenta} Facturas (${metricas.totalPrendasVenta} prendas)`}
                   >
-                    {metricas.totalPrendasVenta}
+                    {metricas.totalFacturasVenta}
                   </span>
                 </button>
               </div>
@@ -564,11 +568,11 @@ export function MovimientosTrajesModal({
                   onChange={(e) => setSubmoduloActivo(e.target.value as SubmoduloTipo)}
                   className="bg-transparent text-xs font-black text-slate-900 focus:outline-none cursor-pointer"
                 >
-                  <option value="EN_ALQUILER">EN ALQUILER</option>
-                  <option value="ENTREGADO">ENTREGADO</option>
-                  <option value="EN_BODEGA">EN BODEGA</option>
-                  <option value="TODOS">TODOS</option>
-                  <option value="VENTA">VENTA</option>
+                  <option value="EN_ALQUILER">EN ALQUILER ({metricas.totalFacturasEnAlquiler})</option>
+                  <option value="ENTREGADO">ENTREGADO ({metricas.totalFacturasEntregadas})</option>
+                  <option value="EN_BODEGA">EN BODEGA ({metricas.totalFacturasEnBodega})</option>
+                  <option value="TODOS">TODOS ({metricas.totalOperaciones})</option>
+                  <option value="VENTA">VENTA ({metricas.totalFacturasVenta})</option>
                 </select>
               </div>
             </div>
@@ -586,8 +590,10 @@ export function MovimientosTrajesModal({
                     <Shirt className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase text-amber-800">Prendas en poder del Cliente</span>
-                    <div className="text-xl font-black text-amber-950 font-mono">{metricas.totalPrendasEnAlquiler} prendas</div>
+                    <span className="text-[10px] font-black uppercase text-amber-800">Facturas / Prendas Alquiladas</span>
+                    <div className="text-xl font-black text-amber-950 font-mono">
+                      {operacionesEnAlquiler.length} Facturas <span className="text-xs font-normal text-amber-800 font-sans">({metricas.totalPrendasEnAlquiler} prendas)</span>
+                    </div>
                   </div>
                 </div>
 
@@ -607,7 +613,7 @@ export function MovimientosTrajesModal({
 
                 <div className="flex items-center justify-between pl-2">
                   <div>
-                    <span className="text-[10px] font-black uppercase text-slate-600">Facturas Pendientes</span>
+                    <span className="text-[10px] font-black uppercase text-slate-600">Total Facturas en Tabla</span>
                     <div className="text-lg font-black text-slate-900">{operacionesEnAlquiler.length} Facturas</div>
                   </div>
                   <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300">
@@ -625,8 +631,10 @@ export function MovimientosTrajesModal({
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase text-emerald-800">Prendas Ya Entregadas / Devueltas</span>
-                    <div className="text-xl font-black text-emerald-950 font-mono">{metricas.totalPrendasEntregadas} prendas</div>
+                    <span className="text-[10px] font-black uppercase text-emerald-800">Facturas / Prendas Entregadas</span>
+                    <div className="text-xl font-black text-emerald-950 font-mono">
+                      {operacionesEntregados.length} Facturas <span className="text-xs font-normal text-emerald-800 font-sans">({metricas.totalPrendasEntregadas} prendas)</span>
+                    </div>
                   </div>
                 </div>
 
