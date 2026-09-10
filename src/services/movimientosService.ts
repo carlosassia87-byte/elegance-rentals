@@ -106,7 +106,7 @@ export async function consultarMovimientos(
   try {
     const BATCH_SIZE = 1000;
     let from = 0;
-    const maxLimit = 50000;
+    const maxLimit = 200000;
 
     while (from < maxLimit) {
       const to = from + BATCH_SIZE - 1;
@@ -225,7 +225,7 @@ export async function consultarMovimientos(
   try {
     const BATCH_SIZE = 1000;
     let from = 0;
-    const maxLimit = 50000;
+    const maxLimit = 200000;
 
     while (from < maxLimit) {
       const to = from + BATCH_SIZE - 1;
