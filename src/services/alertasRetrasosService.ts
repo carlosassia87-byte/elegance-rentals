@@ -49,16 +49,25 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
     if (rawOv) overrides = JSON.parse(rawOv);
   } catch {}
 
-  // 2. Obtener todas las facturas de Supabase
+  // 2. Obtener todas las facturas de Supabase con paginación por lotes
   let facturas: any[] = [];
-  try {
-    const { data, error } = await supabase
-      .from("FACTURA" as any)
-      .select("*")
-      .order("IDFACTURA", { ascending: false });
+  const BATCH_SIZE = 1000;
+  const MAX_RECORDS = 200000;
 
-    if (!error && data) {
-      facturas = data;
+  try {
+    let from = 0;
+    while (from < MAX_RECORDS) {
+      const to = from + BATCH_SIZE - 1;
+      const { data, error } = await supabase
+        .from("FACTURA" as any)
+        .select("*")
+        .order("IDFACTURA", { ascending: false })
+        .range(from, to);
+
+      if (error || !data || data.length === 0) break;
+      facturas.push(...data);
+      if (data.length < BATCH_SIZE) break;
+      from += BATCH_SIZE;
     }
   } catch (e) {
     console.warn("Fallo lectura de facturas en Supabase:", e);
@@ -77,16 +86,41 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
     }
   } catch {}
 
-  // 4. Obtener todos los campos de factura
+  // 4. Obtener todos los campos de factura con paginación por lotes
   let todosCampos: any[] = [];
   try {
-    const { data: cData } = await supabase.from("CAMPOFACTURA" as any).select("*");
-    if (cData && cData.length > 0) todosCampos = cData;
+    let cFrom = 0;
+    while (cFrom < MAX_RECORDS) {
+      const cTo = cFrom + BATCH_SIZE - 1;
+      const { data: cData, error: cErr } = await supabase
+        .from("CAMPOFACTURA" as any)
+        .select("*")
+        .range(cFrom, cTo);
+
+      if (cErr || !cData || cData.length === 0) break;
+      todosCampos.push(...cData);
+      if (cData.length < BATCH_SIZE) break;
+      cFrom += BATCH_SIZE;
+    }
   } catch {}
 
   // Procesar cada factura
   for (const f of facturas) {
-    if (f.MODO === "VENTA" || f.ESTADOCLIENTE === "VENTA") continue;
+    const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
+    let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+
+    // Descartar anuladas, ventas, entregados/devueltos o bodega
+    if (
+      estadoGenRaw === "ANULADA" ||
+      estadoGenRaw === "ANULADO" ||
+      estadoCliRaw === "ANULADA" ||
+      estadoCliRaw === "ANULADO"
+    ) {
+      continue;
+    }
+
+    if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") continue;
+    if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA" || estadoCliRaw === "ENTREGADO") continue;
 
     const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
 
@@ -118,6 +152,23 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
         });
         totalDepActivo += dep * cant;
       }
+    }
+
+    // Si totalDepActivo fue 0 por falta de detalle en CAMPOFACTURA, usar FTOTALDEPOSITO de FACTURA
+    if (totalDepActivo === 0 && Number(f.FTOTALDEPOSITO || 0) > 0) {
+      totalDepActivo = Number(f.FTOTALDEPOSITO || 0);
+    }
+
+    // Si no tiene campos de factura pero el estado de la factura es "EN ALQUILER", crear prenda sintética
+    if (prendasActivas.length === 0 && (estadoCliRaw === "EN ALQUILER" || !estadoCliRaw)) {
+      prendasActivas.push({
+        codigoBarras: "",
+        descripcion: "TRAJE EN ALQUILER",
+        talla: "U",
+        cantidad: 1,
+        valorDeposito: Number(f.FTOTALDEPOSITO || 0),
+      });
+      totalDepActivo = Number(f.FTOTALDEPOSITO || 0);
     }
 
     // Si tiene prendas que aún NO han devuelto a la tienda
