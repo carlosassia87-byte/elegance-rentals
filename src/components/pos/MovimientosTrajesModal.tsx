@@ -49,7 +49,7 @@ interface MovimientosTrajesModalProps {
   cajeroNombre?: string;
 }
 
-type SubmoduloTipo = "EN_ALQUILER" | "ENTREGADO" | "EN_BODEGA" | "TODOS" | "VENTA";
+type SubmoduloTipo = "EN_ALQUILER" | "ENTREGADO" | "EN_BODEGA" | "TODOS" | "VENTA" | "ANULADOS";
 
 export function MovimientosTrajesModal({
   open,
@@ -77,10 +77,16 @@ export function MovimientosTrajesModal({
   const [clienteSeleccionado, setClienteSeleccionado] = useState<OperacionClienteMovimiento | null>(null);
   const [metricas, setMetricas] = useState<ResumenMetricasMovimientos>({
     totalOperaciones: 0,
+    totalFacturasEnAlquiler: 0,
+    totalFacturasEntregadas: 0,
+    totalFacturasEnBodega: 0,
+    totalFacturasVenta: 0,
+    totalFacturasAnuladas: 0,
     totalPrendasEnAlquiler: 0,
     totalPrendasEntregadas: 0,
     totalPrendasEnBodega: 0,
     totalPrendasVenta: 0,
+    totalPrendasAnuladas: 0,
     totalDineroAlquiler: 0,
     totalDineroDepositos: 0,
     totalSaldoPorCobrar: 0,
@@ -148,27 +154,45 @@ export function MovimientosTrajesModal({
   };
 
   // Filtrado según ESTADO_CLIENTE del sistema Windev
+  const operacionesAnuladas = useMemo(() => {
+    return operaciones.filter((op) =>
+      op.estadoCliente === "ANULADO" || op.estadoGeneral === "ANULADA" || op.estadoGeneral === "ANULADO"
+    );
+  }, [operaciones]);
+
   const operacionesEnAlquiler = useMemo(() => {
     return operaciones.filter((op) =>
-      op.estadoCliente === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")
+      (op.estadoCliente === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) &&
+      op.estadoCliente !== "ANULADO" &&
+      op.estadoGeneral !== "ANULADA" &&
+      op.estadoGeneral !== "ANULADO"
     );
   }, [operaciones]);
 
   const operacionesEntregados = useMemo(() => {
     return operaciones.filter((op) =>
-      op.estadoCliente === "ENTREGADO" || op.estadoCliente === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")
+      (op.estadoCliente === "ENTREGADO" || op.estadoCliente === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) &&
+      op.estadoCliente !== "ANULADO" &&
+      op.estadoGeneral !== "ANULADA" &&
+      op.estadoGeneral !== "ANULADO"
     );
   }, [operaciones]);
 
   const operacionesEnBodega = useMemo(() => {
     return operaciones.filter((op) =>
-      op.estadoCliente === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")
+      (op.estadoCliente === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) &&
+      op.estadoCliente !== "ANULADO" &&
+      op.estadoGeneral !== "ANULADA" &&
+      op.estadoGeneral !== "ANULADO"
     );
   }, [operaciones]);
 
   const operacionesVentas = useMemo(() => {
     return operaciones.filter((op) =>
-      op.tipoOperacion === "VENTA" || op.estadoCliente === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")
+      (op.tipoOperacion === "VENTA" || op.estadoCliente === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) &&
+      op.estadoCliente !== "ANULADO" &&
+      op.estadoGeneral !== "ANULADA" &&
+      op.estadoGeneral !== "ANULADO"
     );
   }, [operaciones]);
 
@@ -183,11 +207,13 @@ export function MovimientosTrajesModal({
         return operacionesEnBodega;
       case "VENTA":
         return operacionesVentas;
+      case "ANULADOS":
+        return operacionesAnuladas;
       case "TODOS":
       default:
         return operaciones;
     }
-  }, [submoduloActivo, operacionesEnAlquiler, operacionesEntregados, operacionesEnBodega, operacionesVentas, operaciones]);
+  }, [submoduloActivo, operacionesEnAlquiler, operacionesEntregados, operacionesEnBodega, operacionesVentas, operacionesAnuladas, operaciones]);
 
   // Depósitos que todavía falta devolver a los clientes (En alquiler)
   const totalDepositosPorDevolver = useMemo(() => {
@@ -558,6 +584,26 @@ export function MovimientosTrajesModal({
                     {metricas.totalFacturasVenta}
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubmoduloActivo("ANULADOS")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    submoduloActivo === "ANULADOS"
+                      ? "bg-rose-700 text-white shadow-sm ring-2 ring-rose-400/50"
+                      : "bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100"
+                  }`}
+                >
+                  <span>🚫 ANULADOS</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
+                      submoduloActivo === "ANULADOS" ? "bg-black/20 text-white" : "bg-rose-200 text-rose-950"
+                    }`}
+                    title={`${metricas.totalFacturasAnuladas} Facturas Anuladas`}
+                  >
+                    {metricas.totalFacturasAnuladas}
+                  </span>
+                </button>
               </div>
 
               {/* Selector desplegable ESTADO_CLIENTE como en Windev */}
@@ -573,6 +619,7 @@ export function MovimientosTrajesModal({
                   <option value="EN_BODEGA">EN BODEGA ({metricas.totalFacturasEnBodega})</option>
                   <option value="TODOS">TODOS ({metricas.totalOperaciones})</option>
                   <option value="VENTA">VENTA ({metricas.totalFacturasVenta})</option>
+                  <option value="ANULADOS">ANULADOS ({metricas.totalFacturasAnuladas})</option>
                 </select>
               </div>
             </div>
@@ -713,7 +760,9 @@ export function MovimientosTrajesModal({
                               <td className="p-2 text-center">
                                 <span
                                   className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
-                                    ec === "ENTREGADO" || ec === "DEVUELTO"
+                                    ec === "ANULADO" || ec === "ANULADA"
+                                      ? "bg-rose-100 text-rose-900 border-rose-300"
+                                      : ec === "ENTREGADO" || ec === "DEVUELTO"
                                       ? "bg-emerald-100 text-emerald-900 border-emerald-300"
                                       : ec === "EN BODEGA"
                                       ? "bg-blue-100 text-blue-900 border-blue-300"

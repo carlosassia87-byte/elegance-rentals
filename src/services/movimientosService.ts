@@ -5,7 +5,8 @@ export type EstadoPrenda =
   | "EN ALQUILER"
   | "ENTREGADO"
   | "EN BODEGA"
-  | "VENTA";
+  | "VENTA"
+  | "ANULADO";
 
 export interface ItemMovimiento {
   id: string | number;
@@ -43,7 +44,7 @@ export interface OperacionClienteMovimiento {
   pagoTransferencia: number;
   saldoPendiente: number;
   estadoGeneral: string;
-  estadoCliente: "EN ALQUILER" | "ENTREGADO" | "EN BODEGA" | "VENTA" | string;
+  estadoCliente: "EN ALQUILER" | "ENTREGADO" | "EN BODEGA" | "VENTA" | "ANULADO" | string;
   vendedor?: string;
   items: ItemMovimiento[];
 }
@@ -51,7 +52,7 @@ export interface OperacionClienteMovimiento {
 export interface FiltrosMovimientos {
   fechaInicio: string;
   fechaFin: string;
-  estado: string; // "TODOS" | "EN ALQUILER" | "ENTREGADO" | "EN BODEGA"
+  estado: string; // "TODOS" | "EN ALQUILER" | "ENTREGADO" | "EN BODEGA" | "ANULADO"
   busqueda: string;
 }
 
@@ -61,10 +62,12 @@ export interface ResumenMetricasMovimientos {
   totalFacturasEntregadas: number;
   totalFacturasEnBodega: number;
   totalFacturasVenta: number;
+  totalFacturasAnuladas: number;
   totalPrendasEnAlquiler: number;
   totalPrendasEntregadas: number;
   totalPrendasEnBodega: number;
   totalPrendasVenta: number;
+  totalPrendasAnuladas: number;
   totalDineroAlquiler: number;
   totalDineroDepositos: number;
   totalSaldoPorCobrar: number;
@@ -133,8 +136,12 @@ export async function consultarMovimientos(
         const saldo = Math.max(0, Number(f.TOTAL_SALDO || f.SALDOANTERIOR || (totalVenta - pagado)));
 
         // Estado del cliente tal como está en la BD Windev
+        const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
         let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
-        if (!estadoCliRaw) {
+
+        if (estadoGenRaw === "ANULADA" || estadoGenRaw === "ANULADO" || estadoCliRaw === "ANULADA" || estadoCliRaw === "ANULADO") {
+          estadoCliRaw = "ANULADO";
+        } else if (!estadoCliRaw) {
           estadoCliRaw = f.MODO === "VENTA" ? "VENTA" : "EN ALQUILER";
         } else if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA") {
           estadoCliRaw = "ENTREGADO";
@@ -189,8 +196,12 @@ export async function consultarMovimientos(
           const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
           const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
           const saldo = Math.max(0, Number(f.TOTAL_SALDO || (totalVenta - pagado)));
+          const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
           let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
-          if (!estadoCliRaw) {
+
+          if (estadoGenRaw === "ANULADA" || estadoGenRaw === "ANULADO" || estadoCliRaw === "ANULADA" || estadoCliRaw === "ANULADO") {
+            estadoCliRaw = "ANULADO";
+          } else if (!estadoCliRaw) {
             estadoCliRaw = f.MODO === "VENTA" ? "VENTA" : "EN ALQUILER";
           } else if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA") {
             estadoCliRaw = "ENTREGADO";
@@ -246,7 +257,9 @@ export async function consultarMovimientos(
           let estadoPrenda: EstadoPrenda = "EN ALQUILER";
           const ec = op.estadoCliente.toUpperCase();
 
-          if (ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
+          if (ec === "ANULADO" || ec === "ANULADA") {
+            estadoPrenda = "ANULADO";
+          } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
             estadoPrenda = "ENTREGADO";
           } else if (ec === "VENTA" || op.tipoOperacion === "VENTA") {
             estadoPrenda = "VENTA";
@@ -299,7 +312,8 @@ export async function consultarMovimientos(
               const override = overrides[keyOverride];
 
               let estadoPrenda: EstadoPrenda = "EN ALQUILER";
-              if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
+              if (op.estadoCliente === "ANULADO") estadoPrenda = "ANULADO";
+              else if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
               else if (op.estadoCliente === "ENTREGADO") estadoPrenda = "ENTREGADO";
               else if (op.estadoCliente === "EN BODEGA") estadoPrenda = "EN BODEGA";
 
@@ -336,7 +350,8 @@ export async function consultarMovimientos(
       const override = overrides[keyOverride];
 
       let estadoPrenda: EstadoPrenda = "EN ALQUILER";
-      if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
+      if (op.estadoCliente === "ANULADO") estadoPrenda = "ANULADO";
+      else if (op.tipoOperacion === "VENTA") estadoPrenda = "VENTA";
       else if (op.estadoCliente === "ENTREGADO") estadoPrenda = "ENTREGADO";
       else if (op.estadoCliente === "EN BODEGA") estadoPrenda = "EN BODEGA";
 
@@ -371,10 +386,12 @@ export async function consultarMovimientos(
     totalFacturasEntregadas: 0,
     totalFacturasEnBodega: 0,
     totalFacturasVenta: 0,
+    totalFacturasAnuladas: 0,
     totalPrendasEnAlquiler: 0,
     totalPrendasEntregadas: 0,
     totalPrendasEnBodega: 0,
     totalPrendasVenta: 0,
+    totalPrendasAnuladas: 0,
     totalDineroAlquiler: 0,
     totalDineroDepositos: 0,
     totalSaldoPorCobrar: 0,
@@ -386,21 +403,23 @@ export async function consultarMovimientos(
     metricas.totalSaldoPorCobrar += op.saldoPendiente;
 
     const ec = (op.estadoCliente || "").toUpperCase();
-    if (ec === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) {
+    if (ec === "ANULADO" || ec === "ANULADA") {
+      metricas.totalFacturasAnuladas++;
+    } else if (ec === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) {
       metricas.totalFacturasEnAlquiler++;
-    }
-    if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) {
+    } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) {
       metricas.totalFacturasEntregadas++;
-    }
-    if (ec === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) {
+    } else if (ec === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) {
       metricas.totalFacturasEnBodega++;
-    }
-    if (ec === "VENTA" || op.tipoOperacion === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) {
+    } else if (ec === "VENTA" || op.tipoOperacion === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) {
       metricas.totalFacturasVenta++;
     }
 
     op.items.forEach((it) => {
       switch (it.estadoPrenda) {
+        case "ANULADO":
+          metricas.totalPrendasAnuladas += it.cantidad;
+          break;
         case "EN ALQUILER":
           metricas.totalPrendasEnAlquiler += it.cantidad;
           break;
