@@ -215,30 +215,14 @@ export function MovimientosTrajesModal({
     }
   }, [submoduloActivo, operacionesEnAlquiler, operacionesEntregados, operacionesEnBodega, operacionesVentas, operacionesAnuladas, operaciones]);
 
-  // Depósitos que todavía falta devolver a los clientes (En alquiler)
+  // Depósitos que todavía falta devolver a los clientes (tomado directamente de FACTURA.FTOTALDEPOSITO)
   const totalDepositosPorDevolver = useMemo(() => {
-    let sum = 0;
-    operacionesEnAlquiler.forEach((op) => {
-      op.items.forEach((it) => {
-        if (it.estadoPrenda === "EN ALQUILER") {
-          sum += (it.valorDeposito * it.cantidad);
-        }
-      });
-    });
-    return sum;
+    return operacionesEnAlquiler.reduce((sum, op) => sum + (Number(op.totalDeposito) || 0), 0);
   }, [operacionesEnAlquiler]);
 
-  // Depósitos ya entregados / liquidados
+  // Depósitos ya entregados / liquidados (tomado directamente de FACTURA.FTOTALDEPOSITO)
   const totalDepositosYaDevueltos = useMemo(() => {
-    let sum = 0;
-    operacionesEntregados.forEach((op) => {
-      op.items.forEach((it) => {
-        if (it.estadoPrenda === "ENTREGADO") {
-          sum += (it.valorDeposito * it.cantidad);
-        }
-      });
-    });
-    return sum;
+    return operacionesEntregados.reduce((sum, op) => sum + (Number(op.totalDeposito) || 0), 0);
   }, [operacionesEntregados]);
 
   const abrirDevolucionFactura = (numFact: string) => {
