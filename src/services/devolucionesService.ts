@@ -277,6 +277,32 @@ export async function registrarDevolucionCompleta(
       } catch {}
     }
 
+    // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda)
+    try {
+      await supabase
+        .from("FACTURA" as any)
+        .update({
+          ESTADOCLIENTE: "ENTREGADO",
+          ESTADOFIN: "DEVUELTO",
+        })
+        .eq("NUMEROFACT", params.numeroFactura);
+    } catch (e) {
+      console.warn("Error actualizando estado en FACTURA Supabase:", e);
+    }
+
+    // Actualizar factura en respaldo local si aplica
+    try {
+      const rawLocal = localStorage.getItem("elegance_local_facturas");
+      if (rawLocal) {
+        const localList: any[] = JSON.parse(rawLocal);
+        const idx = localList.findIndex((f) => f.NUMEROFACT === params.numeroFactura);
+        if (idx >= 0 && localList[idx]) {
+          localList[idx].ESTADOCLIENTE = "ENTREGADO";
+          localStorage.setItem("elegance_local_facturas", JSON.stringify(localList));
+        }
+      }
+    } catch {}
+
     // C. Preparar datos del comprobante de devolución
     const comprobante: ComprobanteDevolucionData = {
       numeroComprobante: numComprobante,
