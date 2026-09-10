@@ -900,9 +900,9 @@ export async function registrarSalidaVestidoApartado(
       await supabase
         .from("FACTURA" as any)
         .update({
-          ESTADOCLIENTE: "ENTREGADO",
+          ESTADOCLIENTE: "EN ALQUILER",
           ESTADOFIN: "EN ALQUILER",
-          MODO: "EN ALQUILER",
+          MODO: "ALQUILER",
           FECHASALIDA: hoy,
           FECHAENTRADA: dDevolucion,
         })
@@ -915,7 +915,8 @@ export async function registrarSalidaVestidoApartado(
     const facts = getLocalFacturas();
     const factIdx = facts.findIndex((f) => f.NUMEROFACT === numeroFactura);
     if (factIdx >= 0 && facts[factIdx]) {
-      facts[factIdx]!.ESTADOCLIENTE = "ENTREGADO";
+      facts[factIdx]!.ESTADOCLIENTE = "EN ALQUILER";
+      facts[factIdx]!.MODO = "ALQUILER";
       facts[factIdx]!.FECHASALIDA = hoy;
       facts[factIdx]!.FECHAENTRADA = dDevolucion;
       localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
