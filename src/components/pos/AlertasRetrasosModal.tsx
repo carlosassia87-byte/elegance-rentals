@@ -21,9 +21,12 @@ import {
   AlertCircle,
   ExternalLink,
   Store,
+  Printer,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
+import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 import {
   consultarTodosLosRetrasosYAlertas,
   generarMensajeWhatsAppRetraso,
@@ -154,6 +157,227 @@ export function AlertasRetrasosModal({
     }
   };
 
+  // Imprimir reporte general de moras en formato 80mm
+  const handleImprimirReporte80mm = () => {
+    const listaAImprimir = alertasFiltradas;
+    if (listaAImprimir.length === 0) {
+      toast.warning("No hay registros en la vista actual para imprimir");
+      return;
+    }
+
+    const totalMoras = listaAImprimir.reduce((acc, it) => acc + it.recargoTotalRetraso, 0);
+    const totalDepositos = listaAImprimir.reduce((acc, it) => acc + it.totalDepositoRetenido, 0);
+    const totalPrendas = listaAImprimir.reduce((acc, it) => acc + it.prendas.reduce((pAcc, p) => pAcc + p.cantidad, 0), 0);
+
+    const tituloTab =
+      filtroTab === "MORA"
+        ? "EN MORA CRÍTICA"
+        : filtroTab === "VENCE_HOY"
+        ? "VENCEN HOY / MAÑANA"
+        : filtroTab === "EN_TIEMPO"
+        ? "EN PLAZO NORMAL"
+        : "TODOS LOS ALQUILERES";
+
+    const html = `
+      <div style="text-align: center; margin-bottom: 6px;">
+        <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 90px; object-fit: contain; margin: 0 auto 4px auto; display: block;" onerror="this.style.display='none'" />
+        <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">${empresa.nombreComercial || "LA CASA DEL DISFRAZ"}</div>
+        <div style="font-size: 11px; font-weight: 800;">${empresa.direccion || "CRA 23 #15-34 · BUCARAMANGA"}</div>
+        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono || "6076963959 - 3202375610"}</div>
+      </div>
+      <hr />
+      <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">
+        *** AUDITORÍA DE RETRASOS & MORA ***
+      </div>
+      <div style="text-align: center; font-size: 11px; font-weight: 900; background: #eee; padding: 2px 0; margin-bottom: 4px;">
+        FILTRO: ${tituloTab}
+      </div>
+      <hr />
+      <div style="font-size: 11.5px; font-weight: 700; margin: 4px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>FECHA IMPRESIÓN:</span>
+          <span style="font-weight: 900;">${new Date().toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>TOTAL CLIENTES:</span>
+          <span style="font-weight: 900;">${listaAImprimir.length}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>TOTAL PRENDAS:</span>
+          <span style="font-weight: 900;">${totalPrendas}</span>
+        </div>
+      </div>
+      <hr />
+
+      <div style="margin: 6px 0;">
+        <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 6px;">
+          DETALLE DE CLIENTES Y PRENDAS
+        </div>
+        ${listaAImprimir
+          .map(
+            (it, idx) => `
+          <div style="margin-bottom: 7px; border-bottom: 1px dashed #000; padding-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900;">
+              <span>#${idx + 1} FACT: ${it.numeroFactura}</span>
+              <span>${it.diasRetraso > 0 ? `+${it.diasRetraso}d MORA` : "A TIEMPO"}</span>
+            </div>
+            <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase; margin-top: 1px;">
+              ${it.clienteNombre}
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700; color: #333;">
+              <span>CC: ${it.clienteCedula}</span>
+              <span>TEL: ${it.clienteTelefono}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: 700;">
+              <span>Salida: ${it.fechaSalida}</span>
+              <span>Transcurrido: ${it.diasTranscurridos}d</span>
+            </div>
+            <div style="margin: 3px 0 2px 4px;">
+              ${it.prendas
+                .map(
+                  (p) => `
+                <div style="font-size: 10.5px; font-weight: 700;">
+                  • ${p.cantidad}x ${p.descripcion} (Talla: ${p.talla})
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; margin-top: 2px;">
+              <span>Depósito: $${it.totalDepositoRetenido.toLocaleString("es-CO")}</span>
+              <span style="color: #000;">Mora: $${it.recargoTotalRetraso.toLocaleString("es-CO")}</span>
+            </div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+
+      <div style="margin-top: 8px; font-size: 12px; font-weight: 900; border-top: 2px solid #000; padding-top: 4px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>TOTAL DEPÓSITOS CUSTODIA:</span>
+          <span>$${totalDepositos.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>TOTAL RECARGOS POR MORA:</span>
+          <span>$${totalMoras.toLocaleString("es-CO")}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 25px; text-align: center;">
+        <div style="border-top: 1.5px solid #000; width: 75%; margin: 0 auto 3px auto;"></div>
+        <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase;">Firma Encargado / Auditoría</div>
+      </div>
+    `;
+
+    imprimirReporte80mmHtml(`Reporte-Retrasos-${filtroTab}`, html);
+  };
+
+  // Imprimir expediente individual de cliente seleccionado en 80mm
+  const handleImprimirClienteIndividual80mm = (it: ItemRetrasoAlquiler) => {
+    const html = `
+      <div style="text-align: center; margin-bottom: 6px;">
+        <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 90px; object-fit: contain; margin: 0 auto 4px auto; display: block;" onerror="this.style.display='none'" />
+        <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">${empresa.nombreComercial || "LA CASA DEL DISFRAZ"}</div>
+        <div style="font-size: 11px; font-weight: 800;">${empresa.direccion || "CRA 23 #15-34 · BUCARAMANGA"}</div>
+        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono || "6076963959 - 3202375610"}</div>
+      </div>
+      <hr />
+      <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">
+        *** NOTIFICACIÓN DE COBRO Y MORA ***
+      </div>
+      <hr />
+      <div style="font-size: 11.5px; font-weight: 700; margin: 4px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>FACTURA:</span>
+          <span style="font-weight: 900;">${it.numeroFactura}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>FECHA EMISIÓN:</span>
+          <span style="font-weight: 900;">${new Date().toLocaleDateString("es-CO")}</span>
+        </div>
+      </div>
+      <hr />
+
+      <div style="margin: 6px 0; font-size: 11.5px;">
+        <div style="font-weight: 900; text-transform: uppercase; font-size: 12px; margin-bottom: 3px;">
+          DATOS DEL CLIENTE:
+        </div>
+        <div><strong>CLIENTE:</strong> ${it.clienteNombre}</div>
+        <div><strong>CÉDULA:</strong> ${it.clienteCedula}</div>
+        <div><strong>TELÉFONO:</strong> ${it.clienteTelefono}</div>
+        ${it.clienteDireccion ? `<div><strong>DIRECCIÓN:</strong> ${it.clienteDireccion}</div>` : ""}
+      </div>
+      <hr />
+
+      <div style="margin: 6px 0; font-size: 11.5px;">
+        <div style="font-weight: 900; text-transform: uppercase; margin-bottom: 3px;">
+          ESTADO DEL ALQUILER:
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>FECHA SALIDA:</span>
+          <span style="font-weight: 800;">${it.fechaSalida}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>FECHA PACTADA RETORNO:</span>
+          <span style="font-weight: 800;">${it.fechaEntregaPactada}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>DÍAS TRANSCURRIDOS:</span>
+          <span style="font-weight: 800;">${it.diasTranscurridos} día(s)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>DÍAS PERMITIDOS:</span>
+          <span style="font-weight: 800;">3 días</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: 900; color: #000; margin-top: 3px; border-top: 1px dashed #000; padding-top: 2px;">
+          <span>DÍAS EN MORA:</span>
+          <span>${it.diasRetraso} DÍA(S)</span>
+        </div>
+      </div>
+      <hr />
+
+      <div style="margin: 6px 0;">
+        <div style="font-weight: 900; text-transform: uppercase; font-size: 11.5px; margin-bottom: 4px;">
+          PRENDAS PENDIENTES DE ENTREGA:
+        </div>
+        ${it.prendas
+          .map(
+            (p) => `
+          <div style="margin-bottom: 3px; font-size: 11px; font-weight: 700;">
+            • ${p.cantidad}x ${p.descripcion} (Talla: ${p.talla})
+            <div style="font-size: 10px; padding-left: 8px;">Depósito: $${p.valorDeposito.toLocaleString("es-CO")} c/u</div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+      <hr />
+
+      <div style="margin-top: 6px; font-size: 12px; font-weight: 900;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>DEPÓSITO EN CUSTODIA:</span>
+          <span>$${it.totalDepositoRetenido.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>RECARGO POR MORA ($15.000/d):</span>
+          <span>$${it.recargoTotalRetraso.toLocaleString("es-CO")}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12.5px; border-top: 2px solid #000; padding-top: 3px; margin-top: 3px;">
+          <span>SALDO DEPÓSITO RESTANTE:</span>
+          <span>$${Math.max(0, it.totalDepositoRetenido - it.recargoTotalRetraso).toLocaleString("es-CO")}</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 25px; text-align: center;">
+        <div style="border-top: 1.5px solid #000; width: 75%; margin: 0 auto 3px auto;"></div>
+        <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase;">Firma y Sello de Recibido</div>
+      </div>
+    `;
+
+    imprimirReporte80mmHtml(`Expediente-Mora-${it.numeroFactura}`, html);
+  };
+
   if (!open) return null;
 
   return (
@@ -190,6 +414,17 @@ export function AlertasRetrasosModal({
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            {/* Botón Imprimir Reporte 80mm */}
+            <button
+              type="button"
+              onClick={handleImprimirReporte80mm}
+              className="flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 text-xs font-black transition-all shadow-xs border border-slate-700"
+              title="Imprimir listado en tirilla térmica de 80mm"
+            >
+              <Printer className="h-3.5 w-3.5 text-amber-400" />
+              <span>Imprimir Reporte 80mm</span>
+            </button>
+
             <button
               type="button"
               onClick={cargarAlertas}
@@ -566,6 +801,16 @@ export function AlertasRetrasosModal({
                   >
                     <RotateCcw className="h-4 w-4" />
                     <span>Abrir Módulo de Devolución & Reintegro</span>
+                  </button>
+
+                  {/* Botón Imprimir Notificación Individual 80mm */}
+                  <button
+                    type="button"
+                    onClick={() => handleImprimirClienteIndividual80mm(itemSeleccionado)}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-black py-2.5 px-4 text-xs uppercase tracking-wider shadow-sm active:scale-98 transition-all border border-slate-700"
+                  >
+                    <Printer className="h-4 w-4 text-amber-400" />
+                    <span className="text-white">Imprimir Cobro Tirilla 80mm</span>
                   </button>
 
                   <div className="grid grid-cols-2 gap-2">
