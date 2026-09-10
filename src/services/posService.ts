@@ -142,7 +142,7 @@ export async function contarClientesTotal(): Promise<number> {
   }
 }
 
-export async function listarTodosLosClientes(search = ""): Promise<Cliente[]> {
+export async function listarTodosLosClientes(search = "", limite = 100000): Promise<Cliente[]> {
   try {
     let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE");
     if (search.trim()) {
@@ -153,7 +153,7 @@ export async function listarTodosLosClientes(search = ""): Promise<Cliente[]> {
         query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
       }
     }
-    const { data, error } = await query.limit(5000);
+    const { data, error } = await query.limit(limite);
     if (error) throw error;
     return (data as unknown as Cliente[]) ?? [];
   } catch (err) {
