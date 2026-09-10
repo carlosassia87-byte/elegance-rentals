@@ -44,6 +44,7 @@ export interface OperacionClienteMovimiento {
   pagoTransferencia: number;
   saldoPendiente: number;
   estadoGeneral: string;
+  estadoCliente: string;
   vendedor?: string;
   items: ItemMovimiento[];
 }
@@ -73,10 +74,9 @@ const KEY_ESTADOS_PRENDAS = "elegance_estados_prendas_override";
 function getEstadosPrendasOverride(): Record<string, { estado: EstadoPrenda; fechaDevolucion?: string }> {
   try {
     const raw = localStorage.getItem(KEY_ESTADOS_PRENDAS);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
 }
 
 // Guardar cambio de estado de una prenda específica
@@ -87,16 +87,14 @@ export function guardarEstadoPrendaOverride(
   nuevoEstado: EstadoPrenda
 ) {
   try {
-    const map = getEstadosPrendasOverride();
+    const current = getEstadosPrendasOverride();
     const key = `${numeroFact}_${codigoBarras || descripcion}`;
-    map[key] = {
+    current[key] = {
       estado: nuevoEstado,
-      fechaDevolucion: nuevoEstado === "DEVUELTO A TIENDA" ? new Date().toISOString() : undefined,
+      fechaDevolucion: nuevoEstado === "DEVUELTO A TIENDA" ? new Date().toISOString().split("T")[0] : undefined,
     };
-    localStorage.setItem(KEY_ESTADOS_PRENDAS, JSON.stringify(map));
-  } catch (e) {
-    console.warn("Error guardando estado override:", e);
-  }
+    localStorage.setItem(KEY_ESTADOS_PRENDAS, JSON.stringify(current));
+  } catch {}
 }
 
 // Obtener todas las operaciones y movimientos en un rango de fechas
@@ -106,30 +104,39 @@ export async function consultarMovimientos(
   const overrides = getEstadosPrendasOverride();
   const operacionesMap = new Map<string, OperacionClienteMovimiento>();
 
-  // 1. Obtener Facturas de Supabase
+  // 1. Obtener Facturas de Supabase con paginación por lotes (.range)
   try {
-    let query = supabase.from("FACTURA" as any).select("*").order("IDFACTURA", { ascending: false });
+    const BATCH_SIZE = 1000;
+    let from = 0;
+    const maxLimit = 50000;
 
-    if (filtros.fechaInicio) {
-      query = query.gte("FECHASALIDA", filtros.fechaInicio);
-    }
-    if (filtros.fechaFin) {
-      query = query.lte("FECHASALIDA", filtros.fechaFin);
-    }
+    while (from < maxLimit) {
+      const to = from + BATCH_SIZE - 1;
+      let query = supabase.from("FACTURA" as any).select("*").order("IDFACTURA", { ascending: false }).range(from, to);
 
-    const { data: facturasRaw, error } = await query;
+      if (filtros.fechaInicio) {
+        query = query.gte("FECHASALIDA", filtros.fechaInicio);
+      }
+      if (filtros.fechaFin) {
+        query = query.lte("FECHASALIDA", filtros.fechaFin);
+      }
 
-    if (!error && facturasRaw && facturasRaw.length > 0) {
+      const { data: facturasRaw, error } = await query;
+      if (error || !facturasRaw || facturasRaw.length === 0) break;
+
       for (const f of facturasRaw as any[]) {
         const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
         const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
         const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
         const saldo = Math.max(0, Number(f.TOTAL_SALDO || f.SALDOANTERIOR || (totalVenta - pagado)));
 
+        // Estado del cliente tal como está en la BD
+        const estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+
         let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" = "ALQUILER";
-        if (f.MODO === "VENTA" || f.ESTADOCLIENTE === "VENTA") {
+        if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") {
           tipo = "VENTA";
-        } else if (saldo > 0 || f.MODO === "APARTADO" || f.ESTADOCLIENTE === "APARTADO") {
+        } else if (estadoCliRaw === "APARTADO" || f.MODO === "APARTADO" || (saldo > 0 && estadoCliRaw !== "EN ALQUILER" && estadoCliRaw !== "ALQUILER" && estadoCliRaw !== "DEVUELTO")) {
           tipo = "APARTADO / ABONO";
         }
 
@@ -151,10 +158,14 @@ export async function consultarMovimientos(
           pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
           saldoPendiente: saldo,
           estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
+          estadoCliente: estadoCliRaw || (tipo === "VENTA" ? "VENTA" : "EN ALQUILER"),
           vendedor: f.VENDEDOR || "CAJERO",
           items: [],
         });
       }
+
+      if (facturasRaw.length < BATCH_SIZE) break;
+      from += BATCH_SIZE;
     }
   } catch (err) {
     console.warn("Fallo lectura Supabase FACTURA:", err);
@@ -169,7 +180,6 @@ export async function consultarMovimientos(
         const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
         const fechaSalida = f.FECHASALIDA || new Date().toISOString().split("T")[0];
 
-        // Filtrar por rango si aplica
         if (filtros.fechaInicio && fechaSalida < filtros.fechaInicio) continue;
         if (filtros.fechaFin && fechaSalida > filtros.fechaFin) continue;
 
@@ -177,10 +187,11 @@ export async function consultarMovimientos(
           const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
           const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
           const saldo = Math.max(0, Number(f.TOTAL_SALDO || (totalVenta - pagado)));
+          const estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
 
           let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" = "ALQUILER";
-          if (f.MODO === "VENTA") tipo = "VENTA";
-          else if (saldo > 0) tipo = "APARTADO / ABONO";
+          if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") tipo = "VENTA";
+          else if (estadoCliRaw === "APARTADO" || f.MODO === "APARTADO" || (saldo > 0 && estadoCliRaw !== "EN ALQUILER" && estadoCliRaw !== "ALQUILER")) tipo = "APARTADO / ABONO";
 
           operacionesMap.set(numFact, {
             idFactura: Number(f.IDFACTURA) || Date.now(),
@@ -200,6 +211,7 @@ export async function consultarMovimientos(
             pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
             saldoPendiente: saldo,
             estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
+            estadoCliente: estadoCliRaw || (tipo === "VENTA" ? "VENTA" : "EN ALQUILER"),
             vendedor: f.VENDEDOR || "CAJERO",
             items: [],
           });
@@ -208,10 +220,17 @@ export async function consultarMovimientos(
     }
   } catch {}
 
-  // 3. Cargar Items de CAMPOFACTURA de Supabase
+  // 3. Cargar Items de CAMPOFACTURA de Supabase con paginación
   try {
-    const { data: camposRaw } = await supabase.from("CAMPOFACTURA" as any).select("*");
-    if (camposRaw && camposRaw.length > 0) {
+    const BATCH_SIZE = 1000;
+    let from = 0;
+    const maxLimit = 50000;
+
+    while (from < maxLimit) {
+      const to = from + BATCH_SIZE - 1;
+      const { data: camposRaw, error } = await supabase.from("CAMPOFACTURA" as any).select("*").range(from, to);
+      if (error || !camposRaw || camposRaw.length === 0) break;
+
       for (const c of camposRaw as any[]) {
         const numFact = c.NUMEROFACT;
         if (numFact && operacionesMap.has(numFact)) {
@@ -219,12 +238,17 @@ export async function consultarMovimientos(
           const keyOverride = `${numFact}_${c.BARRAS || c.DESCRIPCION}`;
           const override = overrides[keyOverride];
 
-          // Determinar estado de la prenda por defecto
           let estadoPrenda: EstadoPrenda = "EN ALQUILER";
-          if (op.tipoOperacion === "VENTA") {
+          const ec = op.estadoCliente.toUpperCase();
+
+          if (ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
+            estadoPrenda = "DEVUELTO A TIENDA";
+          } else if (ec === "VENTA" || op.tipoOperacion === "VENTA") {
             estadoPrenda = "VENTA";
-          } else if (op.saldoPendiente > 0 && op.tipoOperacion === "APARTADO / ABONO") {
+          } else if (ec === "APARTADO" || ec === "EN BODEGA" || (op.saldoPendiente > 0 && op.tipoOperacion === "APARTADO / ABONO")) {
             estadoPrenda = "ABONO / APARTADO";
+          } else if (ec === "EN ALQUILER" || ec === "ALQUILER") {
+            estadoPrenda = "EN ALQUILER";
           }
 
           if (override) {
@@ -250,6 +274,8 @@ export async function consultarMovimientos(
           });
         }
       }
+      if (camposRaw.length < BATCH_SIZE) break;
+      from += BATCH_SIZE;
     }
   } catch {}
 

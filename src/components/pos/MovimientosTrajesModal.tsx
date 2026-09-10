@@ -592,6 +592,7 @@ export function MovimientosTrajesModal({
                               <th className="p-2">Cliente</th>
                               <th className="p-2">Fecha Pactada</th>
                               <th className="p-2 text-right">Depósito Fianza</th>
+                              <th className="p-2 text-center">Estado Cliente</th>
                               <th className="p-2 text-center">Acción</th>
                             </tr>
                           </thead>
@@ -624,6 +625,11 @@ export function MovimientosTrajesModal({
                                   <td className="p-2 font-semibold text-slate-700 text-[11px]">{op.fechaEntregaPactada}</td>
                                   <td className="p-2 text-right font-mono font-black text-emerald-800 text-[11px]">
                                     ${depOp.toLocaleString("es-CO")}
+                                  </td>
+                                  <td className="p-2 text-center">
+                                    <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                                      {op.estadoCliente || "EN ALQUILER"}
+                                    </span>
                                   </td>
                                   <td className="p-2 text-center">
                                     <button
