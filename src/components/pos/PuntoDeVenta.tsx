@@ -591,16 +591,23 @@ export function PuntoDeVenta() {
     }
   }
 
-  // Filtrado de Artículos en Tiempo Real
+  // Filtrado de Artículos en Tiempo Real ultra-rápido
   const articulosFiltrados = useMemo(() => {
-    if (!articuloTexto.trim()) return articulos;
+    if (!articuloTexto.trim()) return articulos.slice(0, 80);
     const query = articuloTexto.toLowerCase().trim();
-    return articulos.filter(
-      (a) =>
-        a.DESCRIPCION.toLowerCase().includes(query) ||
+    const matches: Articulo[] = [];
+    for (let i = 0; i < articulos.length; i++) {
+      const a = articulos[i];
+      if (
+        (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(query)) ||
         (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
         (a.TALLA && a.TALLA.toLowerCase().includes(query))
-    );
+      ) {
+        matches.push(a);
+        if (matches.length >= 80) break; // Limite de 80 elementos en dropdown para máxima fluidez a 60fps
+      }
+    }
+    return matches;
   }, [articulos, articuloTexto]);
 
   const articulosCatalogoFiltrados = useMemo(() => {
@@ -608,7 +615,7 @@ export function PuntoDeVenta() {
     const query = busqArticuloCatalogo.toLowerCase().trim();
     return articulos.filter(
       (a) =>
-        a.DESCRIPCION.toLowerCase().includes(query) ||
+        (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(query)) ||
         (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
         (a.TALLA && a.TALLA.toLowerCase().includes(query))
     );

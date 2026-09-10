@@ -176,7 +176,7 @@ export async function eliminarCliente(id: number): Promise<boolean> {
 // ==========================================
 // SERVICIO DE ARTÍCULOS / TRAJES / DISFRACES
 // ==========================================
-export async function listarArticulos(search = "", limite = 100): Promise<Articulo[]> {
+export async function listarArticulos(search = "", limite = 50000): Promise<Articulo[]> {
   try {
     let query = supabase.from("ARTICULO" as any).select("*").order("DESCRIPCION");
     if (search.trim()) {
