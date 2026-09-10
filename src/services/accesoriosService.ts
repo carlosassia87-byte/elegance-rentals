@@ -131,23 +131,36 @@ export function saveLocalAccesorios(list: Accesorio[]) {
 }
 
 // 1. Listar todos los accesorios con filtro de búsqueda y categoría
-export async function listarAccesorios(search = "", categoria = "TODAS"): Promise<Accesorio[]> {
+export async function listarAccesorios(search = "", categoria = "TODAS", limite = 50000): Promise<Accesorio[]> {
   try {
-    let query = supabase.from("ACCESORIOS" as any).select("*").order("DESCRIPCION");
+    const BATCH_SIZE = 1000;
+    let todos: Accesorio[] = [];
+    let from = 0;
 
-    if (categoria && categoria !== "TODAS") {
-      query = query.eq("CATEGORIA", categoria);
+    while (from < limite) {
+      const to = Math.min(from + BATCH_SIZE - 1, limite - 1);
+      let query = supabase.from("ACCESORIOS" as any).select("*").order("DESCRIPCION").range(from, to);
+
+      if (categoria && categoria !== "TODAS") {
+        query = query.eq("CATEGORIA", categoria);
+      }
+
+      if (search.trim()) {
+        query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,CATEGORIA.ilike.%${search}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      todos.push(...(data as unknown as Accesorio[]));
+      if (data.length < BATCH_SIZE) break;
+      from += BATCH_SIZE;
     }
 
-    if (search.trim()) {
-      query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,CATEGORIA.ilike.%${search}%`);
-    }
-
-    const { data, error } = await query.limit(50000);
-
-    if (!error && data && data.length > 0) {
-      saveLocalAccesorios(data as unknown as Accesorio[]);
-      return data as unknown as Accesorio[];
+    if (todos.length > 0) {
+      saveLocalAccesorios(todos);
+      return todos;
     }
   } catch (e) {
     console.warn("Fallo lectura de ACCESORIOS en Supabase, usando local:", e);

@@ -144,18 +144,33 @@ export async function contarClientesTotal(): Promise<number> {
 
 export async function listarTodosLosClientes(search = "", limite = 100000): Promise<Cliente[]> {
   try {
-    let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE");
-    if (search.trim()) {
-      const isNum = !isNaN(Number(search));
-      if (isNum) {
-        query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,CEDULA.eq.${Number(search)}`);
-      } else {
-        query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
+    const BATCH_SIZE = 1000;
+    let todos: Cliente[] = [];
+    let from = 0;
+
+    while (from < limite) {
+      const to = Math.min(from + BATCH_SIZE - 1, limite - 1);
+      let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE").range(from, to);
+
+      if (search.trim()) {
+        const isNum = !isNaN(Number(search));
+        if (isNum) {
+          query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,CEDULA.eq.${Number(search)}`);
+        } else {
+          query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
+        }
       }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      todos.push(...(data as unknown as Cliente[]));
+      if (data.length < BATCH_SIZE) break; // Ya no hay más registros en la BD
+      from += BATCH_SIZE;
     }
-    const { data, error } = await query.limit(limite);
-    if (error) throw error;
-    return (data as unknown as Cliente[]) ?? [];
+
+    return todos;
   } catch (err) {
     console.error("Error listando clientes:", err);
     return [];
@@ -178,13 +193,28 @@ export async function eliminarCliente(id: number): Promise<boolean> {
 // ==========================================
 export async function listarArticulos(search = "", limite = 50000): Promise<Articulo[]> {
   try {
-    let query = supabase.from("ARTICULO" as any).select("*").order("DESCRIPCION");
-    if (search.trim()) {
-      query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,TALLA.ilike.%${search}%`);
+    const BATCH_SIZE = 1000;
+    let todos: Articulo[] = [];
+    let from = 0;
+
+    while (from < limite) {
+      const to = Math.min(from + BATCH_SIZE - 1, limite - 1);
+      let query = supabase.from("ARTICULO" as any).select("*").order("DESCRIPCION").range(from, to);
+
+      if (search.trim()) {
+        query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,TALLA.ilike.%${search}%`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      todos.push(...(data as unknown as Articulo[]));
+      if (data.length < BATCH_SIZE) break; // Llegó al final de la tabla
+      from += BATCH_SIZE;
     }
-    const { data, error } = await query.limit(limite);
-    if (error) throw error;
-    return (data as unknown as Articulo[]) ?? [];
+
+    return todos;
   } catch (err) {
     console.error("Error listando artículos:", err);
     return [];
