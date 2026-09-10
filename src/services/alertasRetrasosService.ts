@@ -107,20 +107,22 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
   // Procesar cada factura
   for (const f of facturas) {
     const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
-    let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+    const estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
 
-    // Descartar anuladas, ventas, entregados/devueltos o bodega
-    if (
-      estadoGenRaw === "ANULADA" ||
-      estadoGenRaw === "ANULADO" ||
-      estadoCliRaw === "ANULADA" ||
-      estadoCliRaw === "ANULADO"
-    ) {
+    // REGLA ESTRICTA: SOLO procesar facturas que tengan ESTADOCLIENTE exactamente "EN ALQUILER"
+    if (estadoCliRaw !== "EN ALQUILER") {
       continue;
     }
 
-    if (f.MODO === "VENTA" || estadoCliRaw === "VENTA") continue;
-    if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA" || estadoCliRaw === "ENTREGADO") continue;
+    // Descartar si la factura general está ANULADA
+    if (estadoGenRaw === "ANULADA" || estadoGenRaw === "ANULADO") {
+      continue;
+    }
+
+    // Descartar modo venta
+    if (f.MODO === "VENTA") {
+      continue;
+    }
 
     const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
 
