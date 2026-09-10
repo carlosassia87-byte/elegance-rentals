@@ -746,14 +746,23 @@ export function PuntoDeVenta() {
   // Confirmar Selección de Operación
   function handleConfirmarOperacion() {
     let nuevoEstadoTraje = "EN ALQUILER";
-    if (operacionSeleccionada === "VENTA") nuevoEstadoTraje = "VENTA";
-    else if (operacionSeleccionada === "APARTADO") nuevoEstadoTraje = "APARTADO";
-    else if (operacionSeleccionada === "BONO") nuevoEstadoTraje = "BONO";
-    else nuevoEstadoTraje = "EN ALQUILER";
+    if (operacionSeleccionada === "VENTA") {
+      nuevoEstadoTraje = "VENTA";
+    } else if (operacionSeleccionada === "APARTADO") {
+      // Regla de negocio: APARTADO guarda el estado como "EN BODEGA"
+      nuevoEstadoTraje = "EN BODEGA";
+    } else if (operacionSeleccionada === "BONO") {
+      // Regla de negocio: BONO es traje prestado / $0
+      nuevoEstadoTraje = "BONO";
+      setCobroEfectivo("0");
+      setCobroTransferencia("0");
+    } else {
+      nuevoEstadoTraje = "EN ALQUILER";
+    }
 
     setEstadoTraje(nuevoEstadoTraje);
     setModalOperacionVisible(false);
-    toast.success(`Operación fijada: ${nuevoEstadoTraje}`);
+    toast.success(`Operación fijada: ${operacionSeleccionada} (Estado: ${nuevoEstadoTraje})`);
 
     setTimeout(() => {
       articuloInputRef.current?.focus();
@@ -2610,10 +2619,10 @@ export function PuntoDeVenta() {
                   onKeyDown={(e) => e.key === "Enter" && handleConfirmarOperacion()}
                   className="h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 font-black text-sm text-slate-900 shadow-2xs focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                 >
-                  <option value="ALQUILER">ALQUILER (Contrato + Fianza)</option>
-                  <option value="VENTA">VENTA DIRECTA</option>
-                  <option value="BONO">BONO DE REGALO / CANJE</option>
-                  <option value="APARTADO">APARTADO / RESERVA PREVIA</option>
+                  <option value="ALQUILER">ALQUILER (Contrato + Fianza · EN ALQUILER)</option>
+                  <option value="VENTA">VENTA DIRECTA (Prenda Vendida · VENTA)</option>
+                  <option value="APARTADO">APARTADO / RESERVA (Se guarda como · EN BODEGA)</option>
+                  <option value="BONO">BONO / PRESTADO (Cliente no cancela nada · $0)</option>
                 </select>
               </div>
 
