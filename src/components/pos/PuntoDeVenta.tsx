@@ -286,16 +286,44 @@ export function PuntoDeVenta() {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
   }, [apartadoAbonos]);
 
-  const apartadoSaldoAnterior = useMemo(() => {
+  // Total Operación: FTOTALVENTADEPOSITO o suma de Alquiler + Depósito o suma de items
+  const apartadoTotalOperacion = useMemo(() => {
     if (!apartadoFactura) return 0;
-    const total = Number(apartadoFactura.FTOTALVENTADEPOSITO) || 0;
-    const pagado = Number(apartadoFactura.PAGACON) || 0;
-    return Math.max(0, total - pagado);
+    const totalVenta = Number(apartadoFactura.FTOTALVENTADEPOSITO || 0);
+    if (totalVenta > 0) return totalVenta;
+    const alqMasDep = Number(apartadoFactura.FTOTALALQUILER || 0) + Number(apartadoFactura.FTOTALDEPOSITO || 0);
+    if (alqMasDep > 0) return alqMasDep;
+    return apartadoItems.reduce((acc, it) => acc + (Number(it.TOTAL || 0) || (Number(it.VALOR || 0) + Number(it.VALORDEPOSITO || 0)) * (Number(it.CANTIDAD || 1))), 0);
+  }, [apartadoFactura, apartadoItems]);
+
+  const apartadoPagoInicial = useMemo(() => {
+    if (!apartadoFactura) return 0;
+    const pagacon = Number(apartadoFactura.PAGACON || 0);
+    if (pagacon > 0) return pagacon;
+    const efecYTrans = Number(apartadoFactura.PAGOCONEFECTIVO || 0) + Number(apartadoFactura.PAGOCONTRANFERENCIA || 0);
+    return efecYTrans;
   }, [apartadoFactura]);
 
+  const apartadoSaldoAnterior = useMemo(() => {
+    if (!apartadoFactura) return 0;
+    // Si la factura ya trae TOTAL_SALDO guardado en BD
+    if (apartadoFactura.TOTAL_SALDO !== undefined && apartadoFactura.TOTAL_SALDO !== null && Number(apartadoFactura.TOTAL_SALDO) > 0 && apartadoAbonos.length === 0) {
+      return Number(apartadoFactura.TOTAL_SALDO);
+    }
+    return Math.max(0, apartadoTotalOperacion - apartadoPagoInicial);
+  }, [apartadoFactura, apartadoTotalOperacion, apartadoPagoInicial, apartadoAbonos]);
+
   const apartadoSaldoRestante = useMemo(() => {
+    if (!apartadoFactura) return 0;
+    if (apartadoAbonos.length > 0) {
+      return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
+    }
+    // Si no hay abonos registrados en tabla ABONO_CLIENTE, tomar directamente de FACTURA.TOTAL_SALDO si existe
+    if (apartadoFactura.TOTAL_SALDO !== undefined && apartadoFactura.TOTAL_SALDO !== null && Number(apartadoFactura.TOTAL_SALDO) >= 0) {
+      return Number(apartadoFactura.TOTAL_SALDO);
+    }
     return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
-  }, [apartadoSaldoAnterior, apartadoTotalAbonado]);
+  }, [apartadoFactura, apartadoSaldoAnterior, apartadoTotalAbonado, apartadoAbonos]);
 
   // Cálculos dinámicos en ventana ABONO_CLIENTE
   const abonoEfecNum = parseFloat(abonoPagoEfec) || 0;
@@ -326,11 +354,20 @@ export function PuntoDeVenta() {
     setApartadoTotalDevuelto(res.totalDevuelto);
 
     // Calcular si tiene saldo pendiente para mostrar la ventanita emergente WINDEV
-    const totalVenta = Number(res.factura.FTOTALVENTADEPOSITO) || 0;
-    const pagado = Number(res.factura.PAGACON) || 0;
+    const totalVenta = Number(res.factura.FTOTALVENTADEPOSITO || 0) > 0
+      ? Number(res.factura.FTOTALVENTADEPOSITO)
+      : (Number(res.factura.FTOTALALQUILER || 0) + Number(res.factura.FTOTALDEPOSITO || 0)) ||
+        (res.items || []).reduce((acc, it) => acc + (Number(it.TOTAL || 0) || (Number(it.VALOR || 0) + Number(it.VALORDEPOSITO || 0)) * Number(it.CANTIDAD || 1)), 0);
+
+    const pagado = Number(res.factura.PAGACON || 0) > 0
+      ? Number(res.factura.PAGACON)
+      : (Number(res.factura.PAGOCONEFECTIVO || 0) + Number(res.factura.PAGOCONTRANFERENCIA || 0));
+
     const sAnterior = Math.max(0, totalVenta - pagado);
     const totAbonos = (res.abonos || []).reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
-    const sRestante = Math.max(0, sAnterior - totAbonos);
+    const sRestante = (res.factura.TOTAL_SALDO !== undefined && res.factura.TOTAL_SALDO !== null && res.abonos.length === 0)
+      ? Number(res.factura.TOTAL_SALDO)
+      : Math.max(0, sAnterior - totAbonos);
 
     if (res.yaDevuelto) {
       toast.info(`ℹ️ Factura #${res.factura.NUMEROFACT}: ¡Prenda ya fue devuelta a tienda y depósito reintegrado!`, { duration: 5000 });
@@ -3121,7 +3158,7 @@ export function PuntoDeVenta() {
                   <input
                     type="text"
                     disabled
-                    value={`$ ${(apartadoFactura?.FTOTALVENTADEPOSITO || 0).toLocaleString()}`}
+                    value={`$ ${apartadoTotalOperacion.toLocaleString()}`}
                     className="col-span-2 h-8 rounded-xl border border-slate-200 bg-slate-100 px-3 text-right font-mono text-xs font-black text-slate-900"
                   />
                 </div>
@@ -3134,7 +3171,7 @@ export function PuntoDeVenta() {
                   <input
                     type="text"
                     disabled
-                    value={`$ ${(apartadoFactura?.PAGACON || 0).toLocaleString()}`}
+                    value={`$ ${apartadoPagoInicial.toLocaleString()}`}
                     className="col-span-2 h-8 rounded-xl border border-slate-200 bg-slate-100 px-3 text-right font-mono text-xs font-black text-slate-900"
                   />
 
