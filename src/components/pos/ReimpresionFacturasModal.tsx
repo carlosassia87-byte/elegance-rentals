@@ -165,12 +165,12 @@ export function ReimpresionFacturasModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-2 md:p-4 animate-in fade-in duration-200">
       {/* Telón de fondo */}
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" onClick={() => onOpenChange(false)} />
 
       {/* Contenedor Principal del Modal */}
-      <div className="relative z-10 flex h-dvh w-full max-w-7xl flex-col overflow-hidden bg-white text-slate-800 shadow-2xl sm:h-[92vh] sm:rounded-3xl sm:border sm:border-slate-200 font-sans">
+      <div className="relative z-10 flex h-dvh w-full max-w-[98vw] 2xl:max-w-[1750px] flex-col overflow-hidden bg-white text-slate-800 shadow-2xl sm:h-[95vh] sm:rounded-3xl sm:border sm:border-slate-200 font-sans">
         {/* Encabezado Superior */}
         <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-slate-200 bg-slate-50 px-3 py-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:px-6 sm:py-3.5">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -323,18 +323,18 @@ export function ReimpresionFacturasModal({
 
             {/* Tabla de Facturas */}
             <div className="flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-              <table className="min-w-[760px] w-full border-collapse text-left text-xs">
+              <table className="w-full min-w-[700px] border-collapse text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-700 uppercase font-black tracking-wider">
                   <tr>
-                    <th className="px-3 py-2.5">Factura N°</th>
-                    <th className="px-3 py-2.5">Fecha</th>
-                    <th className="px-3 py-2.5">Cliente</th>
-                    <th className="px-2 py-2.5 text-center">Tipo</th>
-                    <th className="px-3 py-2.5 text-right">Alquiler</th>
-                    <th className="px-3 py-2.5 text-right">Depósito</th>
-                    <th className="px-3 py-2.5 text-right">Total</th>
-                    <th className="px-3 py-2.5 text-right">Saldo</th>
-                    <th className="px-2 py-2.5 text-center">Acción</th>
+                    <th className="px-3.5 py-2.5 whitespace-nowrap">Factura N°</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap">Fecha</th>
+                    <th className="px-3.5 py-2.5">Cliente</th>
+                    <th className="px-2 py-2.5 text-center whitespace-nowrap">Tipo</th>
+                    <th className="px-3 py-2.5 text-right whitespace-nowrap">Alquiler</th>
+                    <th className="px-3 py-2.5 text-right whitespace-nowrap">Depósito</th>
+                    <th className="px-3.5 py-2.5 text-right whitespace-nowrap">Total</th>
+                    <th className="px-3.5 py-2.5 text-right whitespace-nowrap">Saldo</th>
+                    <th className="px-2 py-2.5 text-center whitespace-nowrap">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -443,7 +443,7 @@ export function ReimpresionFacturasModal({
           </div>
 
           {/* LADO DERECHO: PANEL DE VISTA PREVIA Y REIMPRESIÓN DEL TICKET POS */}
-          <div className="flex w-full flex-col space-y-3 bg-slate-50 p-3 md:w-96 md:overflow-y-auto md:p-4">
+          <div className="flex w-full shrink-0 flex-col space-y-3 bg-slate-50 p-3 md:w-[390px] lg:w-[410px] md:overflow-y-auto md:p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-700">
                 <Receipt className="h-4 w-4 text-cyan-600" />
@@ -464,7 +464,7 @@ export function ReimpresionFacturasModal({
             {facturaSeleccionada ? (
               <div className="flex-1 flex flex-col space-y-3">
                 {/* Tirilla Térmica POS 80mm Oficial */}
-                <div className="rounded-2xl bg-slate-100/70 p-3 border border-slate-300 shadow-inner overflow-y-auto max-h-[68vh] flex justify-center">
+                <div className="rounded-2xl bg-slate-100/70 p-3 border border-slate-300 shadow-inner overflow-y-auto max-h-[74vh] flex justify-center">
                   <div className="bg-white p-3 shadow-md rounded-lg border border-slate-200">
                     <TicketFactura80mm
                       ref={ticketRef}
