@@ -332,14 +332,15 @@ export function ReimpresionFacturasModal({
                     <th className="px-2 py-2.5 text-center">Tipo</th>
                     <th className="px-3 py-2.5 text-right">Alquiler</th>
                     <th className="px-3 py-2.5 text-right">Depósito</th>
-                    <th className="px-3 py-2.5 text-right">Total Cobrado</th>
+                    <th className="px-3 py-2.5 text-right">Total</th>
+                    <th className="px-3 py-2.5 text-right">Saldo</th>
                     <th className="px-2 py-2.5 text-center">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {facturasFiltradas.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         <Receipt className="mx-auto h-12 w-12 text-slate-300 mb-2" />
                         <p className="font-bold text-sm">No se encontraron facturas con estos filtros</p>
                         <p className="text-xs text-slate-400 mt-1">
@@ -393,8 +394,17 @@ export function ReimpresionFacturasModal({
                           <td className="px-3 py-2 text-right font-mono font-bold text-amber-700">
                             ${op.totalDeposito.toLocaleString("es-CO")}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono font-black text-emerald-700">
+                          <td className="px-3 py-2 text-right font-mono font-black text-slate-900">
                             ${op.totalVentaDeposito.toLocaleString("es-CO")}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono font-bold">
+                            {op.saldoPendiente > 0 ? (
+                              <span className="text-rose-600 font-black">
+                                ${op.saldoPendiente.toLocaleString("es-CO")}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-600 font-bold">$0</span>
+                            )}
                           </td>
                           <td className="px-2 py-2 text-center">
                             <button

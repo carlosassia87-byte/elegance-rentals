@@ -95,6 +95,10 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
     ref
   ) => {
     const totalCalculado = totalAlqDep ?? valorAlquiler + deposito;
+    const saldoCalculado =
+      saldo !== undefined && saldo !== null && (saldo > 0 || (recibi || 0) >= totalCalculado)
+        ? saldo
+        : Math.max(0, totalCalculado - (recibi || 0) - (descuento || 0));
     const fechaHoraActual =
       fecha ||
       new Date().toLocaleString("es-CO", {
@@ -411,7 +415,7 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
             }}
           >
             <span style={{ fontWeight: 900 }}>SALDO PENDIENTE:</span>
-            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(saldo)}</span>
+            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(saldoCalculado)}</span>
           </div>
         </div>
 

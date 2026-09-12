@@ -36,7 +36,7 @@ export interface OperacionClienteMovimiento {
   clienteCedula: string;
   clienteTelefono: string;
   clienteDireccion: string;
-  tipoOperacion: "ALQUILER" | "VENTA";
+  tipoOperacion: "ALQUILER" | "VENTA" | "APARTADO / ABONO" | string;
   totalAlquiler: number;
   totalDeposito: number;
   totalVentaDeposito: number;
@@ -138,7 +138,15 @@ export async function consultarMovimientos(
           totalVenta = alq + dep;
         }
         const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0) || Number(f.PAGACON || 0);
-        const saldo = Number(f.TOTAL_SALDO !== undefined && f.TOTAL_SALDO !== null ? f.TOTAL_SALDO : (totalVenta - pagado));
+        const totalSaldoDb = f.TOTAL_SALDO !== undefined && f.TOTAL_SALDO !== null ? Number(f.TOTAL_SALDO) : null;
+        let saldo = 0;
+        if (pagado >= totalVenta && totalVenta > 0) {
+          saldo = 0;
+        } else if (totalSaldoDb !== null && totalSaldoDb > 0) {
+          saldo = totalSaldoDb;
+        } else {
+          saldo = Math.max(0, totalVenta - pagado);
+        }
 
         // Estado del cliente tal como está en la BD Windev
         const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
@@ -152,7 +160,10 @@ export async function consultarMovimientos(
           estadoCliRaw = "ENTREGADO";
         }
 
-        const tipo: "ALQUILER" | "VENTA" = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
+        let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" | string = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
+        if (f.MODO === "APARTADO" || estadoCliRaw === "EN BODEGA") {
+          tipo = "APARTADO / ABONO";
+        }
 
         operacionesMap.set(numFact, {
           idFactura: Number(f.IDFACTURA),
@@ -198,9 +209,22 @@ export async function consultarMovimientos(
         if (filtros.fechaFin && fechaSalida > filtros.fechaFin) continue;
 
         if (!operacionesMap.has(numFact)) {
-          const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
-          const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
-          const saldo = Math.max(0, Number(f.TOTAL_SALDO || (totalVenta - pagado)));
+          const alq = Number(f.FTOTALALQUILER || 0);
+          const dep = Number(f.FTOTALDEPOSITO || 0);
+          let totalVenta = Number(f.FTOTALVENTADEPOSITO || 0);
+          if (totalVenta <= 0 || (totalVenta === alq && dep > 0)) {
+            totalVenta = alq + dep;
+          }
+          const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0) || Number(f.PAGACON || 0);
+          const totalSaldoDb = f.TOTAL_SALDO !== undefined && f.TOTAL_SALDO !== null ? Number(f.TOTAL_SALDO) : null;
+          let saldo = 0;
+          if (pagado >= totalVenta && totalVenta > 0) {
+            saldo = 0;
+          } else if (totalSaldoDb !== null && totalSaldoDb > 0) {
+            saldo = totalSaldoDb;
+          } else {
+            saldo = Math.max(0, totalVenta - pagado);
+          }
           const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
           let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
 
@@ -212,7 +236,10 @@ export async function consultarMovimientos(
             estadoCliRaw = "ENTREGADO";
           }
 
-          const tipo: "ALQUILER" | "VENTA" = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
+          let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" | string = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
+          if (f.MODO === "APARTADO" || estadoCliRaw === "EN BODEGA") {
+            tipo = "APARTADO / ABONO";
+          }
 
           operacionesMap.set(numFact, {
             idFactura: Number(f.IDFACTURA) || Date.now(),
@@ -225,12 +252,12 @@ export async function consultarMovimientos(
             clienteTelefono: f.CTELEFONO || f.CTELEFONO1 || f.TELEFONO || "—",
             clienteDireccion: f.CDIRECCION || f.DIRECCION || "—",
             tipoOperacion: tipo,
-            totalAlquiler: Number(f.FTOTALALQUILER || 0),
-            totalDeposito: Number(f.FTOTALDEPOSITO || 0),
+            totalAlquiler: alq,
+            totalDeposito: dep,
             totalVentaDeposito: totalVenta,
             pagoEfectivo: Number(f.PAGOCONEFECTIVO || 0),
             pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
-            saldoPendiente: saldo,
+            saldoPendiente: Math.max(0, saldo),
             estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
             estadoCliente: estadoCliRaw,
             vendedor: f.VENDEDOR || "CAJERO",
