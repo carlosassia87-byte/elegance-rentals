@@ -131,9 +131,14 @@ export async function consultarMovimientos(
 
       for (const f of facturasRaw as any[]) {
         const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
-        const totalVenta = Number(f.FTOTALVENTADEPOSITO || f.FTOTALALQUILER || 0);
-        const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0);
-        const saldo = Math.max(0, Number(f.TOTAL_SALDO || f.SALDOANTERIOR || (totalVenta - pagado)));
+        const alq = Number(f.FTOTALALQUILER || 0);
+        const dep = Number(f.FTOTALDEPOSITO || 0);
+        let totalVenta = Number(f.FTOTALVENTADEPOSITO || 0);
+        if (totalVenta <= 0 || (totalVenta === alq && dep > 0)) {
+          totalVenta = alq + dep;
+        }
+        const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0) || Number(f.PAGACON || 0);
+        const saldo = Number(f.TOTAL_SALDO !== undefined && f.TOTAL_SALDO !== null ? f.TOTAL_SALDO : (totalVenta - pagado));
 
         // Estado del cliente tal como está en la BD Windev
         const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
@@ -160,12 +165,12 @@ export async function consultarMovimientos(
           clienteTelefono: f.CTELEFONO || f.CTELEFONO1 || f.TELEFONO || "—",
           clienteDireccion: f.CDIRECCION || f.DIRECCION || "—",
           tipoOperacion: tipo,
-          totalAlquiler: Number(f.FTOTALALQUILER || 0),
-          totalDeposito: Number(f.FTOTALDEPOSITO || 0),
+          totalAlquiler: alq,
+          totalDeposito: dep,
           totalVentaDeposito: totalVenta,
           pagoEfectivo: Number(f.PAGOCONEFECTIVO || 0),
           pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
-          saldoPendiente: saldo,
+          saldoPendiente: Math.max(0, saldo),
           estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
           estadoCliente: estadoCliRaw,
           vendedor: f.VENDEDOR || "CAJERO",
