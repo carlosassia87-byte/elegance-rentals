@@ -306,24 +306,13 @@ export function PuntoDeVenta() {
 
   const apartadoSaldoAnterior = useMemo(() => {
     if (!apartadoFactura) return 0;
-    // Si la factura ya trae TOTAL_SALDO guardado en BD
-    if (apartadoFactura.TOTAL_SALDO !== undefined && apartadoFactura.TOTAL_SALDO !== null && Number(apartadoFactura.TOTAL_SALDO) > 0 && apartadoAbonos.length === 0) {
-      return Number(apartadoFactura.TOTAL_SALDO);
-    }
     return Math.max(0, apartadoTotalOperacion - apartadoPagoInicial);
-  }, [apartadoFactura, apartadoTotalOperacion, apartadoPagoInicial, apartadoAbonos]);
+  }, [apartadoFactura, apartadoTotalOperacion, apartadoPagoInicial]);
 
   const apartadoSaldoRestante = useMemo(() => {
     if (!apartadoFactura) return 0;
-    if (apartadoAbonos.length > 0) {
-      return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
-    }
-    // Si no hay abonos registrados en tabla ABONO_CLIENTE, tomar directamente de FACTURA.TOTAL_SALDO si existe
-    if (apartadoFactura.TOTAL_SALDO !== undefined && apartadoFactura.TOTAL_SALDO !== null && Number(apartadoFactura.TOTAL_SALDO) >= 0) {
-      return Number(apartadoFactura.TOTAL_SALDO);
-    }
     return Math.max(0, apartadoSaldoAnterior - apartadoTotalAbonado);
-  }, [apartadoFactura, apartadoSaldoAnterior, apartadoTotalAbonado, apartadoAbonos]);
+  }, [apartadoFactura, apartadoSaldoAnterior, apartadoTotalAbonado]);
 
   // Cálculos dinámicos en ventana ABONO_CLIENTE
   const abonoEfecNum = parseFloat(abonoPagoEfec) || 0;
@@ -365,9 +354,7 @@ export function PuntoDeVenta() {
 
     const sAnterior = Math.max(0, totalVenta - pagado);
     const totAbonos = (res.abonos || []).reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
-    const sRestante = (res.factura.TOTAL_SALDO !== undefined && res.factura.TOTAL_SALDO !== null && res.abonos.length === 0)
-      ? Number(res.factura.TOTAL_SALDO)
-      : Math.max(0, sAnterior - totAbonos);
+    const sRestante = Math.max(0, sAnterior - totAbonos);
 
     if (res.yaDevuelto) {
       toast.info(`ℹ️ Factura #${res.factura.NUMEROFACT}: ¡Prenda ya fue devuelta a tienda y depósito reintegrado!`, { duration: 5000 });
