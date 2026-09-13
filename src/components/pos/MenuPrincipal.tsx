@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import { consultarTodosLosRetrasosYAlertas } from "@/services/alertasRetrasosService";
+import { IndicadorModoOffline } from "./IndicadorModoOffline";
 import logoAsset from "@/assets/logo.asset.json";
 
 interface MenuPrincipalProps {
@@ -558,10 +559,10 @@ export function MenuPrincipal({
             )}
 
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-black uppercase text-slate-800 tracking-wider">
-                Sistema POS en línea
+                SISTEMA POS
               </span>
+              <IndicadorModoOffline />
             </div>
           </div>
 

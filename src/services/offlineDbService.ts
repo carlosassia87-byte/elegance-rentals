@@ -247,6 +247,55 @@ export async function guardarFacturasLote(
 }
 
 // =========================================================================
+// OBTENCIÓN MASIVA OFFLINE (FALLBACK PARA LISTADOS COMPLETOS)
+// =========================================================================
+
+export async function obtenerTodosLosArticulosOffline(): Promise<OfflineArticulo[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction("articulos", "readonly");
+      const store = tx.objectStore("articulos");
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function obtenerTodosLosClientesOffline(): Promise<OfflineCliente[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction("clientes", "readonly");
+      const store = tx.objectStore("clientes");
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function obtenerTodasLasFacturasOffline(): Promise<OfflineFactura[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction("facturas", "readonly");
+      const store = tx.objectStore("facturas");
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+// =========================================================================
 // BÚSQUEDAS INDEXADAS OFFLINE RÁPIDAS
 // =========================================================================
 
