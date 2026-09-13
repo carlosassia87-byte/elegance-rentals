@@ -83,6 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "La Casa Del Disfraz — Punto de Venta Alquiler" },
       { name: "description", content: "Sistema de Punto de Venta y Alquiler de Trajes y Disfraces." },
+      { name: "theme-color", content: "#0891b2" },
     ],
     links: [
       {
@@ -90,6 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.json" },
     ],
   }),
   shellComponent: RootShell,
@@ -114,6 +116,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    // Registrar Service Worker para permitir apertura de la URL sin internet (PWA)
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((registration) => {
+            console.log("Service Worker POS registrado con éxito:", registration.scope);
+          })
+          .catch((error) => {
+            console.warn("Fallo al registrar Service Worker:", error);
+          });
+      });
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
