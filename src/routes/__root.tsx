@@ -80,10 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" },
       { title: "La Casa Del Disfraz — Punto de Venta Alquiler" },
       { name: "description", content: "Sistema de Punto de Venta y Alquiler de Trajes y Disfraces." },
       { name: "theme-color", content: "#0891b2" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "application-name", content: "Elegance POS" },
     ],
     links: [
       {
@@ -91,6 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
       { rel: "manifest", href: "/manifest.json" },
     ],
   }),
@@ -118,18 +123,17 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    // Registrar Service Worker para permitir apertura de la URL sin internet (PWA)
+    // Registrar Service Worker de forma inmediata para ejecución PWA interactiva offline
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            console.log("Service Worker POS registrado con éxito:", registration.scope);
-          })
-          .catch((error) => {
-            console.warn("Fallo al registrar Service Worker:", error);
-          });
-      });
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((registration) => {
+          // Si hay una actualización del service worker, activarlo
+          registration.update().catch(() => {});
+        })
+        .catch((error) => {
+          console.warn("Fallo al registrar Service Worker:", error);
+        });
     }
   }, []);
 

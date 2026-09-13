@@ -1,83 +1,142 @@
 /**
- * Service Worker Offline para Elegance Rentals POS
- * Cachea el App Shell (HTML, JS, CSS, Imágenes) para que la URL
- * abra instantáneamente aunque el computador no tenga internet.
+ * Service Worker PWA Offline Interactivo para Elegance Rentals POS
+ * Asegura que todos los archivos JavaScript, estilos, fuentes y vistas
+ * se ejecuten interactivamente sin internet sin caer en snapshots estáticos.
  */
 
-const CACHE_NAME = "elegance-pos-v1";
-const STATIC_ASSETS = [
+const CACHE_NAME = "elegance-pos-v2";
+
+const CRITICAL_ASSETS = [
   "/",
   "/favicon.png",
   "/logo_casa_del_disfraz.jpg",
   "/manifest.json",
 ];
 
-// Instalación: Cachear recursos estáticos esenciales
+// 1. INSTALACIÓN: Precarga inmediata de recursos críticos
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(CRITICAL_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
-// Activación: Limpiar cachés antiguas si hay nueva versión
+// 2. ACTIVACIÓN: Reclamar control de clientes de inmediato y purgar cachés viejas
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        );
+      }),
+    ])
   );
-  self.clients.claim();
 });
 
-// Interceptor de peticiones de red (Fetch)
+// 3. INTERCEPTOR DE PETICIONES (FETCH)
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Ignorar peticiones que no sean GET o que vayan a Supabase / APIs externas (esas las maneja IndexedDB)
-  if (request.method !== "GET" || url.origin.includes("supabase.co") || url.pathname.startsWith("/api/")) {
+  // Ignorar métodos no GET o peticiones directas a Supabase
+  if (request.method !== "GET" || url.origin.includes("supabase.co")) {
     return;
   }
 
-  // Estrategia Stale-While-Revalidate / Network-First con fallback a Caché
-  event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      try {
-        // 1. Intentar descargar de la red
-        const networkResponse = await fetch(request);
-        if (networkResponse && networkResponse.status === 200) {
-          // Guardar copia actualizada en caché
-          cache.put(request, networkResponse.clone());
-        }
-        return networkResponse;
-      } catch (err) {
-        // 2. Si falló la red (Sin Internet), buscar en caché local
-        const cachedResponse = await cache.match(request);
+  // Peticiones de Navegación (HTML Principal)
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/", responseClone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          // Si no hay red, servir la página principal de la caché para que cargue la app interactiva
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          const rootCached = await caches.match("/");
+          if (rootCached) return rootCached;
+          return new Response("App cargada en modo local", {
+            headers: { "Content-Type": "text/html" },
+          });
+        })
+    );
+    return;
+  }
+
+  // Peticiones de Archivos Estáticos (.js, .css, .woff2, imágenes, .json)
+  const isStaticAsset =
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".mjs") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".woff2") ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".jpg") ||
+    url.pathname.endsWith(".jpeg") ||
+    url.pathname.endsWith(".svg") ||
+    url.pathname.endsWith(".json") ||
+    url.pathname.includes("/_build/") ||
+    url.pathname.includes("/assets/");
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        // Si está en caché, devolverlo inmediatamente para máxima velocidad
         if (cachedResponse) {
+          // Refrescar en segundo plano si hay red
+          fetch(request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
+              }
+            })
+            .catch(() => {});
           return cachedResponse;
         }
 
-        // 3. Si es una navegación de página HTML y no está en caché exacta, entregar la raíz "/"
-        if (request.mode === "navigate") {
-          const rootCached = await cache.match("/");
-          if (rootCached) return rootCached;
-        }
+        // Si no está en caché, buscarlo en la red y guardarlo
+        return fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            return new Response("", { status: 408, statusText: "Offline" });
+          });
+      })
+    );
+    return;
+  }
 
-        return new Response("Sin conexión a internet", {
-          status: 503,
-          statusText: "Service Unavailable",
-          headers: new Headers({ "Content-Type": "text/plain" }),
-        });
-      }
-    })
+  // Resto de peticiones (Network First con fallback a Caché)
+  event.respondWith(
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        }
+        return networkResponse;
+      })
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        return new Response("", { status: 408, statusText: "Offline" });
+      })
   );
 });
