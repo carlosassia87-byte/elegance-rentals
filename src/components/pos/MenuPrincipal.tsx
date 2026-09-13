@@ -647,7 +647,7 @@ export function MenuPrincipal({
           <div className="flex flex-col items-center">
             <div className="rounded-3xl bg-white p-4 shadow-sm border border-slate-200/80 mb-4 transition-transform hover:scale-105 duration-200">
               <img
-                src={logoAsset.url}
+                src="/logo_casa_del_disfraz.jpg"
                 alt="La Casa Del Disfraz"
                 className="h-28 md:h-36 w-auto object-contain"
               />
