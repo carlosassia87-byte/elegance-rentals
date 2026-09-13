@@ -362,7 +362,10 @@ export function guardarSesionPos(usuario: UsuarioPos): void {
       usuario,
       fechaIngreso: new Date().toISOString(),
     };
-    localStorage.setItem(KEY_SESION_POS, JSON.stringify(sesion));
+    // Guardar en sessionStorage para que al cerrar la PWA o ventana con la 'X' la sesión se cierre sola
+    sessionStorage.setItem(KEY_SESION_POS, JSON.stringify(sesion));
+    // Limpiar localStorage viejo de sesiones permanentes
+    localStorage.removeItem(KEY_SESION_POS);
   } catch (e) {
     console.error("Error guardando sesión del POS:", e);
   }
@@ -370,7 +373,8 @@ export function guardarSesionPos(usuario: UsuarioPos): void {
 
 export function obtenerSesionPos(): SesionPos | null {
   try {
-    const raw = localStorage.getItem(KEY_SESION_POS);
+    // Leer únicamente de sessionStorage (sesión volátil de la ventana actual)
+    const raw = sessionStorage.getItem(KEY_SESION_POS);
     if (raw) {
       return JSON.parse(raw);
     }
@@ -380,6 +384,8 @@ export function obtenerSesionPos(): SesionPos | null {
 
 export function logoutPos(): void {
   try {
+    sessionStorage.removeItem(KEY_SESION_POS);
     localStorage.removeItem(KEY_SESION_POS);
   } catch {}
 }
+
