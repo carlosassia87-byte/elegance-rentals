@@ -247,8 +247,12 @@ export async function registrarDevolucionCompleta(
       FECHA: fechaHoy,
     };
 
+    let guardadoEnSupabase = false;
     try {
-      await supabase.from("DEPOSITOENTREGADO" as any).insert(depData);
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        const { error: errDep } = await supabase.from("DEPOSITOENTREGADO" as any).insert(depData);
+        if (!errDep) guardadoEnSupabase = true;
+      }
     } catch (e) {
       console.warn("Fallo guardando en tabla DEPOSITOENTREGADO Supabase:", e);
     }
@@ -258,36 +262,55 @@ export async function registrarDevolucionCompleta(
     for (const item of params.itemsDevueltos) {
       guardarEstadoPrendaOverride(params.numeroFactura, item.codigoBarras, item.descripcion, "DEVUELTO A TIENDA");
 
-      // Reponer Stock en ARTICULO
-      try {
-        let query = supabase.from("ARTICULO" as any).select("*");
-        if (item.codigoBarras) {
-          query = query.eq("CODBARRAS", item.codigoBarras);
-        } else if (item.descripcion) {
-          query = query.eq("DESCRIPCION", item.descripcion);
-        }
-        const { data: artRaw } = await query.maybeSingle();
-        const art = artRaw as any;
-        if (art) {
-          await supabase
-            .from("ARTICULO" as any)
-            .update({ STOCK: (Number(art.STOCK) || 0) + item.cantidad })
-            .eq("IDARTICULO", art.IDARTICULO);
-        }
-      } catch {}
+      // Reponer Stock en ARTICULO en Supabase si hay red
+      if (guardadoEnSupabase) {
+        try {
+          let query = supabase.from("ARTICULO" as any).select("*");
+          if (item.codigoBarras) {
+            query = query.eq("CODBARRAS", item.codigoBarras);
+          } else if (item.descripcion) {
+            query = query.eq("DESCRIPCION", item.descripcion);
+          }
+          const { data: artRaw } = await query.maybeSingle();
+          const art = artRaw as any;
+          if (art) {
+            await supabase
+              .from("ARTICULO" as any)
+              .update({ STOCK: (Number(art.STOCK) || 0) + item.cantidad })
+              .eq("IDARTICULO", art.IDARTICULO);
+          }
+        } catch {}
+      }
     }
 
     // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda)
-    try {
-      await supabase
-        .from("FACTURA" as any)
-        .update({
-          ESTADOCLIENTE: "ENTREGADO",
-          ESTADOFIN: "DEVUELTO",
-        })
-        .eq("NUMEROFACT", params.numeroFactura);
-    } catch (e) {
-      console.warn("Error actualizando estado en FACTURA Supabase:", e);
+    if (guardadoEnSupabase) {
+      try {
+        await supabase
+          .from("FACTURA" as any)
+          .update({
+            ESTADOCLIENTE: "ENTREGADO",
+            ESTADOFIN: "DEVUELTO",
+          })
+          .eq("NUMEROFACT", params.numeroFactura);
+      } catch (e) {
+        console.warn("Error actualizando estado en FACTURA Supabase:", e);
+      }
+    }
+
+    // Si no se pudo guardar en Supabase o estamos offline, encolar para sincronización automática
+    if (!guardadoEnSupabase) {
+      try {
+        const { encolarOperacionOffline } = await import("./offlineDbService");
+        await encolarOperacionOffline("DEVOLUCION_TRAJE", {
+          numeroFact: params.numeroFactura,
+          itemsDevueltos: params.itemsDevueltos,
+          montoNetoDevuelto: params.montoNetoDevuelto,
+          fecha: fechaHoy,
+        });
+      } catch (e) {
+        console.warn("Error encolando devolucion offline:", e);
+      }
     }
 
     // Actualizar factura en respaldo local si aplica

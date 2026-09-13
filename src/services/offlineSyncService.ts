@@ -272,20 +272,58 @@ export async function procesarColaSincronizacion(): Promise<{ exitosas: number; 
             .eq("NUMEROFACT", facturaNumero);
         }
       } else if (item.tipo === "DEVOLUCION_TRAJE") {
-        const { numeroFact, barrasArticulos } = item.datos;
+        const { numeroFact, itemsDevueltos, barrasArticulos, montoNetoDevuelto, fecha } = item.datos;
 
-        // Marcar factura como ENTREGADO
+        // 1. Insertar egreso de reintegro en DEPOSITOENTREGADO si hubo valor
+        if (montoNetoDevuelto && Number(montoNetoDevuelto) > 0) {
+          try {
+            await supabase.from("DEPOSITOENTREGADO" as any).insert({
+              NUMEROFACTURA: numeroFact,
+              VALOR: Number(montoNetoDevuelto),
+              FECHA: fecha || new Date().toISOString().split("T")[0],
+            });
+          } catch (e) {
+            console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
+          }
+        }
+
+        // 2. Marcar factura como ENTREGADO
         await supabase
           .from("FACTURA" as any)
-          .update({ ESTADOCLIENTE: "ENTREGADO", ESTADO: "ENTREGADO" })
+          .update({ ESTADOCLIENTE: "ENTREGADO", ESTADOFIN: "DEVUELTO" })
           .eq("NUMEROFACT", numeroFact);
 
-        // Devolver prendas a DISPONIBLE
-        for (const barras of barrasArticulos || []) {
-          await supabase
-            .from("ARTICULO" as any)
-            .update({ ESTADO: "DISPONIBLE", ESTADOCLIENTE: "ENTREGADO" })
-            .eq("BARRAS", barras);
+        // 3. Devolver prendas / reponer stock
+        if (itemsDevueltos && Array.isArray(itemsDevueltos)) {
+          for (const it of itemsDevueltos) {
+            try {
+              let query = supabase.from("ARTICULO" as any).select("*");
+              if (it.codigoBarras) {
+                query = query.eq("CODBARRAS", it.codigoBarras);
+              } else if (it.descripcion) {
+                query = query.eq("DESCRIPCION", it.descripcion);
+              }
+              const { data: artRaw } = await query.maybeSingle();
+              const art = artRaw as any;
+              if (art) {
+                await supabase
+                  .from("ARTICULO" as any)
+                  .update({
+                    STOCK: (Number(art.STOCK) || 0) + (Number(it.cantidad) || 1),
+                    ESTADO: "DISPONIBLE",
+                    ESTADOCLIENTE: "ENTREGADO",
+                  })
+                  .eq("IDARTICULO", art.IDARTICULO);
+              }
+            } catch {}
+          }
+        } else if (barrasArticulos && Array.isArray(barrasArticulos)) {
+          for (const barras of barrasArticulos) {
+            await supabase
+              .from("ARTICULO" as any)
+              .update({ ESTADO: "DISPONIBLE", ESTADOCLIENTE: "ENTREGADO" })
+              .eq("BARRAS", barras);
+          }
         }
       } else if (item.tipo === "NUEVO_CLIENTE") {
         const { cliente } = item.datos;
