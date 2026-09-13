@@ -142,11 +142,38 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
       .select()
       .single();
 
-    if (!error && data) return data as unknown as Cliente;
-    return cliente as unknown as Cliente;
+    let clienteFinal: any = null;
+    if (!error && data) {
+      clienteFinal = data;
+    } else {
+      clienteFinal = {
+        ...cliente,
+        IDCLIENTES: cliente.IDCLIENTES || Date.now(),
+        CEDULA: cedulaNum || 0,
+        NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+      };
+    }
+
+    // Guardar en IndexedDB
+    guardarClientesLote([clienteFinal as any]).catch(() => {});
+
+    // Si falló Supabase o estamos offline, encolar para sincronizar
+    if (error || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      encolarOperacionOffline("NUEVO_CLIENTE", { cliente: clienteFinal }).catch(() => {});
+    }
+
+    return clienteFinal as unknown as Cliente;
   } catch (err) {
     console.error("Error guardando cliente:", err);
-    return cliente as unknown as Cliente;
+    const fallbackCli = {
+      ...cliente,
+      IDCLIENTES: cliente.IDCLIENTES || Date.now(),
+      CEDULA: typeof cliente.CEDULA === "string" ? parseInt(cliente.CEDULA, 10) : cliente.CEDULA || 0,
+      NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+    };
+    guardarClientesLote([fallbackCli as any]).catch(() => {});
+    encolarOperacionOffline("NUEVO_CLIENTE", { cliente: fallbackCli }).catch(() => {});
+    return fallbackCli as unknown as Cliente;
   }
 }
 
@@ -608,8 +635,7 @@ export async function registrarAlquilerFactura(
       FECHA_RECIBO: facturaData.FECHA_RECIBO || new Date().toISOString().split("T")[0],
     };
 
-    // 3. Insertar en tabla FACTURA de Supabase en la nube
-    let facturaInsertada: any = null;
+    let guardadoEnSupabase = false;
     try {
       const { data: facturaRaw, error: errorFactura } = await supabase
         .from("FACTURA" as any)
@@ -619,6 +645,7 @@ export async function registrarAlquilerFactura(
 
       if (!errorFactura && facturaRaw) {
         facturaInsertada = facturaRaw;
+        guardadoEnSupabase = true;
       } else if (errorFactura) {
         console.error("Error insertando FACTURA en Supabase:", errorFactura.message);
       }
@@ -673,7 +700,7 @@ export async function registrarAlquilerFactura(
     saveLocalFactura(facturaInsertada as Factura, camposParaSupabase as CampoFactura[]);
 
     // 5.1 Si no hubo conexión o falló la inserción en la nube, encolar para sincronización
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (!guardadoEnSupabase || (typeof navigator !== "undefined" && !navigator.onLine)) {
       try {
         await encolarOperacionOffline("NUEVA_FACTURA", {
           factura: cleanFacturaData,
