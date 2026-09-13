@@ -9,30 +9,48 @@ import type {
   Gasto,
   Caja,
 } from "@/types/database.types";
+import {
+  buscarArticuloPorBarrasOffline,
+  buscarClientePorCedulaOffline,
+  buscarFacturaPorNumeroOffline,
+  consumirSiguienteNumeroOffline,
+  encolarOperacionOffline,
+  guardarFacturasLote,
+  guardarClientesLote,
+} from "./offlineDbService";
+import { renovarBloqueConsecutivosOffline } from "./offlineSyncService";
 
 // ==========================================
 // SERVICIO DE CLIENTES
 // ==========================================
 export async function buscarClientePorCedula(cedula: number | string): Promise<Cliente | null> {
-  try {
-    const cedulaNum = typeof cedula === "string" ? parseInt(cedula, 10) : cedula;
-    if (isNaN(cedulaNum)) return null;
+  const cedulaNum = typeof cedula === "string" ? parseInt(cedula, 10) : cedula;
+  if (isNaN(cedulaNum)) return null;
 
-    const { data, error } = await supabase
-      .from("CLIENTES" as any)
-      .select("*")
-      .eq("CEDULA", cedulaNum)
-      .maybeSingle();
+  // 1. Si hay conexión, intentar Supabase primero
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from("CLIENTES" as any)
+        .select("*")
+        .eq("CEDULA", cedulaNum)
+        .maybeSingle();
 
-    if (error) {
-      console.warn("Error consultando cliente por cédula:", error.message);
-      return null;
+      if (!error && data) {
+        return data as unknown as Cliente | null;
+      }
+    } catch (err) {
+      console.warn("Fallo Supabase al buscar cliente, usando IndexedDB:", err);
     }
-    return data as unknown as Cliente | null;
-  } catch (err) {
-    console.error("Excepción en buscarClientePorCedula:", err);
-    return null;
   }
+
+  // 2. Fallback instantáneo en IndexedDB
+  try {
+    const cliOffline = await buscarClientePorCedulaOffline(cedulaNum);
+    if (cliOffline) return cliOffline as unknown as Cliente;
+  } catch {}
+
+  return null;
 }
 
 export async function buscarClientesPorNombre(query: string): Promise<Cliente[]> {
@@ -222,18 +240,31 @@ export async function listarArticulos(search = "", limite = 50000): Promise<Arti
 }
 
 export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Articulo | null> {
-  try {
-    const { data, error } = await supabase
-      .from("ARTICULO" as any)
-      .select("*")
-      .eq("CODBARRAS", codigo)
-      .maybeSingle();
-    if (error) throw error;
-    return data as unknown as Articulo | null;
-  } catch (err) {
-    console.error("Error buscando por código de barras:", err);
-    return null;
+  if (!codigo) return null;
+
+  // 1. Si hay conexión, consultar Supabase
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    try {
+      const { data, error } = await supabase
+        .from("ARTICULO" as any)
+        .select("*")
+        .eq("CODBARRAS", codigo)
+        .maybeSingle();
+      if (!error && data) {
+        return data as unknown as Articulo | null;
+      }
+    } catch (err) {
+      console.warn("Fallo Supabase en artículo, buscando en IndexedDB:", err);
+    }
   }
+
+  // 2. Fallback instantáneo en IndexedDB
+  try {
+    const artOffline = await buscarArticuloPorBarrasOffline(codigo);
+    if (artOffline) return artOffline as unknown as Articulo;
+  } catch {}
+
+  return null;
 }
 
 export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Articulo | null> {
@@ -577,8 +608,31 @@ export async function registrarAlquilerFactura(
       console.error("Excepción insertando CAMPOFACTURA en Supabase:", e?.message);
     }
 
-    // 5. Guardar copia de respaldo persistente en LocalStorage
+    // 5. Guardar en IndexedDB y LocalStorage
+    try {
+      await guardarFacturasLote(
+        [cleanFacturaData as any],
+        camposParaSupabase as any
+      );
+    } catch (eDb) {
+      console.warn("Aviso guardando en IndexedDB:", eDb);
+    }
     saveLocalFactura(facturaInsertada as Factura, camposParaSupabase as CampoFactura[]);
+
+    // 5.1 Si no hubo conexión o falló la inserción en la nube, encolar para sincronización
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        await encolarOperacionOffline("NUEVA_FACTURA", {
+          factura: cleanFacturaData,
+          items: camposParaSupabase,
+        });
+      } catch (eQueue) {
+        console.warn("Aviso encolando factura offline:", eQueue);
+      }
+    } else {
+      // Si estamos online, renovar reserva de consecutivos en segundo plano
+      renovarBloqueConsecutivosOffline().catch(() => {});
+    }
 
     // 6. Descontar Stock de cada ARTICULO o ACCESORIO en inventario
     for (const item of items) {
@@ -709,7 +763,19 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
       console.warn("Error consultando supabase FACTURA:", e);
     }
 
-    // 2. Si no se encontró en Supabase o faltan ítems, buscar en LocalStorage
+    // 2. Si no se encontró en Supabase, buscar en IndexedDB
+    if (!facturaEncontrada) {
+      try {
+        const offRes = await buscarFacturaPorNumeroOffline(term);
+        if (offRes.factura) {
+          facturaEncontrada = offRes.factura;
+          if (offRes.items.length > 0) itemsEncontrados = offRes.items;
+          if (offRes.abonos.length > 0) abonosEncontrados = offRes.abonos;
+        }
+      } catch {}
+    }
+
+    // 2.1 Si aún no se encontró, buscar en LocalStorage
     if (!facturaEncontrada) {
       const localFacts = getLocalFacturas();
       const match = localFacts.find((f) => 
@@ -750,7 +816,7 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
         .select("*")
         .eq("NUMEROFACTURA", facturaEncontrada.NUMEROFACT);
       if (depsRaw && depsRaw.length > 0) {
-        totalDevuelto = depsRaw.reduce((acc, d: any) => acc + (Number(d.VALOR) || 0), 0);
+        totalDevuelto = depsRaw.reduce((acc: number, d: any) => acc + (Number(d.VALOR) || 0), 0);
       }
     } catch {}
 
@@ -758,9 +824,9 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
     if (rawLocalDeps) {
       try {
         const localDepsList: any[] = JSON.parse(rawLocalDeps);
-        const matchDeps = localDepsList.filter((d) => d.NUMEROFACTURA === facturaEncontrada.NUMEROFACT);
+        const matchDeps = localDepsList.filter((d: any) => d.NUMEROFACTURA === facturaEncontrada.NUMEROFACT);
         if (matchDeps.length > 0 && totalDevuelto === 0) {
-          totalDevuelto = matchDeps.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
+          totalDevuelto = matchDeps.reduce((acc: number, d: any) => acc + (Number(d.VALOR) || 0), 0);
         }
       } catch {}
     }
@@ -844,6 +910,7 @@ export async function registrarAbonoCliente(params: {
       TOTAL_ABONO: params.totalAbono,
     };
 
+    let guardadoSupabase = false;
     try {
       const { data: abono, error: errAbono } = await supabase
         .from("ABONO_CLIENTE" as any)
@@ -852,6 +919,7 @@ export async function registrarAbonoCliente(params: {
         .single();
 
       if (!errAbono && abono) {
+        guardadoSupabase = true;
         // Actualizar FACTURA en Supabase
         await supabase
           .from("FACTURA" as any)
@@ -860,6 +928,19 @@ export async function registrarAbonoCliente(params: {
       }
     } catch (e) {
       console.warn("Fallo guardado de abono en Supabase, usando local:", e);
+    }
+
+    // Si no se guardó en Supabase o estamos offline, encolar
+    if (!guardadoSupabase || (typeof navigator !== "undefined" && !navigator.onLine)) {
+      try {
+        await encolarOperacionOffline("NUEVO_ABONO", {
+          abono: abonoObj,
+          facturaNumero: params.numeroFactura,
+          nuevoSaldo: params.saldoDeber,
+        });
+      } catch (eQueue) {
+        console.warn("Aviso encolando abono offline:", eQueue);
+      }
     }
 
     // Guardar en respaldo local

@@ -83,6 +83,8 @@ import { CatalogoWeb } from "@/components/catalogo/CatalogoWeb";
 import { GestionUsuariosModal } from "./GestionUsuariosModal";
 import { MovimientosTrajesModal } from "./MovimientosTrajesModal";
 import { CatalogoClientesModal } from "./CatalogoClientesModal";
+import { IndicadorModoOffline } from "./IndicadorModoOffline";
+import { inicializarDetectorOffline } from "@/services/offlineSyncService";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import { BalanceDepositosModal } from "./BalanceDepositosModal";
 import { InventarioStockModal } from "./InventarioStockModal";
@@ -527,6 +529,11 @@ export function PuntoDeVenta() {
       supabase.removeChannel(channel);
     };
   }, [terminalConfig.nombreCaja, terminalConfig.prefijo]);
+
+  // Inicializar detector de conectividad y sincronización offline-first
+  useEffect(() => {
+    inicializarDetectorOffline();
+  }, []);
 
   function handleLogout() {
     logoutPos();
@@ -1328,6 +1335,7 @@ export function PuntoDeVenta() {
                   <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase font-sans leading-none">
                     PUNTO DE VENTA & ALQUILER
                   </h1>
+                  <IndicadorModoOffline />
                 </div>
 
                 <div className="flex items-center gap-2">
