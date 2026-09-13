@@ -198,149 +198,245 @@ export async function renovarBloqueConsecutivosOffline(tamanoBloque = 30): Promi
   }
 }
 
+import { obtenerTerminalConfig } from "./empresaCajaService";
+
 // =========================================================================
-// PROCESAMIENTO DE LA COLA DE SINCRONIZACIÓN (SUBIDA A SUPABASE)
+// SEMÁFORO DISTRIBUIDO (MUTEX LOCK POR TERMINAL)
+// =========================================================================
+
+const SEMAFORO_LOCK_KEY = "elegance_sync_lock_token";
+const LOCK_EXPIRACION_MS = 15000; // 15 segundos máximo para evitar bloqueos muertos (deadlocks)
+
+interface SemaforoLockData {
+  cajaId: string | number;
+  nombreCaja: string;
+  timestamp: number;
+}
+
+/**
+ * Intenta adquirir el semáforo para sincronizar.
+ * Si otra caja está sincronizando actualmente, espera su turno (Luz Roja).
+ */
+async function adquirirSemaforo(cajaId: string | number, nombreCaja: string): Promise<boolean> {
+  const maxIntentos = 4;
+  
+  for (let intento = 0; intento < maxIntentos; intento++) {
+    try {
+      const ahora = Date.now();
+      
+      // 1. Verificar bloqueo local / compartido
+      const rawLock = localStorage.getItem(SEMAFORO_LOCK_KEY);
+      if (rawLock) {
+        const lockData: SemaforoLockData = JSON.parse(rawLock);
+        // Si el bloqueo aún está vigente y pertenece a OTRA caja
+        if (ahora - lockData.timestamp < LOCK_EXPIRACION_MS && lockData.cajaId !== cajaId) {
+          // Luz Roja: Esperar entre 1.2 y 2 segundos antes de volver a consultar
+          const tiempoEspera = 1200 + Math.floor(Math.random() * 800);
+          await new Promise((r) => setTimeout(r, tiempoEspera));
+          continue;
+        }
+      }
+
+      // 2. Luz Verde: Tomar el semáforo
+      const nuevoLock: SemaforoLockData = {
+        cajaId,
+        nombreCaja,
+        timestamp: ahora,
+      };
+      localStorage.setItem(SEMAFORO_LOCK_KEY, JSON.stringify(nuevoLock));
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  return true; // Tras los intentos, permitir proceder para no bloquear la cola
+}
+
+/**
+ * Libera el semáforo para que la siguiente caja pueda sincronizar.
+ */
+function liberarSemaforo(cajaId: string | number) {
+  try {
+    const rawLock = localStorage.getItem(SEMAFORO_LOCK_KEY);
+    if (rawLock) {
+      const lockData: SemaforoLockData = JSON.parse(rawLock);
+      if (lockData.cajaId === cajaId) {
+        localStorage.removeItem(SEMAFORO_LOCK_KEY);
+      }
+    }
+  } catch {}
+}
+
+// =========================================================================
+// PROCESAMIENTO DE LA COLA DE SINCRONIZACIÓN (SUBIDA A SUPABASE CON SEMÁFORO)
 // =========================================================================
 
 /**
  * Procesa todas las operaciones que se hayan acumulado sin internet
- * y las inserta en Supabase en orden cronológico estricto.
+ * y las inserta en Supabase en orden cronológico estricto respetando el semáforo.
  */
-export async function procesarColaSincronizacion(): Promise<{ exitosas: number; fallidas: number }> {
+export async function procesarColaSincronizacion(forzarSinEspera = false): Promise<{ exitosas: number; fallidas: number }> {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return { exitosas: 0, fallidas: 0 };
   }
 
   if (currentState.isSyncing) return { exitosas: 0, fallidas: 0 };
 
+  const terminal = obtenerTerminalConfig();
+  const cajaId = terminal.idCajaAsignada || 1;
+  const nombreCaja = terminal.nombreCaja || `CAJA ${cajaId}`;
+
+  // 1. Si no es forzado manualmente, aplicar retardo escalonado (Jitter) según el número de caja
+  if (!forzarSinEspera) {
+    const retardoEscalonado = Math.max(0, (Number(cajaId) - 1) * 1600) + Math.floor(Math.random() * 400);
+    if (retardoEscalonado > 0) {
+      await new Promise((r) => setTimeout(r, retardoEscalonado));
+    }
+  }
+
+  // 2. Adquirir semáforo
+  await adquirirSemaforo(cajaId, nombreCaja);
+
   currentState.isSyncing = true;
   notifyListeners();
 
-  const cola = await obtenerColaSincronizacion();
   let exitosas = 0;
   let fallidas = 0;
 
-  for (const item of cola) {
-    try {
-      if (item.tipo === "NUEVA_FACTURA") {
-        const { factura, items } = item.datos;
+  try {
+    const cola = await obtenerColaSincronizacion();
 
-        // 1. Insertar Factura
-        const { error: errFact } = await supabase
-          .from("FACTURA" as any)
-          .upsert(factura, { onConflict: "NUMEROFACT" });
+    for (const item of cola) {
+      try {
+        if (item.tipo === "NUEVA_FACTURA") {
+          const { factura, items } = item.datos;
 
-        if (errFact) throw errFact;
-
-        // 2. Insertar Campos Factura (prendas)
-        if (items && items.length > 0) {
-          const { error: errItems } = await supabase
-            .from("CAMPOFACTURA" as any)
-            .insert(items);
-          if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
-        }
-
-        // 3. Actualizar estado de artículos en Supabase
-        for (const it of items || []) {
-          if (it.BARRAS) {
-            await supabase
-              .from("ARTICULO" as any)
-              .update({
-                ESTADO: factura.MODO === "VENTA" ? "VENDIDO" : "ALQUILADO",
-                ESTADOCLIENTE: factura.ESTADOCLIENTE || "EN BODEGA",
-              })
-              .eq("BARRAS", it.BARRAS);
+          // Asignar caja si no estaba presente
+          if (factura && !factura.CAJA) {
+            factura.CAJA = nombreCaja;
           }
-        }
-      } else if (item.tipo === "NUEVO_ABONO") {
-        const { abono, facturaNumero, nuevoSaldo } = item.datos;
 
-        const { error: errAbono } = await supabase
-          .from("ABONO_CLIENTE" as any)
-          .insert(abono);
+          // 1. Insertar Factura con UPSERT protegido por número de factura único
+          const { error: errFact } = await supabase
+            .from("FACTURA" as any)
+            .upsert(factura, { onConflict: "NUMEROFACT" });
 
-        if (errAbono) throw errAbono;
+          if (errFact) throw errFact;
 
-        // Actualizar saldo de la factura si aplica
-        if (facturaNumero && nuevoSaldo !== undefined) {
+          // 2. Insertar Campos Factura (prendas)
+          if (items && items.length > 0) {
+            const { error: errItems } = await supabase
+              .from("CAMPOFACTURA" as any)
+              .insert(items);
+            if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
+          }
+
+          // 3. Actualizar estado de artículos en Supabase
+          for (const it of items || []) {
+            if (it.BARRAS) {
+              await supabase
+                .from("ARTICULO" as any)
+                .update({
+                  ESTADO: factura.MODO === "VENTA" ? "VENDIDO" : "ALQUILADO",
+                  ESTADOCLIENTE: factura.ESTADOCLIENTE || "EN BODEGA",
+                })
+                .eq("BARRAS", it.BARRAS);
+            }
+          }
+        } else if (item.tipo === "NUEVO_ABONO") {
+          const { abono, facturaNumero, nuevoSaldo } = item.datos;
+
+          const { error: errAbono } = await supabase
+            .from("ABONO_CLIENTE" as any)
+            .insert(abono);
+
+          if (errAbono) throw errAbono;
+
+          // Actualizar saldo de la factura si aplica
+          if (facturaNumero && nuevoSaldo !== undefined) {
+            await supabase
+              .from("FACTURA" as any)
+              .update({
+                TOTAL_SALDO: nuevoSaldo,
+                ESTADO: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
+              })
+              .eq("NUMEROFACT", facturaNumero);
+          }
+        } else if (item.tipo === "DEVOLUCION_TRAJE") {
+          const { numeroFact, itemsDevueltos, barrasArticulos, montoNetoDevuelto, fecha } = item.datos;
+
+          // 1. Insertar egreso de reintegro en DEPOSITOENTREGADO si hubo valor
+          if (montoNetoDevuelto && Number(montoNetoDevuelto) > 0) {
+            try {
+              await supabase.from("DEPOSITOENTREGADO" as any).insert({
+                NUMEROFACTURA: numeroFact,
+                VALOR: Number(montoNetoDevuelto),
+                FECHA: fecha || new Date().toISOString().split("T")[0],
+              });
+            } catch (e) {
+              console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
+            }
+          }
+
+          // 2. Marcar factura como ENTREGADO
           await supabase
             .from("FACTURA" as any)
-            .update({
-              TOTAL_SALDO: nuevoSaldo,
-              ESTADO: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
-            })
-            .eq("NUMEROFACT", facturaNumero);
-        }
-      } else if (item.tipo === "DEVOLUCION_TRAJE") {
-        const { numeroFact, itemsDevueltos, barrasArticulos, montoNetoDevuelto, fecha } = item.datos;
+            .update({ ESTADOCLIENTE: "ENTREGADO", ESTADOFIN: "DEVUELTO" })
+            .eq("NUMEROFACT", numeroFact);
 
-        // 1. Insertar egreso de reintegro en DEPOSITOENTREGADO si hubo valor
-        if (montoNetoDevuelto && Number(montoNetoDevuelto) > 0) {
-          try {
-            await supabase.from("DEPOSITOENTREGADO" as any).insert({
-              NUMEROFACTURA: numeroFact,
-              VALOR: Number(montoNetoDevuelto),
-              FECHA: fecha || new Date().toISOString().split("T")[0],
-            });
-          } catch (e) {
-            console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
+          // 3. Devolver prendas / reponer stock
+          if (itemsDevueltos && Array.isArray(itemsDevueltos)) {
+            for (const it of itemsDevueltos) {
+              try {
+                let query = supabase.from("ARTICULO" as any).select("*");
+                if (it.codigoBarras) {
+                  query = query.eq("CODBARRAS", it.codigoBarras);
+                } else if (it.descripcion) {
+                  query = query.eq("DESCRIPCION", it.descripcion);
+                }
+                const { data: artRaw } = await query.maybeSingle();
+                const art = artRaw as any;
+                if (art) {
+                  await supabase
+                    .from("ARTICULO" as any)
+                    .update({
+                      STOCK: (Number(art.STOCK) || 0) + (Number(it.cantidad) || 1),
+                      ESTADO: "DISPONIBLE",
+                      ESTADOCLIENTE: "ENTREGADO",
+                    })
+                    .eq("IDARTICULO", art.IDARTICULO);
+                }
+              } catch {}
+            }
+          } else if (barrasArticulos && Array.isArray(barrasArticulos)) {
+            for (const barras of barrasArticulos) {
+              await supabase
+                .from("ARTICULO" as any)
+                .update({ ESTADO: "DISPONIBLE", ESTADOCLIENTE: "ENTREGADO" })
+                .eq("BARRAS", barras);
+            }
           }
+        } else if (item.tipo === "NUEVO_CLIENTE") {
+          const { cliente } = item.datos;
+          await supabase
+            .from("CLIENTES" as any)
+            .upsert(cliente, { onConflict: "CEDULA" });
         }
 
-        // 2. Marcar factura como ENTREGADO
-        await supabase
-          .from("FACTURA" as any)
-          .update({ ESTADOCLIENTE: "ENTREGADO", ESTADOFIN: "DEVUELTO" })
-          .eq("NUMEROFACT", numeroFact);
-
-        // 3. Devolver prendas / reponer stock
-        if (itemsDevueltos && Array.isArray(itemsDevueltos)) {
-          for (const it of itemsDevueltos) {
-            try {
-              let query = supabase.from("ARTICULO" as any).select("*");
-              if (it.codigoBarras) {
-                query = query.eq("CODBARRAS", it.codigoBarras);
-              } else if (it.descripcion) {
-                query = query.eq("DESCRIPCION", it.descripcion);
-              }
-              const { data: artRaw } = await query.maybeSingle();
-              const art = artRaw as any;
-              if (art) {
-                await supabase
-                  .from("ARTICULO" as any)
-                  .update({
-                    STOCK: (Number(art.STOCK) || 0) + (Number(it.cantidad) || 1),
-                    ESTADO: "DISPONIBLE",
-                    ESTADOCLIENTE: "ENTREGADO",
-                  })
-                  .eq("IDARTICULO", art.IDARTICULO);
-              }
-            } catch {}
-          }
-        } else if (barrasArticulos && Array.isArray(barrasArticulos)) {
-          for (const barras of barrasArticulos) {
-            await supabase
-              .from("ARTICULO" as any)
-              .update({ ESTADO: "DISPONIBLE", ESTADOCLIENTE: "ENTREGADO" })
-              .eq("BARRAS", barras);
-          }
-        }
-      } else if (item.tipo === "NUEVO_CLIENTE") {
-        const { cliente } = item.datos;
-        await supabase
-          .from("CLIENTES" as any)
-          .upsert(cliente, { onConflict: "CEDULA" });
+        // Si se sincronizó correctamente, eliminar de la cola
+        await eliminarItemCola(item.id);
+        exitosas++;
+      } catch (err: any) {
+        console.error(`Error sincronizando elemento ${item.id}:`, err);
+        fallidas++;
+        item.intentos = (item.intentos || 0) + 1;
+        item.ultimoError = err?.message || String(err);
       }
-
-      // Si se sincronizó correctamente, eliminar de la cola
-      await eliminarItemCola(item.id);
-      exitosas++;
-    } catch (err: any) {
-      console.error(`Error sincronizando elemento ${item.id}:`, err);
-      fallidas++;
-      item.intentos = (item.intentos || 0) + 1;
-      item.ultimoError = err?.message || String(err);
     }
+  } finally {
+    // 3. Siempre liberar el semáforo al terminar
+    liberarSemaforo(cajaId);
   }
 
   const pendientesRestantes = await contarItemsPendientesSincronizar();
@@ -366,7 +462,7 @@ export function inicializarDetectorOffline(): void {
     currentState.isOnline = true;
     notifyListeners();
 
-    // Al regresar la red, procesar cola de inmediato y precargar
+    // Al regresar la red, procesar cola con semáforo y luego precargar
     await procesarColaSincronizacion();
     await precargarDatosOffline();
   };
@@ -384,7 +480,7 @@ export function inicializarDetectorOffline(): void {
   setTimeout(() => {
     if (navigator.onLine) {
       precargarDatosOffline();
-      procesarColaSincronizacion();
+      procesarColaSincronizacion(true);
     }
   }, 1500);
 
@@ -395,3 +491,4 @@ export function inicializarDetectorOffline(): void {
     }
   }, 60000);
 }
+
