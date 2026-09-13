@@ -452,19 +452,72 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
 }
 
 // =========================================================================
+// VERIFICACIÓN ACTIVA DE CONECTIVIDAD EN TIEMPO REAL (HEARTBEAT PROBE)
+// =========================================================================
+
+let detectorIniciado = false;
+
+/**
+ * Comprueba de forma activa si existe salida real a Internet y al servidor Supabase.
+ * Detecta caídas de red incluso si el adaptador WiFi/Ethernet sigue conectado.
+ */
+export async function probarConectividadReal(): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return false;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+    // 1. Probar solicitud HEAD ultra-rápida
+    await fetch("https://supabase.co/favicon.ico", {
+      method: "HEAD",
+      mode: "no-cors",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return true;
+  } catch {
+    // 2. Si falla el probe, verificar con consulta mínima a Supabase
+    try {
+      const { error } = await supabase.from("CAJAS" as any).select("IDCAJAS").limit(1);
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// =========================================================================
 // INICIALIZADOR DE EVENTOS GLOBALES (ONLINE / OFFLINE)
 // =========================================================================
 
 export function inicializarDetectorOffline(): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || detectorIniciado) return;
+  detectorIniciado = true;
+
+  const verificarEstadoInmediato = async () => {
+    const hayInternet = await probarConectividadReal();
+    const cambioEstado = hayInternet !== currentState.isOnline;
+
+    if (cambioEstado) {
+      currentState.isOnline = hayInternet;
+      if (!hayInternet) {
+        currentState.pendingCount = await contarItemsPendientesSincronizar();
+        notifyListeners();
+      } else {
+        notifyListeners();
+        // Si regresó la red, sincronizar automáticamente
+        procesarColaSincronizacion();
+        precargarDatosOffline();
+      }
+    }
+  };
 
   const handleOnline = async () => {
-    currentState.isOnline = true;
-    notifyListeners();
-
-    // Al regresar la red, procesar cola con semáforo y luego precargar
-    await procesarColaSincronizacion();
-    await precargarDatosOffline();
+    await verificarEstadoInmediato();
   };
 
   const handleOffline = async () => {
@@ -476,19 +529,22 @@ export function inicializarDetectorOffline(): void {
   window.addEventListener("online", handleOnline);
   window.addEventListener("offline", handleOffline);
 
+  // Verificación activa periódica cada 4 segundos para detectar caídas de internet al instante
+  setInterval(verificarEstadoInmediato, 4000);
+
   // Precarga inicial al abrir la aplicación
-  setTimeout(() => {
-    if (navigator.onLine) {
+  setTimeout(async () => {
+    await verificarEstadoInmediato();
+    if (currentState.isOnline) {
       precargarDatosOffline();
       procesarColaSincronizacion(true);
     }
-  }, 1500);
-
-  // Intervalo periódico de sincronización cada 60 segundos
-  setInterval(() => {
-    if (navigator.onLine && !currentState.isSyncing) {
-      procesarColaSincronizacion();
-    }
-  }, 60000);
+  }, 1000);
 }
+
+// Auto-inicialización global inmediata al importar el módulo
+if (typeof window !== "undefined") {
+  inicializarDetectorOffline();
+}
+
 
