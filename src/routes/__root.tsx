@@ -120,29 +120,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { ActualizadorPWA } from "@/components/pos/ActualizadorPWA";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
-  useEffect(() => {
-    // Registrar Service Worker de forma inmediata para ejecución PWA interactiva offline
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .then((registration) => {
-          // Si hay una actualización del service worker, activarlo
-          registration.update().catch(() => {});
-        })
-        .catch((error) => {
-          console.warn("Fallo al registrar Service Worker:", error);
-        });
-    }
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen w-full overflow-x-hidden bg-[#F8FAFC] text-slate-900">
         <Outlet />
       </div>
+      <ActualizadorPWA />
       <Toaster position="bottom-right" />
     </QueryClientProvider>
   );

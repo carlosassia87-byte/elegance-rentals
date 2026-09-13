@@ -4,7 +4,7 @@
  * se ejecuten interactivamente sin internet sin caer en snapshots estáticos.
  */
 
-const CACHE_NAME = "elegance-pos-v2";
+const CACHE_NAME = "elegance-pos-v3";
 
 const CRITICAL_ASSETS = [
   "/",
@@ -12,6 +12,13 @@ const CRITICAL_ASSETS = [
   "/logo_casa_del_disfraz.jpg",
   "/manifest.json",
 ];
+
+// Escuchar mensaje del cliente para forzar activación inmediata
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 // 1. INSTALACIÓN: Precarga inmediata de recursos críticos
 self.addEventListener("install", (event) => {
