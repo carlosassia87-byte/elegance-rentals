@@ -126,21 +126,43 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
     }
 
     // 3. Si no existe, insertar nuevo
-    const { data, error } = await supabase
+    const payloadCli = {
+      CEDULA: cedulaNum || 0,
+      NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
+      DIRECCION: cliente.DIRECCION || "",
+      TELEFONO: cliente.TELEFONO || "",
+      TELEFONO2: cliente.TELEFONO2 || "",
+      EMPRESA: cliente.EMPRESA || "",
+      DIRECCIONEMP: cliente.DIRECCIONEMP || "",
+      SALDO: cliente.SALDO ?? 0,
+      NOTA: cliente.NOTA || "",
+    };
+
+    let { data, error } = await supabase
       .from("CLIENTES" as any)
-      .insert({
-        CEDULA: cedulaNum || 0,
-        NOMBRE: (cliente.NOMBRE || "").toUpperCase(),
-        DIRECCION: cliente.DIRECCION || "",
-        TELEFONO: cliente.TELEFONO || "",
-        TELEFONO2: cliente.TELEFONO2 || "",
-        EMPRESA: cliente.EMPRESA || "",
-        DIRECCIONEMP: cliente.DIRECCIONEMP || "",
-        SALDO: cliente.SALDO ?? 0,
-        NOTA: cliente.NOTA || "",
-      })
+      .insert(payloadCli)
       .select()
       .single();
+
+    if (error && (error.code === "23505" || error.message?.includes("CLIENTES_pkey") || error.message?.includes("duplicate key"))) {
+      const { data: maxRows } = await supabase
+        .from("CLIENTES" as any)
+        .select("IDCLIENTES")
+        .order("IDCLIENTES", { ascending: false })
+        .limit(1);
+
+      const maxId = Number(maxRows?.[0]?.IDCLIENTES) || 0;
+      const resRetry = await supabase
+        .from("CLIENTES" as any)
+        .insert({ ...payloadCli, IDCLIENTES: maxId + 1 })
+        .select()
+        .single();
+
+      if (!resRetry.error && resRetry.data) {
+        data = resRetry.data;
+        error = null;
+      }
+    }
 
     let clienteFinal: any = null;
     if (!error && data) {
@@ -349,7 +371,7 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
 
 export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Articulo | null> {
   try {
-    if (articulo.IDARTICULO && articulo.IDARTICULO > 0) {
+    if (articulo.IDARTICULO && Number(articulo.IDARTICULO) > 0) {
       const { data, error } = await supabase
         .from("ARTICULO" as any)
         .update(articulo)
@@ -359,12 +381,42 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
       if (error) throw error;
       return data as unknown as Articulo;
     } else {
-      const { data, error } = await supabase
+      // 1. Omitir IDARTICULO para permitir auto-incremento de PostgreSQL
+      const payload: any = { ...articulo };
+      delete payload.IDARTICULO;
+
+      let { data, error } = await supabase
         .from("ARTICULO" as any)
-        .insert(articulo)
+        .insert(payload)
         .select()
         .single();
-      if (error) throw error;
+
+      // 2. Si la secuencia en PostgreSQL está desfasada (error 23505 duplicate key / ARTICULO_pkey),
+      // calcular el ID máximo actual y reintentar con maxId + 1 automáticamente
+      if (error && (error.code === "23505" || error.message?.includes("ARTICULO_pkey") || error.message?.includes("duplicate key"))) {
+        console.warn("Detectada secuencia desfasada en ARTICULO. Calculando siguiente ID manual...");
+        const { data: maxRows } = await supabase
+          .from("ARTICULO" as any)
+          .select("IDARTICULO")
+          .order("IDARTICULO", { ascending: false })
+          .limit(1);
+
+        const maxId = Number(maxRows?.[0]?.IDARTICULO) || 0;
+        const nuevoId = maxId + 1;
+
+        const resRetry = await supabase
+          .from("ARTICULO" as any)
+          .insert({ ...payload, IDARTICULO: nuevoId })
+          .select()
+          .single();
+
+        if (resRetry.error) throw resRetry.error;
+        data = resRetry.data;
+        error = null;
+      } else if (error) {
+        throw error;
+      }
+
       return data as unknown as Articulo;
     }
   } catch (err) {
