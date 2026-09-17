@@ -26,6 +26,7 @@ import {
   Database,
   Crown,
   Globe,
+  RefreshCw,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
@@ -392,6 +393,25 @@ export function SidebarMenu({
                 <ChevronRight className="h-4 w-4 text-amber-600" />
               </button>
             )}
+
+            {/* BOTÓN FORZAR ACTUALIZACIÓN / LIMPIAR CACHÉ PWA */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.forzarActualizacionPOS) {
+                  window.forzarActualizacionPOS();
+                } else {
+                  window.location.reload();
+                }
+              }}
+              className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-black text-xs text-sky-900 bg-sky-50/80 hover:bg-sky-100 hover:text-sky-950 transition-all group border border-sky-200/70 cursor-pointer mt-2"
+            >
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-4 w-4 text-sky-600 group-hover:rotate-180 transition-transform duration-500" />
+                <span>Actualizar Sistema / Limpiar Caché</span>
+              </div>
+              <span className="text-[10px] bg-sky-200 text-sky-900 px-1.5 py-0.5 rounded font-bold">V4</span>
+            </button>
           </div>
         </div>
 

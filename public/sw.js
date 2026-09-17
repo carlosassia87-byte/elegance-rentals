@@ -1,10 +1,10 @@
 /**
  * Service Worker PWA Offline Interactivo para Elegance Rentals POS
- * Asegura que todos los archivos JavaScript, estilos, fuentes y vistas
- * se ejecuten interactivamente sin internet sin caer en snapshots estáticos.
+ * Versión 4 (Actualizaciones automáticas inmediatas y caché inteligente)
  */
 
-const CACHE_NAME = "elegance-pos-v3";
+const CACHE_VERSION = "elegance-pos-v4";
+const CACHE_NAME = `elegance-pos-${CACHE_VERSION}-${Date.now()}`;
 
 const CRITICAL_ASSETS = [
   "/",
@@ -13,10 +13,17 @@ const CRITICAL_ASSETS = [
   "/manifest.json",
 ];
 
-// Escuchar mensaje del cliente para forzar activación inmediata
+// Escuchar mensaje del cliente para forzar activación inmediata o limpiar caché
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === "CLEAR_ALL_CACHES") {
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((key) => caches.delete(key)));
+    }).then(() => {
+      self.skipWaiting();
+    });
   }
 });
 
@@ -30,7 +37,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// 2. ACTIVACIÓN: Reclamar control de clientes de inmediato y purgar cachés viejas
+// 2. ACTIVACIÓN: Reclamar control de clientes de inmediato y purgar TODAS las cachés viejas
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     Promise.all([
@@ -39,6 +46,7 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
+              console.log("[ServiceWorker] Purgando caché obsoleta:", key);
               return caches.delete(key);
             }
           })
