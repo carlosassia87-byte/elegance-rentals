@@ -78,6 +78,38 @@ function indexarClientesEnMemoria(clis: Cliente[]) {
 }
 
 // ==========================================
+// CANAL BROADCAST EN TIEMPO REAL MULTI-PC (<50ms)
+// ==========================================
+let _broadcastPosChannel: any = null;
+
+export function getPosBroadcastChannel() {
+  if (!_broadcastPosChannel) {
+    _broadcastPosChannel = supabase.channel("pos_realtime_instant_broadcast", {
+      config: { broadcast: { self: false } },
+    });
+    _broadcastPosChannel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") {
+        console.log("⚡ [Realtime POS] Conectado a canal broadcast multi-PC");
+      }
+    });
+  }
+  return _broadcastPosChannel;
+}
+
+export function emitirEventoRealtime(evento: string, payload: any) {
+  try {
+    const ch = getPosBroadcastChannel();
+    ch.send({
+      type: "broadcast",
+      event: evento,
+      payload: { ...payload, timestamp: Date.now() },
+    });
+  } catch (e) {
+    console.warn("Aviso emitiendo broadcast:", e);
+  }
+}
+
+// ==========================================
 // SERVICIO DE CLIENTES
 // ==========================================
 export async function buscarClientePorCedula(cedula: number | string): Promise<Cliente | null> {
@@ -244,6 +276,9 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
 
     // Guardar en IndexedDB
     guardarClientesLote([clienteFinal as any]).catch(() => {});
+
+    // Emitir a todos los otros PCs en 50ms
+    emitirEventoRealtime("CLIENTE_ACTUALIZADO", { cliente: clienteFinal });
 
     // Si falló Supabase o estamos offline, encolar para sincronizar
     if (error || (typeof navigator !== "undefined" && !navigator.onLine)) {
@@ -550,6 +585,9 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
       setTimeout(() => {
         guardarArticulosLote([artGuardado as any]).catch(() => {});
       }, 0);
+
+      // Emitir a todos los otros PCs en 50ms
+      emitirEventoRealtime("ARTICULO_ACTUALIZADO", { articulo: artGuardado });
     }
 
     return artGuardado;
@@ -567,6 +605,7 @@ export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
       _cacheArticulos = _cacheArticulos.filter((a) => a.IDARTICULO !== idArticulo);
     }
     _mapArticulosPorId.delete(idArticulo);
+    emitirEventoRealtime("ARTICULO_ELIMINADO", { idArticulo });
     return true;
   } catch (err) {
     console.error("Error eliminando artículo:", err);
@@ -945,6 +984,14 @@ export async function registrarAlquilerFactura(
         }
       }
     }
+
+    // Emitir evento instantáneo a todos los PCs (50ms)
+    emitirEventoRealtime("VENTA_REGISTRADA", {
+      numeroFactura: sNumeroFactura,
+      items: items,
+      modo: facturaData.MODO || "ALQUILER",
+      caja: (facturaInsertada as any)?.CAJA || nombreCaja,
+    });
 
     return {
       factura: facturaInsertada as unknown as Factura,

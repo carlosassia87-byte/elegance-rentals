@@ -516,7 +516,46 @@ export function PuntoDeVenta() {
     };
 
     const channel = supabase
-      .channel("pos_realtime_sync_consecutivo")
+      .channel("pos_realtime_instant_broadcast")
+      .on(
+        "broadcast",
+        { event: "ARTICULO_ACTUALIZADO" },
+        ({ payload }: any) => {
+          if (payload?.articulo) {
+            const art = payload.articulo as Articulo;
+            setArticulos((prev) => {
+              const idx = prev.findIndex((a) => a.IDARTICULO === art.IDARTICULO || (a.CODBARRAS && a.CODBARRAS === art.CODBARRAS));
+              if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = art;
+                return next;
+              }
+              return [art, ...prev];
+            });
+            toast.info(`🔔 Prenda actualizada: ${art.DESCRIPCION}`, { duration: 3000 });
+          }
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "ARTICULO_ELIMINADO" },
+        ({ payload }: any) => {
+          if (payload?.idArticulo) {
+            setArticulos((prev) => prev.filter((a) => a.IDARTICULO !== payload.idArticulo));
+          }
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "VENTA_REGISTRADA" },
+        ({ payload }: any) => {
+          debouncedActualizarConsecutivo();
+          debouncedCargarArticulos();
+          if (payload?.numeroFactura) {
+            toast.info(`🔔 Factura #${payload.numeroFactura} registrada desde ${payload.caja || 'otra caja'}`, { duration: 4000 });
+          }
+        }
+      )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "FACTURA" },
