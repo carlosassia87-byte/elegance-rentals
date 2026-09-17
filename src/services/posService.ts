@@ -23,11 +23,71 @@ import {
 import { renovarBloqueConsecutivosOffline } from "./offlineSyncService";
 
 // ==========================================
+// CACHÉ EN MEMORIA ULTRA-RÁPIDO (SWR & O(1) LOOKUPS)
+// ==========================================
+let _cacheArticulos: Articulo[] | null = null;
+let _cacheArticulosTimestamp = 0;
+const _mapArticulosPorBarras = new Map<string, Articulo>();
+const _mapArticulosPorId = new Map<number, Articulo>();
+
+let _cacheClientes: Cliente[] | null = null;
+let _cacheClientesTimestamp = 0;
+const _mapClientesPorCedula = new Map<number, Cliente>();
+
+const CACHE_TTL_MS = 45000; // 45 segundos
+
+export function invalidarCacheArticulos() {
+  _cacheArticulos = null;
+  _cacheArticulosTimestamp = 0;
+  _mapArticulosPorBarras.clear();
+  _mapArticulosPorId.clear();
+}
+
+export function invalidarCacheClientes() {
+  _cacheClientes = null;
+  _cacheClientesTimestamp = 0;
+  _mapClientesPorCedula.clear();
+}
+
+function indexarArticulosEnMemoria(arts: Articulo[]) {
+  _cacheArticulos = arts;
+  _cacheArticulosTimestamp = Date.now();
+  _mapArticulosPorBarras.clear();
+  _mapArticulosPorId.clear();
+  for (let i = 0; i < arts.length; i++) {
+    const a = arts[i];
+    if (a.CODBARRAS) {
+      _mapArticulosPorBarras.set(a.CODBARRAS.trim().toUpperCase(), a);
+    }
+    if (a.IDARTICULO) {
+      _mapArticulosPorId.set(a.IDARTICULO, a);
+    }
+  }
+}
+
+function indexarClientesEnMemoria(clis: Cliente[]) {
+  _cacheClientes = clis;
+  _cacheClientesTimestamp = Date.now();
+  _mapClientesPorCedula.clear();
+  for (let i = 0; i < clis.length; i++) {
+    const c = clis[i];
+    if (c.CEDULA) {
+      _mapClientesPorCedula.set(Number(c.CEDULA), c);
+    }
+  }
+}
+
+// ==========================================
 // SERVICIO DE CLIENTES
 // ==========================================
 export async function buscarClientePorCedula(cedula: number | string): Promise<Cliente | null> {
   const cedulaNum = typeof cedula === "string" ? parseInt(cedula, 10) : cedula;
   if (isNaN(cedulaNum)) return null;
+
+  // 0. Búsqueda instantánea en Caché RAM O(1)
+  if (_mapClientesPorCedula.has(cedulaNum)) {
+    return _mapClientesPorCedula.get(cedulaNum)!;
+  }
 
   // 1. Si hay conexión, intentar Supabase primero
   if (typeof navigator === "undefined" || navigator.onLine) {
@@ -39,7 +99,9 @@ export async function buscarClientePorCedula(cedula: number | string): Promise<C
         .maybeSingle();
 
       if (!error && data) {
-        return data as unknown as Cliente | null;
+        const cli = data as unknown as Cliente;
+        _mapClientesPorCedula.set(cedulaNum, cli);
+        return cli;
       }
     } catch (err) {
       console.warn("Fallo Supabase al buscar cliente, usando IndexedDB:", err);
@@ -49,7 +111,11 @@ export async function buscarClientePorCedula(cedula: number | string): Promise<C
   // 2. Fallback instantáneo en IndexedDB
   try {
     const cliOffline = await buscarClientePorCedulaOffline(cedulaNum);
-    if (cliOffline) return cliOffline as unknown as Cliente;
+    if (cliOffline) {
+      const cli = cliOffline as unknown as Cliente;
+      _mapClientesPorCedula.set(cedulaNum, cli);
+      return cli;
+    }
   } catch {}
 
   return null;
@@ -211,7 +277,14 @@ export async function contarClientesTotal(): Promise<number> {
   }
 }
 
-export async function listarTodosLosClientes(search = "", limite = 100000): Promise<Cliente[]> {
+export async function listarTodosLosClientes(search = "", limite = 100000, forzarRecarga = false): Promise<Cliente[]> {
+  const queryTrim = search.trim().toLowerCase();
+
+  // 0. Si no hay búsqueda o se consulta la lista general, responder desde memoria si está fresca
+  if (!queryTrim && !forzarRecarga && _cacheClientes && (Date.now() - _cacheClientesTimestamp < CACHE_TTL_MS)) {
+    return _cacheClientes;
+  }
+
   // 1. Si hay conexión, intentar Supabase primero
   if (typeof navigator === "undefined" || navigator.onLine) {
     try {
@@ -223,12 +296,12 @@ export async function listarTodosLosClientes(search = "", limite = 100000): Prom
         const to = Math.min(from + BATCH_SIZE - 1, limite - 1);
         let query = supabase.from("CLIENTES" as any).select("*").order("NOMBRE").range(from, to);
 
-        if (search.trim()) {
-          const isNum = !isNaN(Number(search));
+        if (queryTrim) {
+          const isNum = !isNaN(Number(queryTrim));
           if (isNum) {
-            query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,CEDULA.eq.${Number(search)}`);
+            query = query.or(`NOMBRE.ilike.%${queryTrim}%,EMPRESA.ilike.%${queryTrim}%,TELEFONO.ilike.%${queryTrim}%,CEDULA.eq.${Number(queryTrim)}`);
           } else {
-            query = query.or(`NOMBRE.ilike.%${search}%,EMPRESA.ilike.%${search}%,TELEFONO.ilike.%${search}%,DIRECCION.ilike.%${search}%`);
+            query = query.or(`NOMBRE.ilike.%${queryTrim}%,EMPRESA.ilike.%${queryTrim}%,TELEFONO.ilike.%${queryTrim}%,DIRECCION.ilike.%${queryTrim}%`);
           }
         }
 
@@ -242,7 +315,12 @@ export async function listarTodosLosClientes(search = "", limite = 100000): Prom
       }
 
       if (todos.length > 0) {
-        guardarClientesLote(todos as any).catch(() => {});
+        if (!queryTrim) {
+          indexarClientesEnMemoria(todos);
+        }
+        setTimeout(() => {
+          guardarClientesLote(todos as any).catch(() => {});
+        }, 0);
         return todos;
       }
     } catch (err) {
@@ -254,28 +332,34 @@ export async function listarTodosLosClientes(search = "", limite = 100000): Prom
   try {
     const offlineClis = await obtenerTodosLosClientesOffline();
     if (offlineClis && offlineClis.length > 0) {
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        return offlineClis.filter((c) =>
-          (c.NOMBRE && c.NOMBRE.toLowerCase().includes(q)) ||
-          (c.CEDULA && String(c.CEDULA).includes(q)) ||
-          (c.TELEFONO && c.TELEFONO.includes(q)) ||
-          (c.EMPRESA && c.EMPRESA.toLowerCase().includes(q))
-        ) as unknown as Cliente[];
+      const clisArray = offlineClis as unknown as Cliente[];
+      if (!queryTrim) {
+        indexarClientesEnMemoria(clisArray);
       }
-      return offlineClis as unknown as Cliente[];
+      if (queryTrim) {
+        return clisArray.filter((c) =>
+          (c.NOMBRE && c.NOMBRE.toLowerCase().includes(queryTrim)) ||
+          (c.CEDULA && String(c.CEDULA).includes(queryTrim)) ||
+          (c.TELEFONO && c.TELEFONO.includes(queryTrim)) ||
+          (c.EMPRESA && c.EMPRESA.toLowerCase().includes(queryTrim))
+        );
+      }
+      return clisArray;
     }
   } catch (errOff) {
     console.warn("Error leyendo clientes de IndexedDB:", errOff);
   }
 
-  return [];
+  return _cacheClientes || [];
 }
 
 export async function eliminarCliente(id: number): Promise<boolean> {
   try {
     const { error } = await supabase.from("CLIENTES" as any).delete().eq("IDCLIENTES", id);
     if (error) throw error;
+    if (_cacheClientes) {
+      _cacheClientes = _cacheClientes.filter((c) => c.IDCLIENTES !== id);
+    }
     return true;
   } catch (err) {
     console.error("Error eliminando cliente:", err);
@@ -286,7 +370,14 @@ export async function eliminarCliente(id: number): Promise<boolean> {
 // ==========================================
 // SERVICIO DE ARTÍCULOS / TRAJES / DISFRACES
 // ==========================================
-export async function listarArticulos(search = "", limite = 50000): Promise<Articulo[]> {
+export async function listarArticulos(search = "", limite = 50000, forzarRecarga = false): Promise<Articulo[]> {
+  const queryTrim = search.trim().toLowerCase();
+
+  // 0. Devolver inmediatamente desde RAM en 0ms si la caché está disponible
+  if (!queryTrim && !forzarRecarga && _cacheArticulos && (Date.now() - _cacheArticulosTimestamp < CACHE_TTL_MS)) {
+    return _cacheArticulos;
+  }
+
   // 1. Si hay conexión, intentar Supabase
   if (typeof navigator === "undefined" || navigator.onLine) {
     try {
@@ -298,8 +389,8 @@ export async function listarArticulos(search = "", limite = 50000): Promise<Arti
         const to = Math.min(from + BATCH_SIZE - 1, limite - 1);
         let query = supabase.from("ARTICULO" as any).select("*").order("DESCRIPCION").range(from, to);
 
-        if (search.trim()) {
-          query = query.or(`DESCRIPCION.ilike.%${search}%,CODBARRAS.ilike.%${search}%,TALLA.ilike.%${search}%`);
+        if (queryTrim) {
+          query = query.or(`DESCRIPCION.ilike.%${queryTrim}%,CODBARRAS.ilike.%${queryTrim}%,TALLA.ilike.%${queryTrim}%`);
         }
 
         const { data, error } = await query;
@@ -312,7 +403,13 @@ export async function listarArticulos(search = "", limite = 50000): Promise<Arti
       }
 
       if (todos.length > 0) {
-        guardarArticulosLote(todos as any).catch(() => {});
+        if (!queryTrim) {
+          indexarArticulosEnMemoria(todos);
+        }
+        // Guardar en IndexedDB en microtask sin bloquear la UI
+        setTimeout(() => {
+          guardarArticulosLote(todos as any).catch(() => {});
+        }, 0);
         return todos;
       }
     } catch (err) {
@@ -324,25 +421,34 @@ export async function listarArticulos(search = "", limite = 50000): Promise<Arti
   try {
     const offlineArts = await obtenerTodosLosArticulosOffline();
     if (offlineArts && offlineArts.length > 0) {
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        return offlineArts.filter((a) =>
-          (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(q)) ||
-          (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(q)) ||
-          (a.TALLA && a.TALLA.toLowerCase().includes(q))
-        ) as unknown as Articulo[];
+      const artsArray = offlineArts as unknown as Articulo[];
+      if (!queryTrim) {
+        indexarArticulosEnMemoria(artsArray);
       }
-      return offlineArts as unknown as Articulo[];
+      if (queryTrim) {
+        return artsArray.filter((a) =>
+          (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(queryTrim)) ||
+          (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(queryTrim)) ||
+          (a.TALLA && a.TALLA.toLowerCase().includes(queryTrim))
+        );
+      }
+      return artsArray;
     }
   } catch (errOff) {
     console.warn("Error leyendo artículos de IndexedDB:", errOff);
   }
 
-  return [];
+  return _cacheArticulos || [];
 }
 
 export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Articulo | null> {
   if (!codigo) return null;
+  const cleanCode = codigo.trim().toUpperCase();
+
+  // 0. Búsqueda O(1) instantánea en RAM (0.01ms)
+  if (_mapArticulosPorBarras.has(cleanCode)) {
+    return _mapArticulosPorBarras.get(cleanCode)!;
+  }
 
   // 1. Si hay conexión, consultar Supabase
   if (typeof navigator === "undefined" || navigator.onLine) {
@@ -350,10 +456,13 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
       const { data, error } = await supabase
         .from("ARTICULO" as any)
         .select("*")
-        .eq("CODBARRAS", codigo)
+        .eq("CODBARRAS", cleanCode)
         .maybeSingle();
       if (!error && data) {
-        return data as unknown as Articulo | null;
+        const art = data as unknown as Articulo;
+        _mapArticulosPorBarras.set(cleanCode, art);
+        if (art.IDARTICULO) _mapArticulosPorId.set(art.IDARTICULO, art);
+        return art;
       }
     } catch (err) {
       console.warn("Fallo Supabase en artículo, buscando en IndexedDB:", err);
@@ -362,8 +471,12 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
 
   // 2. Fallback instantáneo en IndexedDB
   try {
-    const artOffline = await buscarArticuloPorBarrasOffline(codigo);
-    if (artOffline) return artOffline as unknown as Articulo;
+    const artOffline = await buscarArticuloPorBarrasOffline(cleanCode);
+    if (artOffline) {
+      const art = artOffline as unknown as Articulo;
+      _mapArticulosPorBarras.set(cleanCode, art);
+      return art;
+    }
   } catch {}
 
   return null;
@@ -371,6 +484,8 @@ export async function buscarArticuloPorCodigoBarras(codigo: string): Promise<Art
 
 export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Articulo | null> {
   try {
+    let artGuardado: Articulo | null = null;
+
     if (articulo.IDARTICULO && Number(articulo.IDARTICULO) > 0) {
       const { data, error } = await supabase
         .from("ARTICULO" as any)
@@ -379,7 +494,7 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
         .select()
         .single();
       if (error) throw error;
-      return data as unknown as Articulo;
+      artGuardado = data as unknown as Articulo;
     } else {
       // 1. Omitir IDARTICULO para permitir auto-incremento de PostgreSQL
       const payload: any = { ...articulo };
@@ -417,8 +532,27 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
         throw error;
       }
 
-      return data as unknown as Articulo;
+      artGuardado = data as unknown as Articulo;
     }
+
+    // Actualizar caché en memoria inmediatamente
+    if (artGuardado) {
+      if (artGuardado.CODBARRAS) _mapArticulosPorBarras.set(artGuardado.CODBARRAS.trim().toUpperCase(), artGuardado);
+      if (artGuardado.IDARTICULO) _mapArticulosPorId.set(artGuardado.IDARTICULO, artGuardado);
+      if (_cacheArticulos) {
+        const idx = _cacheArticulos.findIndex((a) => a.IDARTICULO === artGuardado!.IDARTICULO);
+        if (idx >= 0) {
+          _cacheArticulos[idx] = artGuardado;
+        } else {
+          _cacheArticulos.unshift(artGuardado);
+        }
+      }
+      setTimeout(() => {
+        guardarArticulosLote([artGuardado as any]).catch(() => {});
+      }, 0);
+    }
+
+    return artGuardado;
   } catch (err) {
     console.error("Error guardando artículo:", err);
     throw err;
@@ -429,6 +563,10 @@ export async function eliminarArticulo(idArticulo: number): Promise<boolean> {
   try {
     const { error } = await supabase.from("ARTICULO" as any).delete().eq("IDARTICULO", idArticulo);
     if (error) throw error;
+    if (_cacheArticulos) {
+      _cacheArticulos = _cacheArticulos.filter((a) => a.IDARTICULO !== idArticulo);
+    }
+    _mapArticulosPorId.delete(idArticulo);
     return true;
   } catch (err) {
     console.error("Error eliminando artículo:", err);

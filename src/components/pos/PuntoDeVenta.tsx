@@ -494,38 +494,56 @@ export function PuntoDeVenta() {
     }
   }, [vistaActiva, terminalConfig.nombreCaja, terminalConfig.prefijo]);
 
-  // Sincronización en TIEMPO REAL MULTI-SESIÓN / MULTI-PC
-  // Cuando se registra una venta en otro PC, actualiza de inmediato el consecutivo y el stock
+  // Sincronización en TIEMPO REAL MULTI-SESIÓN / MULTI-PC con Debounce Inteligente
+  // Cuando se registra una venta en otro PC, actualiza de inmediato el consecutivo y el stock sin saturar
   useEffect(() => {
+    let timerArticulos: any = null;
+    let timerConsecutivo: any = null;
+
+    const debouncedCargarArticulos = () => {
+      clearTimeout(timerArticulos);
+      timerArticulos = setTimeout(() => {
+        cargarArticulos(true);
+      }, 400);
+    };
+
+    const debouncedActualizarConsecutivo = () => {
+      clearTimeout(timerConsecutivo);
+      timerConsecutivo = setTimeout(async () => {
+        const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
+        if (nuevoNum) setNumeroRecibo(nuevoNum);
+      }, 300);
+    };
+
     const channel = supabase
       .channel("pos_realtime_sync_consecutivo")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "FACTURA" },
-        async (payload) => {
-          const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
-          if (nuevoNum) setNumeroRecibo(nuevoNum);
-          cargarArticulos();
+        () => {
+          debouncedActualizarConsecutivo();
+          debouncedCargarArticulos();
         }
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "CAJAS" },
-        async () => {
-          const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
-          if (nuevoNum) setNumeroRecibo(nuevoNum);
+        () => {
+          debouncedActualizarConsecutivo();
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "ARTICULO" },
         () => {
-          cargarArticulos();
+          debouncedCargarArticulos();
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timerArticulos);
+      clearTimeout(timerConsecutivo);
       supabase.removeChannel(channel);
     };
   }, [terminalConfig.nombreCaja, terminalConfig.prefijo]);
@@ -615,41 +633,48 @@ export function PuntoDeVenta() {
     }
   }
 
-  async function cargarArticulos() {
-    const res = await listarArticulos();
+  async function cargarArticulos(forzar = false) {
+    const res = await listarArticulos("", 50000, forzar);
     if (res && res.length > 0) {
       setArticulos(res);
     }
   }
 
-  // Filtrado de Artículos en Tiempo Real ultra-rápido
+  // Pre-indexación en memoria para búsqueda instantánea a 60 FPS
+  const articulosIndexados = useMemo(() => {
+    return articulos.map((a) => ({
+      art: a,
+      searchStr: `${a.DESCRIPCION || ""} ${a.CODBARRAS || ""} ${a.TALLA || ""}`.toLowerCase(),
+      codBarrasClean: (a.CODBARRAS || "").trim().toUpperCase(),
+    }));
+  }, [articulos]);
+
+  // Filtrado de Artículos en Tiempo Real ultra-rápido (<1ms)
   const articulosFiltrados = useMemo(() => {
-    if (!articuloTexto.trim()) return articulos.slice(0, 80);
+    if (!articuloTexto.trim()) return articulos.slice(0, 60);
     const query = articuloTexto.toLowerCase().trim();
+    const queryTokens = query.split(/\s+/).filter(Boolean);
     const matches: Articulo[] = [];
-    for (let i = 0; i < articulos.length; i++) {
-      const a = articulos[i];
-      if (
-        (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(query)) ||
-        (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
-        (a.TALLA && a.TALLA.toLowerCase().includes(query))
-      ) {
-        matches.push(a);
-        if (matches.length >= 80) break; // Limite de 80 elementos en dropdown para máxima fluidez a 60fps
+
+    for (let i = 0; i < articulosIndexados.length; i++) {
+      const item = articulosIndexados[i];
+      const matchAll = queryTokens.every((token) => item.searchStr.includes(token));
+      if (matchAll) {
+        matches.push(item.art);
+        if (matches.length >= 60) break; // Limite de 60 elementos en dropdown para máxima fluidez a 60fps
       }
     }
     return matches;
-  }, [articulos, articuloTexto]);
+  }, [articulosIndexados, articulos, articuloTexto]);
 
   const articulosCatalogoFiltrados = useMemo(() => {
     if (!busqArticuloCatalogo.trim()) return articulos;
     const query = busqArticuloCatalogo.toLowerCase().trim();
-    return articulos.filter(
-      (a) =>
-        (a.DESCRIPCION && a.DESCRIPCION.toLowerCase().includes(query)) ||
-        (a.CODBARRAS && a.CODBARRAS.toLowerCase().includes(query)) ||
-        (a.TALLA && a.TALLA.toLowerCase().includes(query))
-    );
+    const queryTokens = query.split(/\s+/).filter(Boolean);
+    return articulos.filter((a) => {
+      const str = `${a.DESCRIPCION || ""} ${a.CODBARRAS || ""} ${a.TALLA || ""}`.toLowerCase();
+      return queryTokens.every((t) => str.includes(t));
+    });
   }, [articulos, busqArticuloCatalogo]);
 
   // Cerrar dropdown al hacer clic fuera
@@ -942,6 +967,7 @@ export function PuntoDeVenta() {
   }
 
   // Manejo de Teclado en ARTÍCULO
+  // Manejo de Teclado en ARTÍCULO (Soporte Escáner de Código de Barras Instantáneo)
   function handleKeyDownArticulo(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -952,6 +978,16 @@ export function PuntoDeVenta() {
       setSugerenciaIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
+      const txt = articuloTexto.trim().toUpperCase();
+      // 1. Coincidencia exacta por código de barras primero (escáner)
+      const directMatch = articulos.find(
+        (a) => a.CODBARRAS && a.CODBARRAS.trim().toUpperCase() === txt
+      );
+      if (directMatch) {
+        seleccionarArticulo(directMatch);
+        return;
+      }
+      // 2. Coincidencia por lista filtrada
       if (articulosFiltrados.length > 0) {
         const art = articulosFiltrados[sugerenciaIndex] ?? articulosFiltrados[0];
         if (art) seleccionarArticulo(art);
@@ -3812,156 +3848,182 @@ export function PuntoDeVenta() {
       {/* =========================================================
           MODAL: CONFIGURACIÓN DE EMPRESA
       ========================================================= */}
-      <ConfiguracionEmpresaModal
-        open={modalEmpresa}
-        onOpenChange={setModalEmpresa}
-        onGuardadoExitoso={(cfg) => setEmpresaConfig(cfg)}
-      />
+      {modalEmpresa && (
+        <ConfiguracionEmpresaModal
+          open={modalEmpresa}
+          onOpenChange={setModalEmpresa}
+          onGuardadoExitoso={(cfg) => setEmpresaConfig(cfg)}
+        />
+      )}
 
       {/* =========================================================
           MODAL: CONFIGURACIÓN MULTI-CAJAS, TERMINALES Y RESOLUCIONES
       ========================================================= */}
-      <ConfiguracionCajasModal
-        open={modalCajasConfig}
-        onOpenChange={setModalCajasConfig}
-        onCajaCambiada={(term) => {
-          setTerminalConfig(term);
-          generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
-        }}
-      />
+      {modalCajasConfig && (
+        <ConfiguracionCajasModal
+          open={modalCajasConfig}
+          onOpenChange={setModalCajasConfig}
+          onCajaCambiada={(term) => {
+            setTerminalConfig(term);
+            generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
+          }}
+        />
+      )}
 
       {/* =========================================================
           MODAL: ARQUEO Y CIERRE DE CAJA DEL DÍA
       ========================================================= */}
-      <CierreCajaModal
-        open={modalCierreCaja}
-        onOpenChange={setModalCierreCaja}
-        cajeroNombre={cajero}
-      />
+      {modalCierreCaja && (
+        <CierreCajaModal
+          open={modalCierreCaja}
+          onOpenChange={setModalCierreCaja}
+          cajeroNombre={cajero}
+        />
+      )}
 
       {/* =========================================================
           MODAL: GESTIÓN DE USUARIOS, CAJEROS, ADMINS Y PERMISOS
       ========================================================= */}
-      <GestionUsuariosModal
-        open={modalUsuarios}
-        onOpenChange={setModalUsuarios}
-        usuarioActual={usuarioActivo}
-      />
+      {modalUsuarios && (
+        <GestionUsuariosModal
+          open={modalUsuarios}
+          onOpenChange={setModalUsuarios}
+          usuarioActual={usuarioActivo}
+        />
+      )}
 
       {/* =========================================================
           MODAL: CONTROL DE MOVIMIENTOS Y ESTADO DE TRAJES
       ========================================================= */}
-      <MovimientosTrajesModal
-        open={modalMovimientosTrajes}
-        onOpenChange={setModalMovimientosTrajes}
-        empresa={empresaConfig}
-        cajeroNombre={cajero}
-      />
+      {modalMovimientosTrajes && (
+        <MovimientosTrajesModal
+          open={modalMovimientosTrajes}
+          onOpenChange={setModalMovimientosTrajes}
+          empresa={empresaConfig}
+          cajeroNombre={cajero}
+        />
+      )}
 
       {/* =========================================================
           MODAL: BALANCE & AUDITORÍA FINANCIERA DE DEPÓSITOS Y SALDOS
       ========================================================= */}
-      <BalanceDepositosModal
-        open={modalBalanceDepositos}
-        onOpenChange={setModalBalanceDepositos}
-        empresa={empresaConfig}
-        cajeroNombre={cajero}
-      />
+      {modalBalanceDepositos && (
+        <BalanceDepositosModal
+          open={modalBalanceDepositos}
+          onOpenChange={setModalBalanceDepositos}
+          empresa={empresaConfig}
+          cajeroNombre={cajero}
+        />
+      )}
 
       {/* =========================================================
           MODAL: DIRECTORIO Y CATÁLOGO GENERAL DE CLIENTES
       ========================================================= */}
-      <CatalogoClientesModal
-        open={modalCatalogoClientes}
-        onOpenChange={setModalCatalogoClientes}
-        onSeleccionarCliente={async (cli) => {
-          setClienteForm(cli);
-          await verificarAlquileresYAlertarCliente(cli);
-        }}
-        empresa={empresaConfig}
-      />
+      {modalCatalogoClientes && (
+        <CatalogoClientesModal
+          open={modalCatalogoClientes}
+          onOpenChange={setModalCatalogoClientes}
+          onSeleccionarCliente={async (cli) => {
+            setClienteForm(cli);
+            await verificarAlquileresYAlertarCliente(cli);
+          }}
+          empresa={empresaConfig}
+        />
+      )}
 
       {/* =========================================================
           MODAL: INVENTARIO, ALIMENTACIÓN DE STOCK Y KARDEX
       ========================================================= */}
-      <InventarioStockModal
-        isOpen={modalInventarioStock}
-        onClose={() => {
-          setModalInventarioStock(false);
-          cargarArticulos();
-        }}
-        usuarioActivo={usuarioActivo?.nombre || cajero}
-        onArticuloSeleccionado={(art) => {
-          setArticuloTexto(art.CODBARRAS || art.DESCRIPCION);
-          setModalInventarioStock(false);
-        }}
-      />
+      {modalInventarioStock && (
+        <InventarioStockModal
+          isOpen={modalInventarioStock}
+          onClose={() => {
+            setModalInventarioStock(false);
+            cargarArticulos();
+          }}
+          usuarioActivo={usuarioActivo?.nombre || cajero}
+          onArticuloSeleccionado={(art) => {
+            setArticuloTexto(art.CODBARRAS || art.DESCRIPCION);
+            setModalInventarioStock(false);
+          }}
+        />
+      )}
 
       {/* =========================================================
           MODAL: REIMPRESIÓN & HISTORIAL DE FACTURAS POR FECHA
       ========================================================= */}
-      <ReimpresionFacturasModal
-        open={modalReimpresionFacturas}
-        onOpenChange={setModalReimpresionFacturas}
-        empresa={empresaConfig}
-        cajeroNombre={cajero}
-      />
+      {modalReimpresionFacturas && (
+        <ReimpresionFacturasModal
+          open={modalReimpresionFacturas}
+          onOpenChange={setModalReimpresionFacturas}
+          empresa={empresaConfig}
+          cajeroNombre={cajero}
+        />
+      )}
 
       {/* =========================================================
           MODAL: PANEL DE NOTIFICACIONES: RETRASOS Y COBRO DE MORA
       ========================================================= */}
-      <AlertasRetrasosModal
-        open={modalAlertasRetrasos}
-        onOpenChange={setModalAlertasRetrasos}
-        empresa={empresaConfig}
-        cajeroNombre={cajero}
-        onAbrirDevolucion={(numFact) => {
-          setModalDevolucion(true);
-        }}
-      />
+      {modalAlertasRetrasos && (
+        <AlertasRetrasosModal
+          open={modalAlertasRetrasos}
+          onOpenChange={setModalAlertasRetrasos}
+          empresa={empresaConfig}
+          cajeroNombre={cajero}
+          onAbrirDevolucion={(numFact) => {
+            setModalDevolucion(true);
+          }}
+        />
+      )}
 
       {/* =========================================================
           MODAL: GESTIÓN Y CATÁLOGO DE ACCESORIOS
       ========================================================= */}
-      <GestionAccesoriosModal
-        open={modalAccesoriosGestion}
-        onOpenChange={setModalAccesoriosGestion}
-      />
+      {modalAccesoriosGestion && (
+        <GestionAccesoriosModal
+          open={modalAccesoriosGestion}
+          onOpenChange={setModalAccesoriosGestion}
+        />
+      )}
 
       {/* =========================================================
           MODAL: SELECCIÓN RÁPIDA DE ACCESORIOS PARA FACTURACIÓN
       ========================================================= */}
-      <SeleccionAccesoriosPosModal
-        open={modalSeleccionAccesoriosPos}
-        onOpenChange={setModalSeleccionAccesoriosPos}
-        trajeReferencia={accesorioTrajeReferencia}
-        onAgregarAlCarrito={(itemsNuevos) => {
-          setGridItems((prev) => [...prev, ...itemsNuevos]);
-        }}
-        onActualizarPiezasTraje={(piezasActualizadas) => {
-          if (accesorioTrajeReferencia && "idTemp" in accesorioTrajeReferencia) {
-            setGridItems((prev) =>
-              prev.map((it) =>
-                it.idTemp === (accesorioTrajeReferencia as ItemAlquilerCarrito).idTemp
-                  ? { ...it, piezasIncluidas: piezasActualizadas }
-                  : it
-              )
-            );
-          }
-        }}
-      />
+      {modalSeleccionAccesoriosPos && (
+        <SeleccionAccesoriosPosModal
+          open={modalSeleccionAccesoriosPos}
+          onOpenChange={setModalSeleccionAccesoriosPos}
+          trajeReferencia={accesorioTrajeReferencia}
+          onAgregarAlCarrito={(itemsNuevos) => {
+            setGridItems((prev) => [...prev, ...itemsNuevos]);
+          }}
+          onActualizarPiezasTraje={(piezasActualizadas) => {
+            if (accesorioTrajeReferencia && "idTemp" in accesorioTrajeReferencia) {
+              setGridItems((prev) =>
+                prev.map((it) =>
+                  it.idTemp === (accesorioTrajeReferencia as ItemAlquilerCarrito).idTemp
+                    ? { ...it, piezasIncluidas: piezasActualizadas }
+                    : it
+                )
+              );
+            }
+          }}
+        />
+      )}
 
       {/* =========================================================
           MODAL: MANTENIMIENTO, RESETEO & MIGRACIÓN DE DATOS (EXCEL / SQL)
       ========================================================= */}
-      <MantenimientoMigracionModal
-        open={modalMantenimiento}
-        onOpenChange={setModalMantenimiento}
-        cajeroNombre={usuarioActivo?.nombre || cajero}
-        onDatosActualizados={() => {
-          cargarArticulos();
-        }}
-      />
+      {modalMantenimiento && (
+        <MantenimientoMigracionModal
+          open={modalMantenimiento}
+          onOpenChange={setModalMantenimiento}
+          cajeroNombre={usuarioActivo?.nombre || cajero}
+          onDatosActualizados={() => {
+            cargarArticulos();
+          }}
+        />
+      )}
     </div>
   );
 }
