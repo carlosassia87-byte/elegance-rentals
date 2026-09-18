@@ -602,27 +602,64 @@ export function PuntoDeVenta() {
     inicializarDetectorOffline();
   }, []);
 
-  // Atajos de teclado profesionales para cajeros de alta velocidad
+  const handleIniciarCobroRef = useRef(handleIniciarCobro);
+  handleIniciarCobroRef.current = handleIniciarCobro;
+
+  const handleLimpiarRef = useRef(handleLimpiar);
+  handleLimpiarRef.current = handleLimpiar;
+
+  // Atajos de teclado profesionales para cajeros de alta velocidad (F2 - F11 / Ctrl+Enter)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (vistaActiva !== "pos") return;
 
-      if (e.key === "F2") {
+      // Si está en un input y presiona Ctrl + Enter -> PAGAR
+      if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
-        articuloInputRef.current?.focus();
-        articuloInputRef.current?.select();
-      } else if (e.key === "F4") {
-        e.preventDefault();
-        handleIniciarCobro();
-      } else if (e.key === "F8") {
-        e.preventDefault();
-        setModalCliente(true);
-      } else if (e.key === "F9") {
-        e.preventDefault();
-        setModalDevolucion(true);
-      } else if (e.key === "F10") {
-        e.preventDefault();
-        setModalCierreCaja(true);
+        handleIniciarCobroRef.current();
+        return;
+      }
+
+      switch (e.key) {
+        case "F2":
+          e.preventDefault();
+          setModalCatalogoClientes(true);
+          break;
+        case "F3":
+          e.preventDefault();
+          articuloInputRef.current?.focus();
+          articuloInputRef.current?.select();
+          break;
+        case "F4":
+          e.preventDefault();
+          handleLimpiarRef.current();
+          break;
+        case "F6":
+          e.preventDefault();
+          setModalArchivoArticulo(true);
+          break;
+        case "F7":
+          e.preventDefault();
+          setModalApartados(true);
+          break;
+        case "F8":
+          e.preventDefault();
+          setModalDevolucion(true);
+          break;
+        case "F9":
+          e.preventDefault();
+          handleIniciarCobroRef.current();
+          break;
+        case "F10":
+          e.preventDefault();
+          setModalCierreCaja(true);
+          break;
+        case "F11":
+          e.preventDefault();
+          setModalGasto(true);
+          break;
+        default:
+          break;
       }
     };
 
@@ -2087,6 +2124,84 @@ export function PuntoDeVenta() {
           <div className="font-mono text-3xl font-black text-white text-right leading-none drop-shadow-xs">
             ${totalDepositoMasAlquiler.toLocaleString()}
           </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          5. BARRA DE ACCIÓN Y ATAJOS DE TECLADO RÁPIDOS PARA EL CAJERO (F2 - F11)
+      ========================================================================= */}
+      <div className="flex items-center justify-between gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-xl shadow-xs text-[11px] font-medium border border-slate-800 select-none overflow-x-auto shrink-0 mt-0.5">
+        <div className="flex items-center gap-1.5 text-slate-400 font-bold uppercase text-[10px] tracking-wider shrink-0 mr-1">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Atajos POS:
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setModalCatalogoClientes(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Buscar o registrar clientes"
+          >
+            <kbd className="px-1 py-0.2 bg-indigo-500/30 text-indigo-300 font-mono font-black text-[10px] rounded border border-indigo-500/40 shadow-2xs">F2</kbd>
+            <span>Clientes</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              articuloInputRef.current?.focus();
+              articuloInputRef.current?.select();
+            }}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Enfocar campo de búsqueda de trajes o lector de código de barras"
+          >
+            <kbd className="px-1 py-0.2 bg-sky-500/30 text-sky-300 font-mono font-black text-[10px] rounded border border-sky-500/40 shadow-2xs">F3</kbd>
+            <span>Buscar Traje</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleLimpiar()}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Limpiar formulario para nueva venta"
+          >
+            <kbd className="px-1 py-0.2 bg-amber-500/30 text-amber-300 font-mono font-black text-[10px] rounded border border-amber-500/40 shadow-2xs">F4</kbd>
+            <span>Nuevo / Limpiar</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalApartados(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Consultar y entregar apartados y abonos de vestidos"
+          >
+            <kbd className="px-1 py-0.2 bg-purple-500/30 text-purple-300 font-mono font-black text-[10px] rounded border border-purple-500/40 shadow-2xs">F7</kbd>
+            <span>Apartados</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalDevolucion(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Devolución y entrada de vestidos alquilados"
+          >
+            <kbd className="px-1 py-0.2 bg-blue-500/30 text-blue-300 font-mono font-black text-[10px] rounded border border-blue-500/40 shadow-2xs">F8</kbd>
+            <span>Devoluciones</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleIniciarCobro}
+            className="flex items-center gap-1.5 px-3 py-0.5 rounded-lg bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border border-emerald-500/60 active:scale-95 transition-all cursor-pointer whitespace-nowrap font-bold shadow-xs"
+            title="Abrir liquidación y cobro de la venta (F9 o Ctrl+Enter)"
+          >
+            <kbd className="px-1.5 py-0.2 bg-emerald-500/40 text-emerald-300 font-mono font-black text-[10px] rounded border border-emerald-400/50 shadow-2xs">F9</kbd>
+            <span className="text-white">PAGAR</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalCierreCaja(true)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            title="Arqueo y cierre de caja del turno"
+          >
+            <kbd className="px-1 py-0.2 bg-rose-500/30 text-rose-300 font-mono font-black text-[10px] rounded border border-rose-500/40 shadow-2xs">F10</kbd>
+            <span>Cierre Caja</span>
+          </button>
         </div>
       </div>
       </div>
