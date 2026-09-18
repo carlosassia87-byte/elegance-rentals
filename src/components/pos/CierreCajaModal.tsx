@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { DollarSign, Printer, X, Calendar, Wallet, ArrowDownRight, ArrowUpRight, TrendingDown, CheckCircle, RefreshCw } from "lucide-react";
+import { DollarSign, Printer, X, Calendar, Wallet, ArrowDownRight, ArrowUpRight, TrendingDown, CheckCircle, RefreshCw, FileSpreadsheet } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { obtenerTerminalConfig, obtenerConfiguracionEmpresa, type EmpresaConfig } from "@/services/empresaCajaService";
 import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
+import { exportarCierreCajaExcel } from "@/services/excelExportService";
 
 interface CierreCajaModalProps {
   open: boolean;
@@ -17,6 +17,12 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
   const [cargando, setCargando] = useState(false);
   const [empresa, setEmpresa] = useState<EmpresaConfig | null>(null);
   const terminal = obtenerTerminalConfig();
+
+  // Listas detalladas para la exportación a Excel
+  const [facturasLista, setFacturasLista] = useState<any[]>([]);
+  const [abonosLista, setAbonosLista] = useState<any[]>([]);
+  const [gastosLista, setGastosLista] = useState<any[]>([]);
+  const [depositosDevueltosLista, setDepositosDevueltosLista] = useState<any[]>([]);
 
   // Métricas del Arqueo
   const [totales, setTotales] = useState({
@@ -42,6 +48,10 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       let alqTrans = 0;
       let depRecib = 0;
       let countFacts = 0;
+      let allFacts: any[] = [];
+      let allAbonos: any[] = [];
+      let allGastos: any[] = [];
+      let allDeposDev: any[] = [];
 
       // 1. Facturas del día exacto
       try {
@@ -51,6 +61,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           .eq("FECHASALIDA", fecha);
 
         if (facts && facts.length > 0) {
+          allFacts = facts;
           facts.forEach((f: any) => {
             alqEfec += Number(f.PAGOCONEFECTIVO || 0);
             alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
@@ -69,6 +80,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         if (localFacts && localFacts.length > 0 && countFacts === 0) {
           localFacts.forEach((f: any) => {
             if (f.FECHASALIDA === fecha) {
+              allFacts.push(f);
               alqEfec += Number(f.PAGOCONEFECTIVO || 0);
               alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
               depRecib += Number(f.FTOTALDEPOSITO || 0);
@@ -86,6 +98,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           .eq("FECHAABONO", fecha);
 
         if (abonos && abonos.length > 0) {
+          allAbonos = abonos;
           abonos.forEach((ab: any) => {
             alqEfec += Number(ab.PAGOEFECTIVO || 0);
             alqTrans += Number(ab.PAGOTRANFE || 0);
@@ -102,6 +115,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         if (localAbonos && localAbonos.length > 0) {
           localAbonos.forEach((ab: any) => {
             if (ab.FECHAABONO === fecha) {
+              allAbonos.push(ab);
               alqEfec += Number(ab.PAGOEFECTIVO || 0);
               alqTrans += Number(ab.PAGOTRANFE || 0);
             }
@@ -118,6 +132,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           .eq("FECHA", fecha);
 
         if (gastos) {
+          allGastos = gastos;
           gastos.forEach((g: any) => {
             gastosTotal += Number(g.VALORSALIDA || 0);
           });
@@ -133,6 +148,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           .eq("FECHA", fecha);
 
         if (deps) {
+          allDeposDev = deps;
           deps.forEach((d: any) => {
             depDevueltos += Number(d.VALOR || 0);
           });
@@ -142,6 +158,11 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       const efectivoEnCaja = Math.max(0, alqEfec + depRecib - depDevueltos - gastosTotal);
       const transferenciasEnCaja = alqTrans;
       const totalNeto = efectivoEnCaja + transferenciasEnCaja;
+
+      setFacturasLista(allFacts);
+      setAbonosLista(allAbonos);
+      setGastosLista(allGastos);
+      setDepositosDevueltosLista(allDeposDev);
 
       setTotales({
         alquilerEfectivo: alqEfec,
@@ -159,6 +180,26 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       console.error("Error calculando arqueo de caja:", err);
     } finally {
       setCargando(false);
+    }
+  };
+
+  const handleDescargarExcel = () => {
+    try {
+      exportarCierreCajaExcel({
+        fecha,
+        nombreCaja: terminal.nombreCaja,
+        cajeroNombre: cajeroNombre || (terminal as any).nombreCajero || "SUPERVISOR",
+        empresa,
+        totales,
+        facturas: facturasLista,
+        abonos: abonosLista,
+        gastos: gastosLista,
+        depositosDevueltos: depositosDevueltosLista,
+      });
+      toast.success("✓ Archivo Excel generado y descargado exitosamente");
+    } catch (err) {
+      console.error("Error exportando a Excel:", err);
+      toast.error("Error al generar el archivo Excel");
     }
   };
 
@@ -432,13 +473,24 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
 
         {/* Pie */}
         <div className="flex items-center justify-between bg-slate-50 px-5 py-3.5 border-t border-slate-200">
-          <button
-            type="button"
-            onClick={handleImprimirCierre}
-            className="flex items-center gap-1.5 h-9 rounded-xl bg-slate-800 px-4 text-xs font-black uppercase text-white hover:bg-slate-900 shadow-xs transition-all active:scale-95"
-          >
-            <Printer className="h-4 w-4" /> Imprimir Comprobante de Arqueo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleImprimirCierre}
+              className="flex items-center gap-1.5 h-9 rounded-xl bg-slate-800 px-4 text-xs font-black uppercase text-white hover:bg-slate-900 shadow-xs transition-all active:scale-95"
+            >
+              <Printer className="h-4 w-4" /> Imprimir 80mm
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDescargarExcel}
+              className="flex items-center gap-1.5 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 text-xs font-black uppercase text-white shadow-xs transition-all active:scale-95 border border-emerald-500"
+              title="Descargar libro de Excel con reporte Z y detalle de facturas"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-200" /> Exportar a Excel (.xlsx)
+            </button>
+          </div>
 
           <button
             type="button"

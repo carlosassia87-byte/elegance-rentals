@@ -39,8 +39,8 @@ import {
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
-import { consultarTodosLosRetrasosYAlertas } from "@/services/alertasRetrasosService";
 import { IndicadorModoOffline } from "./IndicadorModoOffline";
+import { PinAdminModal } from "./PinAdminModal";
 import logoAsset from "@/assets/logo.asset.json";
 
 interface MenuPrincipalProps {
@@ -61,6 +61,11 @@ export function MenuPrincipal({
   // Sidebar abierto por defecto y retraíble
   const [sidebarExpandido, setSidebarExpandido] = useState(true);
   const [horaActual, setHoraActual] = useState(() => new Date().toLocaleTimeString("es-CO"));
+
+  // Modal de PIN de Administrador
+  const [modalPinOpen, setModalPinOpen] = useState(false);
+  const [pinPendienteModulo, setPinPendienteModulo] = useState<string | null>(null);
+  const [pinMotivo, setPinMotivo] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -98,7 +103,23 @@ export function MenuPrincipal({
 
   const permisos = usuario.permisos || {};
 
+  const esAdmin = usuario.rol === "SUPER ADMIN" || usuario.rol === "ADMIN";
+
   const handleAccionConPermiso = (modulo: string, permitido: boolean, nombreModulo: string) => {
+    // Si es un módulo administrativo crítico y el usuario es CAJERO, solicitar autorización PIN
+    const esModuloCritico =
+      modulo === "mantenimiento_migracion" ||
+      modulo === "config_cajas" ||
+      modulo === "config_empresa" ||
+      modulo === "gestion_usuarios";
+
+    if (esModuloCritico && !esAdmin) {
+      setPinPendienteModulo(modulo);
+      setPinMotivo(`Acceso restringido a "${nombreModulo}". Se requiere PIN o clave de Supervisor.`);
+      setModalPinOpen(true);
+      return;
+    }
+
     if (!permitido) {
       toast.error(`Acceso denegado: Tu usuario (${usuario.rol}) no tiene permisos para ${nombreModulo}`);
       return;
@@ -725,6 +746,19 @@ export function MenuPrincipal({
           </div>
         </main>
       </div>
+
+      {/* Modal de Autorización por PIN de Administrador */}
+      <PinAdminModal
+        open={modalPinOpen}
+        onOpenChange={setModalPinOpen}
+        motivo={pinMotivo}
+        onAutorizado={() => {
+          if (pinPendienteModulo) {
+            onNavegar(pinPendienteModulo);
+            setPinPendienteModulo(null);
+          }
+        }}
+      />
     </div>
   );
 }

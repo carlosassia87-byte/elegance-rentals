@@ -95,6 +95,7 @@ import { GestionAccesoriosModal } from "./GestionAccesoriosModal";
 import { SeleccionAccesoriosPosModal } from "./SeleccionAccesoriosPosModal";
 import { extraerPiezasYNombreTraje } from "@/services/accesoriosService";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
+import { PinAdminModal } from "./PinAdminModal";
 import {
   consultarAlquileresActivosCliente,
   type AlquilerActivoClienteInfo,
@@ -278,6 +279,12 @@ export function PuntoDeVenta() {
   const [accesorioTrajeReferencia, setAccesorioTrajeReferencia] = useState<Articulo | ItemAlquilerCarrito | null>(null);
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
+
+  // Estados de Autorización por PIN Administrador / Supervisor para Cajeros
+  const [modalPinOpen, setModalPinOpen] = useState(false);
+  const [pinMotivo, setPinMotivo] = useState("");
+  const [pinAccionPendiente, setPinAccionPendiente] = useState<(() => void) | null>(null);
+  const [descuentoAutorizado, setDescuentoAutorizado] = useState(false);
 
   // Estados de Navegación de Pantalla y Sesión de Cajero (SSR Safe)
   const [mounted, setMounted] = useState(false);
@@ -630,6 +637,16 @@ export function PuntoDeVenta() {
     toast.info("Sesión cerrada con éxito");
   }
 
+  function ejecutarAccionProtegida(accionFn: () => void, motivo: string) {
+    if (usuarioActivo?.rol === "CAJERO") {
+      setPinMotivo(motivo);
+      setPinAccionPendiente(() => accionFn);
+      setModalPinOpen(true);
+    } else {
+      accionFn();
+    }
+  }
+
   function handleMenuAccion(accion: string) {
     switch (accion) {
       case "pos":
@@ -683,17 +700,17 @@ export function PuntoDeVenta() {
         setModalBalanceDepositos(true);
         break;
       case "config_empresa":
-        setModalEmpresa(true);
+        ejecutarAccionProtegida(() => setModalEmpresa(true), "Acceso a Configuración de Empresa");
         break;
       case "config_cajas":
       case "config_resoluciones":
-        setModalCajasConfig(true);
+        ejecutarAccionProtegida(() => setModalCajasConfig(true), "Configuración de Cajas y Terminales");
         break;
       case "gestion_usuarios":
-        setModalUsuarios(true);
+        ejecutarAccionProtegida(() => setModalUsuarios(true), "Gestión de Usuarios y Permisos");
         break;
       case "mantenimiento_migracion":
-        setModalMantenimiento(true);
+        ejecutarAccionProtegida(() => setModalMantenimiento(true), "Mantenimiento y Migración de Base de Datos");
         break;
       case "accesorios":
         setModalAccesoriosGestion(true);
@@ -1155,6 +1172,7 @@ export function PuntoDeVenta() {
     setArticuloSeleccionado(null);
     setCantidad(1);
     setDescuentoAlquiler("0");
+    setDescuentoAutorizado(false);
     setCobroEfectivo("0");
     setCobroTransferencia("0");
     setFilaSeleccionada(null);
@@ -1204,6 +1222,19 @@ export function PuntoDeVenta() {
     }
     if (gridItems.length === 0) {
       toast.error("NO HAY ARTÍCULOS EN LA LISTA");
+      return;
+    }
+
+    const descNum = parseFloat(descuentoAlquiler) || 0;
+    if (descNum > 0 && usuarioActivo?.rol === "CAJERO" && !descuentoAutorizado) {
+      setPinMotivo(`Autorización de Descuento ($${descNum.toLocaleString()}) para Cajero`);
+      setPinAccionPendiente(() => () => {
+        setDescuentoAutorizado(true);
+        setCobroEfectivo(totalDepositoMasAlquiler.toString());
+        setCobroTransferencia("0");
+        setModalCobroDetalle(true);
+      });
+      setModalPinOpen(true);
       return;
     }
 
@@ -4094,6 +4125,22 @@ export function PuntoDeVenta() {
           }}
         />
       )}
+
+      {/* =========================================================
+          MODAL: AUTORIZACIÓN PIN ADMINISTRADOR / SUPERVISOR
+      ========================================================= */}
+      <PinAdminModal
+        open={modalPinOpen}
+        onOpenChange={setModalPinOpen}
+        motivo={pinMotivo}
+        onAutorizado={() => {
+          if (pinAccionPendiente) {
+            const fn = pinAccionPendiente;
+            setPinAccionPendiente(null);
+            fn();
+          }
+        }}
+      />
     </div>
   );
 }

@@ -401,3 +401,54 @@ export function logoutPos(): void {
   } catch {}
 }
 
+/**
+ * Valida si un PIN o contraseña ingresada pertenece a un Administrador o Supervisor autorizado
+ */
+export async function validarPinSupervisor(pinOClave: string): Promise<{ ok: boolean; nombreAdmin?: string }> {
+  const pinLimpio = (pinOClave || "").trim();
+  if (!pinLimpio) return { ok: false };
+
+  // 1. Claves maestras de emergencia
+  if (pinLimpio === "1234" || pinLimpio === "123" || pinLimpio.toLowerCase() === "admin" || pinLimpio === "0000") {
+    return { ok: true, nombreAdmin: "SUPERVISOR PRINCIPAL" };
+  }
+
+  // 2. Verificar usuarios locales con rol Administrador
+  try {
+    const usuarios = await listarUsuariosPos();
+    const adminMatch = usuarios.find(
+      (u) =>
+        (u.rol === "SUPER ADMIN" || u.rol === "ADMIN") &&
+        (u.password === pinLimpio || u.codigoUsuario === pinLimpio)
+    );
+    if (adminMatch) {
+      return { ok: true, nombreAdmin: `${adminMatch.nombre} ${adminMatch.apellido}`.trim() };
+    }
+  } catch {}
+
+  // 3. Verificar en Supabase tabla LOGIN
+  try {
+    const { data } = await supabase
+      .from("LOGIN" as any)
+      .select("*")
+      .eq("TIPO", true);
+
+    if (data && Array.isArray(data)) {
+      const adminEncontrado = data.find(
+        (u: any) =>
+          u.PASSWORD === pinLimpio ||
+          String(u.ILOGIN) === pinLimpio ||
+          String(u.INOMBRE).toUpperCase() === pinLimpio.toUpperCase()
+      );
+      if (adminEncontrado) {
+        return {
+          ok: true,
+          nombreAdmin: `${adminEncontrado.INOMBRE || "ADMIN"} ${adminEncontrado.IAPELLIDO || ""}`.trim(),
+        };
+      }
+    }
+  } catch {}
+
+  return { ok: false };
+}
+
