@@ -752,7 +752,7 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
       }
     } catch {}
 
-    let maxNum = baseConsecutivo;
+    let maxNum = Math.max(0, baseConsecutivo - 1);
     const pfxTrim = (pfx || "").trim().toUpperCase();
 
     // 3. Consultar FACTURA en Supabase para obtener el mayor número registrado PARA ESTE PREFIJO

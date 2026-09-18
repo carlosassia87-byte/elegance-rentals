@@ -380,23 +380,23 @@ export function ConfiguracionCajasModal({
                     </div>
 
                     <div className="col-span-6 md:col-span-2">
-                      <label className="font-bold text-slate-800 uppercase" title="El próximo recibo será este número + 1">
-                        Último Consecutivo
+                      <label className="font-bold text-slate-800 uppercase" title="Número con el que empezará o continuará la caja">
+                        Consecutivo Siguiente
                       </label>
                       <input
                         type="number"
-                        min="0"
-                        value={cajaEditando.NUMERACION ?? 0}
+                        min="1"
+                        value={cajaEditando.NUMERACION || 1}
                         onChange={(e) =>
                           setCajaEditando((p) => ({
                             ...p,
-                            NUMERACION: isNaN(parseInt(e.target.value, 10)) ? 0 : parseInt(e.target.value, 10),
+                            NUMERACION: Math.max(1, parseInt(e.target.value, 10) || 1),
                           }))
                         }
                         className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-black text-slate-900 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
                       <p className="text-[9px] text-slate-500 mt-0.5 font-medium leading-tight">
-                        Próx: {(cajaEditando.PREFIJO || "")}{((cajaEditando.NUMERACION ?? 0) + 1)}
+                        Próx: {(cajaEditando.PREFIJO || "")}{cajaEditando.NUMERACION || 1}
                       </p>
                     </div>
 
