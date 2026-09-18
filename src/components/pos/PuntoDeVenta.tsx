@@ -279,10 +279,10 @@ export function PuntoDeVenta() {
   const [terminalConfig, setTerminalConfig] = useState<TerminalConfig>(obtenerTerminalConfig());
   const [empresaConfig, setEmpresaConfig] = useState<EmpresaConfig>(EMPRESA_DEFAULT);
 
-  // Estados de Navegación de Pantalla y Sesión de Cajero
-  const sesionInicial = obtenerSesionPos();
-  const [vistaActiva, setVistaActiva] = useState<"login" | "menu" | "pos" | "catalogo">(sesionInicial ? "menu" : "login");
-  const [usuarioActivo, setUsuarioActivo] = useState<UsuarioPos | null>(sesionInicial?.usuario || null);
+  // Estados de Navegación de Pantalla y Sesión de Cajero (SSR Safe)
+  const [mounted, setMounted] = useState(false);
+  const [vistaActiva, setVistaActiva] = useState<"login" | "menu" | "pos" | "catalogo">("login");
+  const [usuarioActivo, setUsuarioActivo] = useState<UsuarioPos | null>(null);
 
   const apartadoTotalAbonado = useMemo(() => {
     return apartadoAbonos.reduce((acc, it) => acc + (Number(it.TOTAL_ABONO) || 0), 0);
@@ -466,6 +466,8 @@ export function PuntoDeVenta() {
   }
 
   useEffect(() => {
+    setMounted(true);
+
     // Aplicar escala visual guardada
     aplicarEscalaResolucion(obtenerResolucionConfig());
 
@@ -482,6 +484,7 @@ export function PuntoDeVenta() {
     if (sesion && sesion.usuario) {
       setUsuarioActivo(sesion.usuario);
       setCajero(sesion.usuario.nombre);
+      setVistaActiva("menu");
     }
   }, []);
 
@@ -1376,8 +1379,8 @@ export function PuntoDeVenta() {
     }
   }
 
-  // 1. Si no hay sesión de cajero activa, mostrar Pantalla de Login del POS
-  if (vistaActiva === "login" || !usuarioActivo) {
+  // 1. Si no hay sesión de cajero activa o antes del primer render en cliente (SSR Safe), mostrar Pantalla de Login del POS
+  if (!mounted || vistaActiva === "login" || !usuarioActivo) {
     return (
       <PosLogin
         onLoginSuccess={(user) => {

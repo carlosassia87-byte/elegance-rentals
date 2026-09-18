@@ -467,26 +467,13 @@ export async function probarConectividadReal(): Promise<boolean> {
   }
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-    // 1. Probar solicitud HEAD ultra-rápida
-    await fetch("https://supabase.co/favicon.ico", {
-      method: "HEAD",
-      mode: "no-cors",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return true;
+    const { error } = await supabase
+      .from("CAJAS" as any)
+      .select("IDCAJAS", { count: "exact", head: true })
+      .limit(1);
+    return !error;
   } catch {
-    // 2. Si falla el probe, verificar con consulta mínima a Supabase
-    try {
-      const { error } = await supabase.from("CAJAS" as any).select("IDCAJAS").limit(1);
-      return !error;
-    } catch {
-      return false;
-    }
+    return typeof navigator !== "undefined" ? navigator.onLine : true;
   }
 }
 
@@ -529,8 +516,8 @@ export function inicializarDetectorOffline(): void {
   window.addEventListener("online", handleOnline);
   window.addEventListener("offline", handleOffline);
 
-  // Verificación activa periódica cada 4 segundos para detectar caídas de internet al instante
-  setInterval(verificarEstadoInmediato, 4000);
+  // Verificación periódica silenciosa cada 15 segundos
+  setInterval(verificarEstadoInmediato, 15000);
 
   // Precarga inicial al abrir la aplicación
   setTimeout(async () => {

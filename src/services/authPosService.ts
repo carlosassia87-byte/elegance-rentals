@@ -245,15 +245,22 @@ export async function guardarUsuarioPos(usuario: Partial<UsuarioPos>): Promise<U
 
   // Sincronizar en Supabase si es posible
   try {
-    await supabase.from("LOGIN" as any).upsert({
-      IDLOGIN: usuarioGuardado.id,
+    const idNum = Number(usuarioGuardado.id);
+    const safeId = (!isNaN(idNum) && idNum > 0 && idNum < 2147483647) ? idNum : undefined;
+    const iLoginNum = Number(usuarioGuardado.codigoUsuario);
+    const safeILogin = (!isNaN(iLoginNum) && iLoginNum > 0 && iLoginNum < 2147483647) ? iLoginNum : null;
+
+    const payload: any = {
       INOMBRE: usuarioGuardado.nombre,
       IAPELLIDO: usuarioGuardado.apellido,
-      ILOGIN: isNaN(Number(usuarioGuardado.codigoUsuario)) ? usuarioGuardado.id : Number(usuarioGuardado.codigoUsuario),
       PASSWORD: usuarioGuardado.password,
       TIPO: usuarioGuardado.rol === "SUPER ADMIN" || usuarioGuardado.rol === "ADMIN",
       ACCESOALMENU: usuarioGuardado.accesoMenu,
-    });
+    };
+    if (safeId) payload.IDLOGIN = safeId;
+    if (safeILogin) payload.ILOGIN = safeILogin;
+
+    await supabase.from("LOGIN" as any).upsert(payload, { onConflict: "IDLOGIN" });
   } catch (e) {}
 
   return usuarioGuardado;
@@ -321,7 +328,7 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
       }
       const rol: RolUsuario = userRaw.TIPO ? "SUPER ADMIN" : "CAJERO";
       const user: UsuarioPos = {
-        id: Number(userRaw.IDLOGIN) || Date.now(),
+        id: Number(userRaw.IDLOGIN) || Math.floor(1000 + Math.random() * 9000),
         nombre: userRaw.INOMBRE || queryUser,
         apellido: userRaw.IAPELLIDO || "",
         codigoUsuario: String(userRaw.ILOGIN || userRaw.INOMBRE || queryUser),
@@ -340,7 +347,7 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
   if (esAdminBootstrap) {
     const nombreLimpio = queryUser.includes("@") ? queryUser.split("@")[0] : queryUser;
     const nuevoAdmin: UsuarioPos = {
-      id: Date.now(),
+      id: Math.floor(1000 + Math.random() * 9000),
       nombre: nombreLimpio,
       apellido: "ADMIN",
       codigoUsuario: queryUser,
