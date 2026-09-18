@@ -618,7 +618,7 @@ export function PuntoDeVenta() {
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [vistaActiva, gridItems, clienteForm, estadoTraje, fechaSalida, fechaEntrada, totalDepositoMasAlquiler]);
+  }, [vistaActiva]);
 
   function handleLogout() {
     logoutPos();
