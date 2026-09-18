@@ -232,7 +232,7 @@ export async function guardarCaja(caja: Partial<CajaDetalle>): Promise<CajaDetal
       cajaGuardada = {
         IDCAJAS: caja.IDCAJAS,
         NOMBRECAJA: caja.NOMBRECAJA || `CAJA ${caja.IDCAJAS}`,
-        NUMERACION: caja.NUMERACION ?? 1,
+        NUMERACION: caja.NUMERACION ?? 0,
         PREFIJO: caja.PREFIJO || "G",
         ACTIVA: true,
         ...caja,
@@ -244,7 +244,7 @@ export async function guardarCaja(caja: Partial<CajaDetalle>): Promise<CajaDetal
     cajaGuardada = {
       IDCAJAS: maxId + 1,
       NOMBRECAJA: caja.NOMBRECAJA || `CAJA ${maxId + 1}`,
-      NUMERACION: caja.NUMERACION ?? 1,
+      NUMERACION: caja.NUMERACION ?? 0,
       PREFIJO: caja.PREFIJO || `POS${maxId + 1}-`,
       DESCRIPCION_UBICACION: caja.DESCRIPCION_UBICACION || "Puesto nuevo",
       ACTIVA: true,

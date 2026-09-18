@@ -681,13 +681,42 @@ function saveLocalAbono(abono: AbonoCliente) {
   }
 }
 
+/**
+ * Extrae de forma segura el número secuencial de un código de factura,
+ * respetando el prefijo para evitar confusiones con números dentro del prefijo (ej: "POS2-50" -> 50).
+ */
+export function extraerNumeroFactura(numFactura: string, prefijo = ""): number {
+  if (!numFactura) return 0;
+  const str = String(numFactura).trim();
+  const pfxTrim = (prefijo || "").trim();
+
+  // 1. Si se conoce el prefijo y el string empieza por él (insensible a mayúsculas)
+  if (pfxTrim && str.toUpperCase().startsWith(pfxTrim.toUpperCase())) {
+    const resto = str.slice(pfxTrim.length).trim();
+    const n = parseInt(resto, 10);
+    if (!isNaN(n)) return n;
+  }
+
+  // 2. Si no coincide con el prefijo dado, intentar extraer la secuencia numérica al final de la cadena
+  const matchFinal = str.match(/(\d+)$/);
+  if (matchFinal) {
+    const n = parseInt(matchFinal[1], 10);
+    if (!isNaN(n)) return n;
+  }
+
+  // 3. Fallback a cualquier grupo de dígitos
+  const matchAny = str.match(/\d+/);
+  return matchAny ? parseInt(matchAny[0], 10) : 0;
+}
+
 // ==========================================
 // SERVICIO DE FACTURACIÓN Y CAJAS (EXACTO A WINDEV)
 // ==========================================
 export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefault = "G"): Promise<string> {
   try {
     let pfx = prefijoDefault;
-    let maxNum = 0;
+    let baseConsecutivo = 0;
+    let cajaEncontrada = false;
 
     // 1. Consultar CAJAS para nombreCaja en Supabase
     try {
@@ -699,9 +728,9 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
 
       const caja = cajaRaw as any;
       if (!errCaja && caja) {
-        if (caja.PREFIJO) pfx = caja.PREFIJO;
-        const numCaja = Number(caja.NUMERACION) || 0;
-        if (numCaja > maxNum) maxNum = numCaja;
+        if (caja.PREFIJO !== undefined && caja.PREFIJO !== null) pfx = caja.PREFIJO;
+        baseConsecutivo = Number(caja.NUMERACION) || 0;
+        cajaEncontrada = true;
       }
     } catch (e) {
       console.warn("Error consultando caja en Supabase:", e);
@@ -714,28 +743,46 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
         const list: any[] = JSON.parse(rawCajas);
         const cajaLocal = list.find((c) => c.NOMBRECAJA === nombreCaja);
         if (cajaLocal) {
-          if (cajaLocal.PREFIJO) pfx = cajaLocal.PREFIJO;
+          if (cajaLocal.PREFIJO !== undefined && cajaLocal.PREFIJO !== null) pfx = cajaLocal.PREFIJO;
           const numLocal = Number(cajaLocal.NUMERACION) || 0;
-          if (numLocal > maxNum) maxNum = numLocal;
+          if (!cajaEncontrada || numLocal > baseConsecutivo) {
+            baseConsecutivo = numLocal;
+          }
         }
       }
     } catch {}
 
-    // 3. Consultar FACTURA en Supabase para obtener el mayor número registrado
+    let maxNum = baseConsecutivo;
+    const pfxTrim = (pfx || "").trim().toUpperCase();
+
+    // 3. Consultar FACTURA en Supabase para obtener el mayor número registrado PARA ESTE PREFIJO
     try {
       const { data: facts } = await supabase
         .from("FACTURA" as any)
         .select("NUMEROFACT, IDFACTURA")
         .order("IDFACTURA", { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (facts && facts.length > 0) {
         for (const f of facts as any[]) {
-          const numMatch = String(f.NUMEROFACT || "").match(/\d+/);
-          if (numMatch) {
-            const n = parseInt(numMatch[0], 10);
-            if (!isNaN(n) && n > maxNum) {
-              maxNum = n;
+          const numFact = String(f.NUMEROFACT || "").trim();
+          if (!numFact) continue;
+
+          if (pfxTrim) {
+            // Solo considerar facturas que pertenezcan a este prefijo específico
+            if (numFact.toUpperCase().startsWith(pfxTrim)) {
+              const n = extraerNumeroFactura(numFact, pfx);
+              if (n > maxNum) {
+                maxNum = n;
+              }
+            }
+          } else {
+            // Sin prefijo: sólo considerar facturas netamente numéricas
+            if (/^\d+$/.test(numFact)) {
+              const n = extraerNumeroFactura(numFact);
+              if (n > maxNum) {
+                maxNum = n;
+              }
             }
           }
         }
@@ -744,15 +791,26 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
       console.warn("Error consultando última factura:", e);
     }
 
-    // 4. Consultar facturas locales en LocalStorage
+    // 4. Consultar facturas locales en LocalStorage PARA ESTE PREFIJO
     try {
       const localFacts = getLocalFacturas();
       for (const f of localFacts) {
-        const numMatch = String(f.NUMEROFACT || "").match(/\d+/);
-        if (numMatch) {
-          const n = parseInt(numMatch[0], 10);
-          if (!isNaN(n) && n > maxNum) {
-            maxNum = n;
+        const numFact = String(f.NUMEROFACT || "").trim();
+        if (!numFact) continue;
+
+        if (pfxTrim) {
+          if (numFact.toUpperCase().startsWith(pfxTrim)) {
+            const n = extraerNumeroFactura(numFact, pfx);
+            if (n > maxNum) {
+              maxNum = n;
+            }
+          }
+        } else {
+          if (/^\d+$/.test(numFact)) {
+            const n = extraerNumeroFactura(numFact);
+            if (n > maxNum) {
+              maxNum = n;
+            }
           }
         }
       }
@@ -792,8 +850,7 @@ export async function registrarAlquilerFactura(
     }
   } catch {}
 
-  const numMatch = String(sNumeroFactura).match(/\d+/);
-  const numeroEntero = numMatch ? parseInt(numMatch[0], 10) : 1;
+  const numeroEntero = extraerNumeroFactura(sNumeroFactura, prefijoDefault);
 
   try {
     // 2. Actualizar numeración de la caja en Supabase y Local

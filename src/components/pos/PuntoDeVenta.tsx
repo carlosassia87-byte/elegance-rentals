@@ -46,6 +46,7 @@ import {
   guardarArticulo,
   eliminarArticulo,
   generarNumeroFactura,
+  extraerNumeroFactura,
   registrarAlquilerFactura,
   registrarDevolucionVestido,
   registrarGasto,
@@ -1188,8 +1189,7 @@ export function PuntoDeVenta() {
       const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
       setNumeroRecibo(nuevoNum);
     } catch {
-      const numMatch = String(numeroRecibo).match(/\d+/);
-      const nextNum = numMatch ? parseInt(numMatch[0], 10) + 1 : 1;
+      const nextNum = extraerNumeroFactura(numeroRecibo, terminalConfig.prefijo) + 1;
       setNumeroRecibo(`${terminalConfig.prefijo || "G"}${nextNum}`);
     }
     setClienteForm({
@@ -4091,10 +4091,21 @@ export function PuntoDeVenta() {
       {modalCajasConfig && (
         <ConfiguracionCajasModal
           open={modalCajasConfig}
-          onOpenChange={setModalCajasConfig}
+          onOpenChange={(isOpen) => {
+            setModalCajasConfig(isOpen);
+            if (!isOpen) {
+              const term = obtenerTerminalConfig();
+              setTerminalConfig(term);
+              generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => {
+                if (num) setNumeroRecibo(num);
+              });
+            }
+          }}
           onCajaCambiada={(term) => {
             setTerminalConfig(term);
-            generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => setNumeroRecibo(num));
+            generarNumeroFactura(term.nombreCaja, term.prefijo).then((num) => {
+              if (num) setNumeroRecibo(num);
+            });
           }}
         />
       )}

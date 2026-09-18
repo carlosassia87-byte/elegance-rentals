@@ -91,6 +91,20 @@ export function ConfiguracionCajasModal({
 
     const guardada = await guardarCaja(cajaEditando);
     toast.success(`Caja ${guardada.NOMBRECAJA} guardada con éxito`);
+
+    // Si la caja editada es la que está asignada a esta PC, sincronizar terminal de inmediato
+    if (terminal.idCajaAsignada === guardada.IDCAJAS || terminal.nombreCaja === guardada.NOMBRECAJA) {
+      const updatedTerminal: TerminalConfig = {
+        ...terminal,
+        idCajaAsignada: guardada.IDCAJAS,
+        nombreCaja: guardada.NOMBRECAJA,
+        prefijo: guardada.PREFIJO || "G",
+      };
+      guardarTerminalConfig(updatedTerminal);
+      setTerminal(updatedTerminal);
+      onCajaCambiada?.(updatedTerminal);
+    }
+
     setCajaEditando(null);
     await cargarDatos();
   };
@@ -306,7 +320,7 @@ export function ConfiguracionCajasModal({
                       IDCAJAS: 0,
                       NOMBRECAJA: `CAJA ${cajas.length + 1}`,
                       PREFIJO: `POS${cajas.length + 1}-`,
-                      NUMERACION: 1,
+                      NUMERACION: 0,
                       RESOLUCION: "1366x768",
                       DESCRIPCION_UBICACION: "Mostrador",
                     })
@@ -366,19 +380,24 @@ export function ConfiguracionCajasModal({
                     </div>
 
                     <div className="col-span-6 md:col-span-2">
-                      <label className="font-bold text-slate-800 uppercase">Consecutivo Actual</label>
+                      <label className="font-bold text-slate-800 uppercase" title="El próximo recibo será este número + 1">
+                        Último Consecutivo
+                      </label>
                       <input
                         type="number"
-                        min="1"
-                        value={cajaEditando.NUMERACION || 1}
+                        min="0"
+                        value={cajaEditando.NUMERACION ?? 0}
                         onChange={(e) =>
                           setCajaEditando((p) => ({
                             ...p,
-                            NUMERACION: Number(e.target.value) || 1,
+                            NUMERACION: isNaN(parseInt(e.target.value, 10)) ? 0 : parseInt(e.target.value, 10),
                           }))
                         }
                         className="mt-1 h-8 w-full rounded-xl border border-slate-300 bg-white px-2.5 text-xs font-black text-slate-900 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                       />
+                      <p className="text-[9px] text-slate-500 mt-0.5 font-medium leading-tight">
+                        Próx: {(cajaEditando.PREFIJO || "")}{((cajaEditando.NUMERACION ?? 0) + 1)}
+                      </p>
                     </div>
 
                     <div className="col-span-12 md:col-span-4">
