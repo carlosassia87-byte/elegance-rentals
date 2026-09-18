@@ -295,6 +295,41 @@ export async function eliminarCaja(idCaja: number): Promise<boolean> {
 
 export function obtenerTerminalConfig(): TerminalConfig {
   try {
+    // 1. Si viene por parámetro de URL (ej. ?caja=2 o ?caja=CAJA%202 o ?caja=SERVIDOR)
+    if (typeof window !== "undefined" && window.location && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cajaParam = urlParams.get("caja");
+      if (cajaParam) {
+        const rawCajas = localStorage.getItem(KEY_CAJAS);
+        let list: CajaDetalle[] = CAJAS_INICIALES;
+        if (rawCajas) {
+          try {
+            list = JSON.parse(rawCajas);
+          } catch {}
+        }
+        
+        const encontrada = list.find(
+          (c) =>
+            String(c.IDCAJAS) === cajaParam ||
+            c.NOMBRECAJA.toUpperCase() === cajaParam.toUpperCase() ||
+            c.NOMBRECAJA.toUpperCase() === `CAJA ${cajaParam}`.toUpperCase()
+        );
+
+        if (encontrada) {
+          const cfg: TerminalConfig = {
+            idCajaAsignada: encontrada.IDCAJAS,
+            nombreCaja: encontrada.NOMBRECAJA,
+            prefijo: encontrada.PREFIJO || "G",
+            nombreEquipo: `PC-${encontrada.NOMBRECAJA.replace(/\s+/g, "-")}`,
+            tamanoPapel: "80mm",
+          };
+          localStorage.setItem(KEY_TERMINAL_ACTUAL, JSON.stringify(cfg));
+          return cfg;
+        }
+      }
+    }
+
+    // 2. Leer del disco local de este computador
     const raw = localStorage.getItem(KEY_TERMINAL_ACTUAL);
     if (raw) {
       return { ...TERMINAL_DEFAULT, ...JSON.parse(raw) };
