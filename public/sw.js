@@ -1,9 +1,9 @@
 /**
  * Service Worker PWA Offline Interactivo para Elegance Rentals POS
- * Versión 4 (Actualizaciones automáticas inmediatas y caché inteligente)
+ * Versión 5 (Actualizaciones automáticas inmediatas, soporte offline total y caché inteligente)
  */
 
-const CACHE_VERSION = "elegance-pos-v4";
+const CACHE_VERSION = "elegance-pos-v5";
 const CACHE_NAME = `elegance-pos-${CACHE_VERSION}-${Date.now()}`;
 
 const CRITICAL_ASSETS = [

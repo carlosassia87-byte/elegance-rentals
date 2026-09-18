@@ -307,7 +307,7 @@ export function IndicadorModoOffline() {
           </div>
 
           {/* Footer con acciones */}
-          <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
             <div className="text-[11px] text-slate-500">
               {colaItems.length > 0
                 ? `${colaItems.length} operación(es) pendiente(s)`
@@ -315,6 +315,19 @@ export function IndicadorModoOffline() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs text-amber-800 border-amber-300 hover:bg-amber-50 hover:text-amber-900 gap-1 font-bold"
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.forzarActualizacionPOS) {
+                    window.forzarActualizacionPOS();
+                  }
+                }}
+                title="Borra la caché del navegador y fuerza la descarga de la última versión del sistema"
+              >
+                ⚡ Actualizar PWA
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -327,7 +340,7 @@ export function IndicadorModoOffline() {
                 size="sm"
                 onClick={handleForzarSincronizacion}
                 disabled={syncState.isSyncing || !syncState.isOnline}
-                className="text-xs bg-slate-900 hover:bg-slate-800 text-white gap-1.5"
+                className="text-xs bg-slate-900 hover:bg-slate-800 text-white gap-1.5 font-bold"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${syncState.isSyncing ? "animate-spin" : ""}`} />
                 {syncState.isSyncing ? "Sincronizando..." : "Sincronizar Ahora"}
