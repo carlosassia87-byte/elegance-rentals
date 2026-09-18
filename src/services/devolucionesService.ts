@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Factura, CampoFactura, DepositoEntregado } from "@/types/database.types";
 import { guardarEstadoPrendaOverride, type EstadoPrenda } from "./movimientosService";
+import { emitirEventoRealtime, invalidarCacheArticulos } from "./posService";
 
 export interface ItemDevolucionInfo {
   id: string | number;
@@ -262,26 +263,55 @@ export async function registrarDevolucionCompleta(
     for (const item of params.itemsDevueltos) {
       guardarEstadoPrendaOverride(params.numeroFactura, item.codigoBarras, item.descripcion, "DEVUELTO A TIENDA");
 
-      // Reponer Stock en ARTICULO en Supabase si hay red
+      // Reponer Stock en ACCESORIOS o ARTICULO en Supabase si hay red
       if (guardadoEnSupabase) {
         try {
-          let query = supabase.from("ARTICULO" as any).select("*");
-          if (item.codigoBarras) {
-            query = query.eq("CODBARRAS", item.codigoBarras);
-          } else if (item.descripcion) {
-            query = query.eq("DESCRIPCION", item.descripcion);
+          if (item.codigoBarras?.startsWith("ACC-")) {
+            // Reponer en tabla ACCESORIOS
+            const { data: accRaw } = await supabase
+              .from("ACCESORIOS" as any)
+              .select("*")
+              .eq("CODBARRAS", item.codigoBarras)
+              .maybeSingle();
+
+            const acc = accRaw as any;
+            if (acc) {
+              await supabase
+                .from("ACCESORIOS" as any)
+                .update({ STOCK: (Number(acc.STOCK) || 0) + item.cantidad })
+                .eq("IDACCESORIO", acc.IDACCESORIO);
+            }
+          } else {
+            // Reponer en tabla ARTICULO
+            let query = supabase.from("ARTICULO" as any).select("*");
+            if (item.codigoBarras) {
+              query = query.eq("CODBARRAS", item.codigoBarras);
+            } else if (item.descripcion) {
+              query = query.eq("DESCRIPCION", item.descripcion);
+            }
+            const { data: artRaw } = await query.maybeSingle();
+            const art = artRaw as any;
+            if (art) {
+              const nuevoStock = (Number(art.STOCK) || 0) + item.cantidad;
+              await supabase
+                .from("ARTICULO" as any)
+                .update({ STOCK: nuevoStock })
+                .eq("IDARTICULO", art.IDARTICULO);
+
+              // Emitir actualización de stock a todos los PCs (<50ms)
+              emitirEventoRealtime("ARTICULO_ACTUALIZADO", {
+                articulo: { ...art, STOCK: nuevoStock },
+              });
+            }
           }
-          const { data: artRaw } = await query.maybeSingle();
-          const art = artRaw as any;
-          if (art) {
-            await supabase
-              .from("ARTICULO" as any)
-              .update({ STOCK: (Number(art.STOCK) || 0) + item.cantidad })
-              .eq("IDARTICULO", art.IDARTICULO);
-          }
-        } catch {}
+        } catch (eStock) {
+          console.warn("Aviso reponiendo stock en devolución:", eStock);
+        }
       }
     }
+
+    // Invalidar caché RAM local para asegurar datos frescos
+    invalidarCacheArticulos();
 
     // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda)
     if (guardadoEnSupabase) {

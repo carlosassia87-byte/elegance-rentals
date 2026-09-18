@@ -335,25 +335,30 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
     }
   } catch (e) {}
 
-  // 3. Si es un nuevo usuario o correo (como admin del sistema), auto-crear sesión de Administrador
-  const nombreLimpio = queryUser.includes("@") ? queryUser.split("@")[0] : queryUser;
-  const nuevoAdmin: UsuarioPos = {
-    id: Date.now(),
-    nombre: nombreLimpio,
-    apellido: "ADMIN",
-    codigoUsuario: queryUser,
-    password: inputPass || "123",
-    rol: "SUPER ADMIN",
-    accesoMenu: true,
-    permisos: PERMISOS_SUPER_ADMIN,
-  };
+  // 3. Si es el primer acceso con credenciales maestras (ADMIN/SUPERADMIN) o correo oficial, permitir acceso
+  const esAdminBootstrap = queryUser === "ADMIN" || queryUser === "SUPERADMIN" || queryUser === "SUPER" || queryUser.includes("@");
+  if (esAdminBootstrap) {
+    const nombreLimpio = queryUser.includes("@") ? queryUser.split("@")[0] : queryUser;
+    const nuevoAdmin: UsuarioPos = {
+      id: Date.now(),
+      nombre: nombreLimpio,
+      apellido: "ADMIN",
+      codigoUsuario: queryUser,
+      password: inputPass || "123",
+      rol: "SUPER ADMIN",
+      accesoMenu: true,
+      permisos: PERMISOS_SUPER_ADMIN,
+    };
 
-  try {
-    await guardarUsuarioPos(nuevoAdmin);
-  } catch {}
+    try {
+      await guardarUsuarioPos(nuevoAdmin);
+    } catch {}
 
-  guardarSesionPos(nuevoAdmin);
-  return nuevoAdmin;
+    guardarSesionPos(nuevoAdmin);
+    return nuevoAdmin;
+  }
+
+  return null;
 }
 
 export function guardarSesionPos(usuario: UsuarioPos): void {

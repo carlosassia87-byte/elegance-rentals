@@ -116,12 +116,22 @@ export function BalanceDepositosModal({
     setFechaFin("");
   };
 
+  const esDevuelta = (estado?: string) => {
+    const e = (estado || "").trim().toUpperCase();
+    return e === "DEVUELTO A TIENDA" || e === "ENTREGADO" || e === "DEVUELTO";
+  };
+
+  const esAlquiler = (estado?: string) => {
+    const e = (estado || "").trim().toUpperCase();
+    return e === "EN ALQUILER";
+  };
+
   // Cálculos consolidados de depósitos
   const totalDepositosYaDevueltos = useMemo(() => {
     let sum = 0;
     operaciones.forEach((op) => {
       op.items.forEach((it) => {
-        if (it.estadoPrenda === "DEVUELTO A TIENDA") {
+        if (esDevuelta(it.estadoPrenda)) {
           sum += it.valorDeposito * it.cantidad;
         }
       });
@@ -133,7 +143,7 @@ export function BalanceDepositosModal({
     let sum = 0;
     operaciones.forEach((op) => {
       op.items.forEach((it) => {
-        if (it.estadoPrenda === "EN ALQUILER") {
+        if (esAlquiler(it.estadoPrenda)) {
           sum += it.valorDeposito * it.cantidad;
         }
       });
@@ -146,11 +156,11 @@ export function BalanceDepositosModal({
     return operaciones.map((op) => {
       const depCobrado = op.totalDeposito;
       const depDevuelto = op.items
-        .filter((it) => it.estadoPrenda === "DEVUELTO A TIENDA")
+        .filter((it) => esDevuelta(it.estadoPrenda))
         .reduce((a, b) => a + b.valorDeposito * b.cantidad, 0);
       const depPendiente = Math.max(0, depCobrado - depDevuelto);
-      const prendasEnAlquiler = op.items.filter((it) => it.estadoPrenda === "EN ALQUILER").length;
-      const prendasDevueltas = op.items.filter((it) => it.estadoPrenda === "DEVUELTO A TIENDA").length;
+      const prendasEnAlquiler = op.items.filter((it) => esAlquiler(it.estadoPrenda)).length;
+      const prendasDevueltas = op.items.filter((it) => esDevuelta(it.estadoPrenda)).length;
 
       return {
         ...op,
@@ -222,9 +232,9 @@ export function BalanceDepositosModal({
                   let depDevuelto = 0;
                   operaciones.forEach((op) => {
                     op.items.forEach((it) => {
-                      if (it.estadoPrenda === "EN ALQUILER") {
+                      if (esAlquiler(it.estadoPrenda)) {
                         depPorDevolver += it.valorDeposito * it.cantidad;
-                      } else if (it.estadoPrenda === "DEVUELTO A TIENDA") {
+                      } else if (esDevuelta(it.estadoPrenda)) {
                         depDevuelto += it.valorDeposito * it.cantidad;
                       }
                     });

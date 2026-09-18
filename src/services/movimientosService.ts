@@ -268,66 +268,70 @@ export async function consultarMovimientos(
     }
   } catch {}
 
-  // 3. Cargar Items de CAMPOFACTURA de Supabase con paginación
+  // 3. Cargar Items de CAMPOFACTURA de Supabase únicamente para las facturas consultadas
   try {
-    const BATCH_SIZE = 1000;
-    let from = 0;
-    const maxLimit = 200000;
+    const numFacts = Array.from(operacionesMap.keys()).filter(Boolean);
+    if (numFacts.length > 0) {
+      const CHUNK_SIZE = 200;
+      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
+        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
+        const { data: camposRaw, error } = await supabase
+          .from("CAMPOFACTURA" as any)
+          .select("*")
+          .in("NUMEROFACT", chunk);
 
-    while (from < maxLimit) {
-      const to = from + BATCH_SIZE - 1;
-      const { data: camposRaw, error } = await supabase.from("CAMPOFACTURA" as any).select("*").range(from, to);
-      if (error || !camposRaw || camposRaw.length === 0) break;
+        if (error || !camposRaw) continue;
 
-      for (const c of camposRaw as any[]) {
-        const numFact = c.NUMEROFACT;
-        if (numFact && operacionesMap.has(numFact)) {
-          const op = operacionesMap.get(numFact)!;
-          const keyOverride = `${numFact}_${c.BARRAS || c.DESCRIPCION}`;
-          const override = overrides[keyOverride];
+        for (const c of camposRaw as any[]) {
+          const numFact = c.NUMEROFACT;
+          if (numFact && operacionesMap.has(numFact)) {
+            const op = operacionesMap.get(numFact)!;
+            const keyOverride = `${numFact}_${c.BARRAS || c.DESCRIPCION}`;
+            const override = overrides[keyOverride];
 
-          let estadoPrenda: EstadoPrenda = "EN ALQUILER";
-          const ec = op.estadoCliente.toUpperCase();
+            let estadoPrenda: EstadoPrenda = "EN ALQUILER";
+            const ec = op.estadoCliente.toUpperCase();
 
-          if (ec === "ANULADO" || ec === "ANULADA") {
-            estadoPrenda = "ANULADO";
-          } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
-            estadoPrenda = "ENTREGADO";
-          } else if (ec === "VENTA" || op.tipoOperacion === "VENTA") {
-            estadoPrenda = "VENTA";
-          } else if (ec === "EN BODEGA") {
-            estadoPrenda = "EN BODEGA";
-          } else {
-            estadoPrenda = "EN ALQUILER";
+            if (ec === "ANULADO" || ec === "ANULADA") {
+              estadoPrenda = "ANULADO";
+            } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") {
+              estadoPrenda = "ENTREGADO";
+            } else if (ec === "VENTA" || op.tipoOperacion === "VENTA") {
+              estadoPrenda = "VENTA";
+            } else if (ec === "EN BODEGA") {
+              estadoPrenda = "EN BODEGA";
+            } else {
+              estadoPrenda = "EN ALQUILER";
+            }
+
+            if (override) {
+              estadoPrenda = override.estado;
+            }
+
+            op.items.push({
+              id: c.AUTOMATIC || `${numFact}-${c.BARRAS || c.DESCRIPCION}`,
+              automatic: c.AUTOMATIC,
+              idFactura: Number(c.IDFACTURA) || op.idFactura,
+              numeroFact: numFact,
+              codigoBarras: c.BARRAS || "",
+              descripcion: c.DESCRIPCION || "PRENDA SIN NOMBRE",
+              talla: c.TALLA || "U",
+              cantidad: Number(c.CANTIDAD || 1),
+              valorAlquiler: Number(c.VALOR || c.TOTALALQUILER || 0),
+              valorDeposito: Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0),
+              total: Number(c.TOTAL || c.VALOR || 0),
+              estadoPrenda,
+              fechaSalida: op.fechaSalida,
+              fechaEntregaPactada: op.fechaEntregaPactada,
+              fechaDevolucionReal: override?.fechaDevolucion,
+            });
           }
-
-          if (override) {
-            estadoPrenda = override.estado;
-          }
-
-          op.items.push({
-            id: c.AUTOMATIC || `${numFact}-${c.BARRAS || c.DESCRIPCION}`,
-            automatic: c.AUTOMATIC,
-            idFactura: Number(c.IDFACTURA) || op.idFactura,
-            numeroFact: numFact,
-            codigoBarras: c.BARRAS || "",
-            descripcion: c.DESCRIPCION || "PRENDA SIN NOMBRE",
-            talla: c.TALLA || "U",
-            cantidad: Number(c.CANTIDAD || 1),
-            valorAlquiler: Number(c.VALOR || c.TOTALALQUILER || 0),
-            valorDeposito: Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0),
-            total: Number(c.TOTAL || c.VALOR || 0),
-            estadoPrenda,
-            fechaSalida: op.fechaSalida,
-            fechaEntregaPactada: op.fechaEntregaPactada,
-            fechaDevolucionReal: override?.fechaDevolucion,
-          });
         }
       }
-      if (camposRaw.length < BATCH_SIZE) break;
-      from += BATCH_SIZE;
     }
-  } catch {}
+  } catch (errCampos) {
+    console.warn("Aviso cargando items de facturas en movimientos:", errCampos);
+  }
 
   // 4. Si alguna operación no tiene items aún, buscar en local o crear item derivado
   try {

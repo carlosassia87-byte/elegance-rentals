@@ -341,7 +341,7 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                   ESTADO: factura.MODO === "VENTA" ? "VENDIDO" : "ALQUILADO",
                   ESTADOCLIENTE: factura.ESTADOCLIENTE || "EN BODEGA",
                 })
-                .eq("BARRAS", it.BARRAS);
+                .eq("CODBARRAS", it.BARRAS);
             }
           }
         } else if (item.tipo === "NUEVO_ABONO") {

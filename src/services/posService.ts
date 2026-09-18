@@ -864,29 +864,48 @@ export async function registrarAlquilerFactura(
       FECHA_RECIBO: facturaData.FECHA_RECIBO || new Date().toISOString().split("T")[0],
     };
 
+    let facturaInsertada: Factura | null = null;
     let guardadoEnSupabase = false;
-    try {
-      const { data: facturaRaw, error: errorFactura } = await supabase
-        .from("FACTURA" as any)
-        .insert(cleanFacturaData)
-        .select()
-        .single();
+    let intentosGuardado = 0;
+    const maxIntentos = 3;
 
-      if (!errorFactura && facturaRaw) {
-        facturaInsertada = facturaRaw;
-        guardadoEnSupabase = true;
-      } else if (errorFactura) {
-        console.error("Error insertando FACTURA en Supabase:", errorFactura.message);
+    while (intentosGuardado < maxIntentos && !guardadoEnSupabase) {
+      try {
+        cleanFacturaData.NUMEROFACT = sNumeroFactura;
+        const { data: facturaRaw, error: errorFactura } = await supabase
+          .from("FACTURA" as any)
+          .insert(cleanFacturaData)
+          .select()
+          .single();
+
+        if (!errorFactura && facturaRaw) {
+          facturaInsertada = facturaRaw as unknown as Factura;
+          guardadoEnSupabase = true;
+          break;
+        } else if (errorFactura) {
+          // Si hubo colisión de concurrencia con otra PC (código 23505 / duplicate key en NUMEROFACT)
+          if (errorFactura.code === "23505" || errorFactura.message?.includes("duplicate key") || errorFactura.message?.includes("NUMEROFACT")) {
+            console.warn(`[POS Concurrencia] Colisión detectada en factura ${sNumeroFactura}. Reintentando con siguiente número...`);
+            sNumeroFactura = await generarNumeroFactura(nombreCaja, prefijoDefault);
+            intentosGuardado++;
+            continue;
+          } else {
+            console.error("Error insertando FACTURA en Supabase:", errorFactura.message);
+            break;
+          }
+        }
+      } catch (e: any) {
+        console.error("Excepción insertando FACTURA en Supabase:", e?.message);
+        break;
       }
-    } catch (e: any) {
-      console.error("Excepción insertando FACTURA en Supabase:", e?.message);
     }
 
     if (!facturaInsertada) {
       facturaInsertada = {
         ...cleanFacturaData,
         IDFACTURA: Date.now(),
-      };
+        NUMEROFACT: sNumeroFactura,
+      } as Factura;
     }
 
     // 4. Insertar los ítems en CAMPOFACTURA en Supabase (sin AUTOMATIC para permitir auto-serial de PostgreSQL)

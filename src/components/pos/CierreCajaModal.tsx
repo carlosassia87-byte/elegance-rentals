@@ -43,12 +43,12 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       let depRecib = 0;
       let countFacts = 0;
 
-      // 1. Facturas de hoy
+      // 1. Facturas del día exacto
       try {
         const { data: facts } = await supabase
           .from("FACTURA" as any)
           .select("*")
-          .gte("FECHASALIDA", fecha);
+          .eq("FECHASALIDA", fecha);
 
         if (facts && facts.length > 0) {
           facts.forEach((f: any) => {
@@ -68,10 +68,43 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         const localFacts = raw ? JSON.parse(raw) : [];
         if (localFacts && localFacts.length > 0 && countFacts === 0) {
           localFacts.forEach((f: any) => {
-            alqEfec += Number(f.PAGOCONEFECTIVO || 0);
-            alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
-            depRecib += Number(f.FTOTALDEPOSITO || 0);
-            countFacts++;
+            if (f.FECHASALIDA === fecha) {
+              alqEfec += Number(f.PAGOCONEFECTIVO || 0);
+              alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
+              depRecib += Number(f.FTOTALDEPOSITO || 0);
+              countFacts++;
+            }
+          });
+        }
+      } catch {}
+
+      // 1.1 Abonos recibidos en el día (ABONO_CLIENTE)
+      try {
+        const { data: abonos } = await supabase
+          .from("ABONO_CLIENTE" as any)
+          .select("*")
+          .eq("FECHAABONO", fecha);
+
+        if (abonos && abonos.length > 0) {
+          abonos.forEach((ab: any) => {
+            alqEfec += Number(ab.PAGOEFECTIVO || 0);
+            alqTrans += Number(ab.PAGOTRANFE || 0);
+          });
+        }
+      } catch (e) {
+        console.warn("Fallo lectura de abonos en Supabase:", e);
+      }
+
+      // Abonos locales
+      try {
+        const rawAb = localStorage.getItem("elegance_local_abonos");
+        const localAbonos = rawAb ? JSON.parse(rawAb) : [];
+        if (localAbonos && localAbonos.length > 0) {
+          localAbonos.forEach((ab: any) => {
+            if (ab.FECHAABONO === fecha) {
+              alqEfec += Number(ab.PAGOEFECTIVO || 0);
+              alqTrans += Number(ab.PAGOTRANFE || 0);
+            }
           });
         }
       } catch {}
@@ -82,7 +115,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         const { data: gastos } = await supabase
           .from("GASTOS" as any)
           .select("*")
-          .gte("FECHA", fecha);
+          .eq("FECHA", fecha);
 
         if (gastos) {
           gastos.forEach((g: any) => {
@@ -97,7 +130,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         const { data: deps } = await supabase
           .from("DEPOSITOENTREGADO" as any)
           .select("*")
-          .gte("FECHA", fecha);
+          .eq("FECHA", fecha);
 
         if (deps) {
           deps.forEach((d: any) => {

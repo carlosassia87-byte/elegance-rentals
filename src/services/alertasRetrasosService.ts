@@ -49,25 +49,18 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
     if (rawOv) overrides = JSON.parse(rawOv);
   } catch {}
 
-  // 2. Obtener todas las facturas de Supabase con paginación por lotes
+  // 2. Obtener facturas en alquiler de Supabase (filtradas directamente en la base de datos)
   let facturas: any[] = [];
-  const BATCH_SIZE = 1000;
-  const MAX_RECORDS = 200000;
-
   try {
-    let from = 0;
-    while (from < MAX_RECORDS) {
-      const to = from + BATCH_SIZE - 1;
-      const { data, error } = await supabase
-        .from("FACTURA" as any)
-        .select("*")
-        .order("IDFACTURA", { ascending: false })
-        .range(from, to);
+    const { data, error } = await supabase
+      .from("FACTURA" as any)
+      .select("*")
+      .eq("ESTADOCLIENTE", "EN ALQUILER")
+      .order("IDFACTURA", { ascending: false })
+      .limit(3000);
 
-      if (error || !data || data.length === 0) break;
+    if (!error && data && data.length > 0) {
       facturas.push(...data);
-      if (data.length < BATCH_SIZE) break;
-      from += BATCH_SIZE;
     }
   } catch (e) {
     console.warn("Fallo lectura de facturas en Supabase:", e);
@@ -79,30 +72,34 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
     if (rawLocal) {
       const localList: any[] = JSON.parse(rawLocal);
       for (const lf of localList) {
-        if (!facturas.some((f) => f.NUMEROFACT === lf.NUMEROFACT)) {
+        if (lf.ESTADOCLIENTE === "EN ALQUILER" && !facturas.some((f) => f.NUMEROFACT === lf.NUMEROFACT)) {
           facturas.push(lf);
         }
       }
     }
   } catch {}
 
-  // 4. Obtener todos los campos de factura con paginación por lotes
+  // 4. Obtener únicamente los campos de las facturas activas
   let todosCampos: any[] = [];
-  try {
-    let cFrom = 0;
-    while (cFrom < MAX_RECORDS) {
-      const cTo = cFrom + BATCH_SIZE - 1;
-      const { data: cData, error: cErr } = await supabase
-        .from("CAMPOFACTURA" as any)
-        .select("*")
-        .range(cFrom, cTo);
+  const numFactsActivas = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
+  if (numFactsActivas.length > 0) {
+    try {
+      const BATCH = 200;
+      for (let i = 0; i < numFactsActivas.length; i += BATCH) {
+        const chunk = numFactsActivas.slice(i, i + BATCH);
+        const { data: cData, error: cErr } = await supabase
+          .from("CAMPOFACTURA" as any)
+          .select("*")
+          .in("NUMEROFACT", chunk);
 
-      if (cErr || !cData || cData.length === 0) break;
-      todosCampos.push(...cData);
-      if (cData.length < BATCH_SIZE) break;
-      cFrom += BATCH_SIZE;
+        if (!cErr && cData) {
+          todosCampos.push(...cData);
+        }
+      }
+    } catch (eCampos) {
+      console.warn("Fallo lectura de campos de facturas activas:", eCampos);
     }
-  } catch {}
+  }
 
   // Procesar cada factura
   for (const f of facturas) {

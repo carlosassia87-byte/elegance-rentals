@@ -592,6 +592,34 @@ export function PuntoDeVenta() {
     inicializarDetectorOffline();
   }, []);
 
+  // Atajos de teclado profesionales para cajeros de alta velocidad
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (vistaActiva !== "pos") return;
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        articuloInputRef.current?.focus();
+        articuloInputRef.current?.select();
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        handleIniciarCobro();
+      } else if (e.key === "F8") {
+        e.preventDefault();
+        setModalCliente(true);
+      } else if (e.key === "F9") {
+        e.preventDefault();
+        setModalDevolucion(true);
+      } else if (e.key === "F10") {
+        e.preventDefault();
+        setModalCierreCaja(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [vistaActiva, gridItems, clienteForm, estadoTraje, fechaSalida, fechaEntrada, totalDepositoMasAlquiler]);
+
   function handleLogout() {
     logoutPos();
     setUsuarioActivo(null);
