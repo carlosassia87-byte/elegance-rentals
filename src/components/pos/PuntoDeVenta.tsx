@@ -1509,6 +1509,19 @@ export function PuntoDeVenta() {
                   <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase font-sans leading-none">
                     PUNTO DE VENTA & ALQUILER
                   </h1>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && window.forzarActualizacionPOS) {
+                        window.forzarActualizacionPOS();
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 text-slate-700 text-[10px] font-black border border-slate-300 shadow-2xs cursor-pointer transition-all select-none"
+                    title="Versión actual instalada. Clic para forzar actualización inmediata y limpiar caché."
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    v5.2.0
+                  </button>
                   <IndicadorModoOffline />
                 </div>
 

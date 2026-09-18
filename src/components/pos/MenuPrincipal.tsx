@@ -583,6 +583,19 @@ export function MenuPrincipal({
               <span className="text-xs font-black uppercase text-slate-800 tracking-wider">
                 SISTEMA POS
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.forzarActualizacionPOS) {
+                    window.forzarActualizacionPOS();
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 text-slate-700 text-[10px] font-black border border-slate-300 shadow-2xs cursor-pointer transition-all select-none"
+                title="Versión actual instalada. Clic para forzar actualización inmediata y limpiar caché."
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                v5.2.0
+              </button>
               <IndicadorModoOffline />
             </div>
           </div>
@@ -686,6 +699,17 @@ export function MenuPrincipal({
             <p className="text-xs md:text-sm font-medium text-slate-500 mt-1 max-w-md">
               Sistema Integral de Alquiler de Vestidos, Trajes y Punto de Venta.
             </p>
+
+            {/* Badge de Versión Activa y Estado */}
+            <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white border border-slate-200/90 text-xs font-bold text-slate-600 shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Versión: <strong className="text-slate-900 font-black">v5.2.0</strong></span>
+              <span className="text-slate-300">•</span>
+              <span className="text-emerald-700 font-extrabold">Build 2026.09.18</span>
+            </div>
           </div>
 
           {/* Botones Principales Centrales */}
