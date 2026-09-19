@@ -408,6 +408,15 @@ export function PuntoDeVenta() {
       const dEntrada = new Date(hoy + "T12:00:00");
       dEntrada.setDate(dEntrada.getDate() + 3);
 
+      let tipoAbono = "EN BODEGA";
+      if (apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) {
+        tipoAbono = "EN ALQUILER";
+      } else if (apartadoFactura.MODO === "VENTA" || apartadoFactura.ESTADOCLIENTE === "VENTA") {
+        tipoAbono = "VENTA";
+      } else {
+        tipoAbono = "EN BODEGA";
+      }
+
       const ticket = {
         caja: terminalConfig.nombreCaja || "SERVIDOR",
         cliente: apartadoFactura.CCLIENTE,
@@ -416,13 +425,14 @@ export function PuntoDeVenta() {
         telefono1: apartadoFactura.CTELEFONO || "1",
         telefono2: apartadoFactura.CTELEFONO1 || "1",
         formaPago: abonoTransNum > 0 ? abonoOtrasForma : "EFECTIVO",
-        tipo: nuevoSaldo === 0 ? "EN ALQUILER" : "EN BODEGA",
+        tipo: tipoAbono,
         cajero: cajero,
         recibo: apartadoFactura.NUMEROFACT,
         fecha: abonoFecha,
         items: apartadoItems,
         valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
         deposito: apartadoFactura.FTOTALDEPOSITO || 0,
+        totalAlqDep: apartadoTotalOperacion,
         saldoAnterior: apartadoSaldoRestante,
         recibiAbono: abonoTotalActual,
         saldo: nuevoSaldo,
@@ -1345,7 +1355,16 @@ export function PuntoDeVenta() {
           : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
-      const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
+      let tipoOperacion = "EN ALQUILER";
+      if (operacionSeleccionada === "APARTADO" || estadoTraje === "EN BODEGA") {
+        tipoOperacion = "EN BODEGA";
+      } else if (operacionSeleccionada === "VENTA" || estadoTraje === "VENTA") {
+        tipoOperacion = "VENTA";
+      } else if (operacionSeleccionada === "BONO" || estadoTraje === "BONO") {
+        tipoOperacion = "BONO";
+      } else {
+        tipoOperacion = "EN ALQUILER";
+      }
       const saldoRestante = Math.max(0, totalDepositoMasAlquiler - pagoReal);
       const fechaHoraActual = new Date().toLocaleString("es-CO", {
         day: "2-digit",
@@ -1401,7 +1420,16 @@ export function PuntoDeVenta() {
           : transNum > 0
           ? "TRANSFERENCIA"
           : "EFECTIVO";
-      const tipoOperacion = bAlquiler ? "ALQUILER" : "VENTA";
+      let tipoOperacion = "EN ALQUILER";
+      if (operacionSeleccionada === "APARTADO" || estadoTraje === "EN BODEGA") {
+        tipoOperacion = "EN BODEGA";
+      } else if (operacionSeleccionada === "VENTA" || estadoTraje === "VENTA") {
+        tipoOperacion = "VENTA";
+      } else if (operacionSeleccionada === "BONO" || estadoTraje === "BONO") {
+        tipoOperacion = "BONO";
+      } else {
+        tipoOperacion = "EN ALQUILER";
+      }
       const saldoRestante = Math.max(0, totalDepositoMasAlquiler - pagoReal);
       const fechaHoraActual = new Date().toLocaleString("es-CO", {
         day: "2-digit",

@@ -96,9 +96,17 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
   ) => {
     const totalCalculado = totalAlqDep ?? valorAlquiler + deposito;
     const saldoCalculado =
-      saldo !== undefined && saldo !== null && (saldo > 0 || (recibi || 0) >= totalCalculado)
-        ? saldo
+      saldo !== undefined && saldo !== null && !isNaN(Number(saldo))
+        ? Number(saldo)
         : Math.max(0, totalCalculado - (recibi || 0) - (descuento || 0));
+
+    const tipoMostrar =
+      tipo === "APARTADO" || tipo === "EN BODEGA"
+        ? "EN BODEGA"
+        : tipo === "ALQUILER"
+        ? "EN ALQUILER"
+        : tipo;
+
     const fechaHoraActual =
       fecha ||
       new Date().toLocaleString("es-CO", {
@@ -232,7 +240,7 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
             <span style={{ fontWeight: 700 }}>TIPO:</span>
-            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{tipo}</span>
+            <span style={{ fontWeight: 900, textTransform: "uppercase" }}>{tipoMostrar}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
             <span style={{ fontWeight: 700 }}>CAJERO:</span>
@@ -550,8 +558,12 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
 
 TicketFactura80mm.displayName = "TicketFactura80mm";
 
-// Helper universal para disparar impresión de tirilla 80mm de forma limpia y nítida
-export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo: string = "Recibo POS") {
+// Helper universal para disparar impresión de tirilla 80mm de forma limpia y nítida (por defecto 2 copias: Original y Copia)
+export function imprimirTicketPOS80mm(
+  ticketElement: HTMLElement | null,
+  titulo: string = "Recibo POS",
+  copias: number = 2
+) {
   if (!ticketElement) {
     window.print();
     return;
@@ -561,6 +573,31 @@ export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo:
   const printWindow = window.open("", "_blank", "width=450,height=750");
 
   if (printWindow) {
+    const cuerpoCopias =
+      copias === 2
+        ? `
+        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
+            *** ORIGINAL - CLIENTE ***
+          </div>
+          ${printContent}
+        </div>
+        <div style="text-align: center; font-size: 11px; margin: 14px 0 10px 0; border-top: 2px dashed #000000; padding-top: 8px; font-weight: 900; color: #000000;">
+          - - - - - - - - CORTAR AQUÍ - - - - - - - -
+        </div>
+        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+          <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
+            *** COPIA - CAJA / ARCHIVO ***
+          </div>
+          ${printContent}
+        </div>
+      `
+        : `
+        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+          ${printContent}
+        </div>
+      `;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -609,9 +646,7 @@ export function imprimirTicketPOS80mm(ticketElement: HTMLElement | null, titulo:
           </style>
         </head>
         <body>
-          <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
-            ${printContent}
-          </div>
+          ${cuerpoCopias}
           <script>
             window.onload = function() {
               setTimeout(function() {
