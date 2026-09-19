@@ -272,6 +272,110 @@ function liberarSemaforo(cajaId: string | number) {
 // PROCESAMIENTO DE LA COLA DE SINCRONIZACIÓN (SUBIDA A SUPABASE CON SEMÁFORO)
 // =========================================================================
 
+// Sets de validación de esquemas exactos para evitar errores PGRST204 de Supabase
+const COLUMNAS_FACTURA = new Set([
+  "NUMEROFACT",
+  "FECHASALIDA",
+  "FECHAENTRADA",
+  "FTOTALDEPOSITO",
+  "FTOTALVENTADEPOSITO",
+  "FORMAPAGO",
+  "MODO",
+  "VENDEDOR",
+  "CCLIENTE",
+  "CAMBIOS",
+  "PAGACON",
+  "AUTOMATIC",
+  "IDFCLIENTES",
+  "ESTADOCLIENTE",
+  "IDF_PAGO",
+  "CDIRECCION",
+  "CTELEFONO",
+  "CTELEFONO1",
+  "CEMPRESA",
+  "CCEDULA",
+  "GASTOS",
+  "PAGOCONEFECTIVO",
+  "PAGOCONTRANFERENCIA",
+  "FTOTALALQUILER",
+  "FPAGOTRANS",
+  "DESCUENTO",
+  "P_SALDO_EFECTIVO",
+  "P_SALDO_TRANFERENCIA",
+  "TOTAL_SALDO",
+  "FECHA_RECIBO",
+  "SALDOA_BONADO",
+  "FECHAINGRESO",
+  "ESTADOFIN",
+]);
+
+function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
+  if (!factura || typeof factura !== "object") return {};
+  const clean: Record<string, any> = {};
+  for (const [key, val] of Object.entries(factura)) {
+    if (COLUMNAS_FACTURA.has(key) && val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  if (!clean["NUMEROFACT"] && factura.NUMEROFACT) {
+    clean["NUMEROFACT"] = String(factura.NUMEROFACT);
+  }
+  return clean;
+}
+
+const COLUMNAS_CAMPOFACTURA = new Set([
+  "DESCRIPCION",
+  "CANTIDAD",
+  "VALOR",
+  "TOTAL",
+  "BARRAS",
+  "NUMEROFACT",
+  "IDFACTURA",
+  "VALORDEPOSITO",
+  "TOTALALQUILER",
+  "TOTALDEPOSITO",
+  "ES_ACCESORIO",
+  "ID_TRAJE_PADRE",
+  "PIEZAS_INCLUIDAS",
+]);
+
+function sanitizarItemCampoFactura(item: any): Record<string, any> {
+  if (!item || typeof item !== "object") return {};
+  const clean: Record<string, any> = {};
+  for (const [key, val] of Object.entries(item)) {
+    if (COLUMNAS_CAMPOFACTURA.has(key) && val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  return clean;
+}
+
+const COLUMNAS_CLIENTES = new Set([
+  "CEDULA",
+  "DIRECCION",
+  "TELEFONO",
+  "TELEFONO2",
+  "EMPRESA",
+  "DIRECCIONEMP",
+  "NOMBRE",
+  "SALDO",
+  "NOTA",
+]);
+
+function sanitizarClienteParaSupabase(cliente: any): Record<string, any> {
+  if (!cliente || typeof cliente !== "object") return {};
+  const clean: Record<string, any> = {};
+  for (const [key, val] of Object.entries(cliente)) {
+    if (COLUMNAS_CLIENTES.has(key) && val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  if (clean["CEDULA"] !== undefined) {
+    clean["CEDULA"] = Number(clean["CEDULA"]);
+  }
+  return clean;
+}
+
 /**
  * Procesa todas las operaciones que se hayan acumulado sin internet
  * y las inserta en Supabase en orden cronológico estricto respetando el semáforo.
@@ -311,27 +415,23 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
       try {
         if (item.tipo === "NUEVA_FACTURA") {
           const { factura, items } = item.datos;
+          const cleanFactura = sanitizarFacturaParaSupabase(factura);
 
-          // Asignar caja si no estaba presente
-          if (factura && !factura.CAJA) {
-            factura.CAJA = nombreCaja;
-          }
-
-          // 1. Insertar Factura con verificación segura para evitar 400 por onConflict no indexado
+          // 1. Insertar Factura con verificación segura para evitar 400 por onConflict o columnas inexistentes
+          const numFact = cleanFactura["NUMEROFACT"] || (factura as any)?.NUMEROFACT;
           const { data: factExistente } = await supabase
             .from("FACTURA" as any)
             .select("IDFACTURA")
-            .eq("NUMEROFACT", factura.NUMEROFACT)
+            .eq("NUMEROFACT", numFact)
             .maybeSingle();
 
           if (factExistente && (factExistente as any).IDFACTURA) {
             const { error: errFact } = await supabase
               .from("FACTURA" as any)
-              .update(factura)
+              .update(cleanFactura)
               .eq("IDFACTURA", (factExistente as any).IDFACTURA);
             if (errFact) throw errFact;
           } else {
-            const { IDFACTURA, ...cleanFactura } = factura;
             const { error: errFact } = await supabase
               .from("FACTURA" as any)
               .insert(cleanFactura);
@@ -340,9 +440,10 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
 
           // 2. Insertar Campos Factura (prendas)
           if (items && items.length > 0) {
+            const cleanItems = items.map(sanitizarItemCampoFactura);
             const { error: errItems } = await supabase
               .from("CAMPOFACTURA" as any)
-              .insert(items);
+              .insert(cleanItems);
             if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
           }
 
@@ -372,8 +473,8 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             await supabase
               .from("FACTURA" as any)
               .update({
-                TOTAL_SALDO: nuevoSaldo,
-                ESTADO: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
+                TOTAL_SALDO: Number(nuevoSaldo) || 0,
+                ESTADOCLIENTE: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
               })
               .eq("NUMEROFACT", facturaNumero);
           }
@@ -441,7 +542,8 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
           }
         } else if (item.tipo === "NUEVO_CLIENTE") {
           const { cliente } = item.datos;
-          const ced = Number(cliente.CEDULA) || 0;
+          const cleanCli = sanitizarClienteParaSupabase(cliente);
+          const ced = Number(cleanCli["CEDULA"]) || 0;
           if (ced > 0) {
             const { data: existenteCli } = await supabase
               .from("CLIENTES" as any)
@@ -452,10 +554,9 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             if (existenteCli && (existenteCli as any).IDCLIENTES) {
               await supabase
                 .from("CLIENTES" as any)
-                .update(cliente)
+                .update(cleanCli)
                 .eq("IDCLIENTES", (existenteCli as any).IDCLIENTES);
             } else {
-              const { IDCLIENTES, ...cleanCli } = cliente;
               await supabase
                 .from("CLIENTES" as any)
                 .insert(cleanCli);
