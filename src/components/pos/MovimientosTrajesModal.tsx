@@ -283,16 +283,7 @@ export function MovimientosTrajesModal({
               <button
                 type="button"
                 onClick={() => {
-                  const itemsList = (submoduloActivo === "POR_DEVOLVER"
-                    ? operacionesPorDevolver
-                    : submoduloActivo === "DEVUELTOS"
-                    ? operacionesDevueltos
-                    : submoduloActivo === "VENDIDOS"
-                    ? operacionesVendidos
-                    : submoduloActivo === "APARTADOS"
-                    ? operacionesApartados
-                    : operaciones
-                  ).slice(0, 50);
+                  const itemsList = operacionesFiltradas.slice(0, 50);
 
                   const htmlMovimientos = `
                     <div style="text-align: center; margin-bottom: 6px;">
@@ -326,7 +317,7 @@ export function MovimientosTrajesModal({
                       <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
                         LISTADO DE PRENDAS Y CLIENTES
                       </div>
-                      ${itemsList.map((op) => `
+                      ${itemsList.map((op: OperacionClienteMovimiento) => `
                         <div style="margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 4px;">
                           <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 900;">
                             <span>FACT: ${op.numeroFact}</span>
@@ -336,7 +327,7 @@ export function MovimientosTrajesModal({
                             ${op.clienteNombre} (${op.clienteTelefono || "S/T"})
                           </div>
                           <div style="margin-top: 2px; padding-left: 4px;">
-                            ${op.items.map((it) => `
+                            ${op.items.map((it: ItemMovimiento) => `
                               <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700;">
                                 <span>• ${it.cantidad}x ${it.descripcion} (${it.talla})</span>
                                 <span style="font-weight: 800;">Dep: $${it.valorDeposito.toLocaleString("es-CO")}</span>

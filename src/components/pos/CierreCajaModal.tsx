@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import { DollarSign, Printer, X, Calendar, Wallet, ArrowDownRight, ArrowUpRight, TrendingDown, CheckCircle, RefreshCw, FileSpreadsheet } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";

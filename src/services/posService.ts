@@ -250,7 +250,7 @@ export async function guardarCliente(cliente: Partial<Cliente>): Promise<Cliente
         .order("IDCLIENTES", { ascending: false })
         .limit(1);
 
-      const maxId = Number(maxRows?.[0]?.IDCLIENTES) || 0;
+      const maxId = Number((maxRows as any[])?.[0]?.IDCLIENTES) || 0;
       const resRetry = await supabase
         .from("CLIENTES" as any)
         .insert({ ...payloadCli, IDCLIENTES: maxId + 1 })
@@ -552,7 +552,7 @@ export async function guardarArticulo(articulo: Partial<Articulo>): Promise<Arti
           .order("IDARTICULO", { ascending: false })
           .limit(1);
 
-        const maxId = Number(maxRows?.[0]?.IDARTICULO) || 0;
+        const maxId = Number((maxRows as any[])?.[0]?.IDARTICULO) || 0;
         const nuevoId = maxId + 1;
 
         const resRetry = await supabase
@@ -929,7 +929,7 @@ export async function registrarAlquilerFactura(
 
     while (intentosGuardado < maxIntentos && !guardadoEnSupabase) {
       try {
-        cleanFacturaData.NUMEROFACT = sNumeroFactura;
+        cleanFacturaData["NUMEROFACT"] = sNumeroFactura;
         const { data: facturaRaw, error: errorFactura } = await supabase
           .from("FACTURA" as any)
           .insert(cleanFacturaData)

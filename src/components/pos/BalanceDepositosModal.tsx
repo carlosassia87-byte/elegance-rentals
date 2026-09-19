@@ -55,11 +55,16 @@ export function BalanceDepositosModal({
   const [operaciones, setOperaciones] = useState<OperacionClienteMovimiento[]>([]);
   const [metricas, setMetricas] = useState<ResumenMetricasMovimientos>({
     totalOperaciones: 0,
+    totalFacturasEnAlquiler: 0,
+    totalFacturasEntregadas: 0,
+    totalFacturasEnBodega: 0,
+    totalFacturasVenta: 0,
+    totalFacturasAnuladas: 0,
     totalPrendasEnAlquiler: 0,
-    totalPrendasDevueltas: 0,
+    totalPrendasEntregadas: 0,
     totalPrendasEnBodega: 0,
     totalPrendasVenta: 0,
-    totalPrendasApartadas: 0,
+    totalPrendasAnuladas: 0,
     totalDineroAlquiler: 0,
     totalDineroDepositos: 0,
     totalSaldoPorCobrar: 0,
