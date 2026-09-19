@@ -317,12 +317,26 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             factura.CAJA = nombreCaja;
           }
 
-          // 1. Insertar Factura con UPSERT protegido por número de factura único
-          const { error: errFact } = await supabase
+          // 1. Insertar Factura con verificación segura para evitar 400 por onConflict no indexado
+          const { data: factExistente } = await supabase
             .from("FACTURA" as any)
-            .upsert(factura, { onConflict: "NUMEROFACT" });
+            .select("IDFACTURA")
+            .eq("NUMEROFACT", factura.NUMEROFACT)
+            .maybeSingle();
 
-          if (errFact) throw errFact;
+          if (factExistente && (factExistente as any).IDFACTURA) {
+            const { error: errFact } = await supabase
+              .from("FACTURA" as any)
+              .update(factura)
+              .eq("IDFACTURA", (factExistente as any).IDFACTURA);
+            if (errFact) throw errFact;
+          } else {
+            const { IDFACTURA, ...cleanFactura } = factura;
+            const { error: errFact } = await supabase
+              .from("FACTURA" as any)
+              .insert(cleanFactura);
+            if (errFact && errFact.code !== "23505") throw errFact;
+          }
 
           // 2. Insertar Campos Factura (prendas)
           if (items && items.length > 0) {
@@ -374,8 +388,16 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                 VALOR: Number(montoNetoDevuelto),
                 FECHA: fecha || new Date().toISOString().split("T")[0],
               });
-            } catch (e) {
-              console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
+            } catch {
+              try {
+                await supabase.from("depositoentregado" as any).insert({
+                  NUMEROFACTURA: numeroFact,
+                  VALOR: Number(montoNetoDevuelto),
+                  FECHA: fecha || new Date().toISOString().split("T")[0],
+                });
+              } catch (e) {
+                console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
+              }
             }
           }
 
@@ -419,9 +441,26 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
           }
         } else if (item.tipo === "NUEVO_CLIENTE") {
           const { cliente } = item.datos;
-          await supabase
-            .from("CLIENTES" as any)
-            .upsert(cliente, { onConflict: "CEDULA" });
+          const ced = Number(cliente.CEDULA) || 0;
+          if (ced > 0) {
+            const { data: existenteCli } = await supabase
+              .from("CLIENTES" as any)
+              .select("IDCLIENTES")
+              .eq("CEDULA", ced)
+              .maybeSingle();
+
+            if (existenteCli && (existenteCli as any).IDCLIENTES) {
+              await supabase
+                .from("CLIENTES" as any)
+                .update(cliente)
+                .eq("IDCLIENTES", (existenteCli as any).IDCLIENTES);
+            } else {
+              const { IDCLIENTES, ...cleanCli } = cliente;
+              await supabase
+                .from("CLIENTES" as any)
+                .insert(cleanCli);
+            }
+          }
         }
 
         // Si se sincronizó correctamente, eliminar de la cola

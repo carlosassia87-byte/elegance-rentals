@@ -61,8 +61,12 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Ignorar métodos no GET o peticiones directas a Supabase
-  if (request.method !== "GET" || url.origin.includes("supabase.co")) {
+  // Ignorar esquemas no soportados por Cache Storage (chrome-extension, data, blob, etc.) o métodos no GET o peticiones directas a Supabase
+  if (
+    request.method !== "GET" ||
+    !url.protocol.startsWith("http") ||
+    url.origin.includes("supabase.co")
+  ) {
     return;
   }
 

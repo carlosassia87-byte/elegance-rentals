@@ -17,6 +17,7 @@ import {
   encolarOperacionOffline,
   guardarFacturasLote,
   guardarClientesLote,
+  guardarArticulosLote,
   obtenerTodosLosArticulosOffline,
   obtenerTodosLosClientesOffline,
 } from "./offlineDbService";
