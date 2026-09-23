@@ -895,31 +895,33 @@ export async function registrarAlquilerFactura(
       }
     } catch {}
 
+    const truncate = (val: any, maxLen = 50) => (val !== null && val !== undefined ? String(val).trim().slice(0, maxLen) : "");
+
     const cleanFacturaData: Record<string, any> = {
-      NUMEROFACT: sNumeroFactura,
-      FECHASALIDA: facturaData.FECHASALIDA || new Date().toISOString().split("T")[0],
-      FECHAENTRADA: facturaData.FECHAENTRADA || new Date().toISOString().split("T")[0],
+      NUMEROFACT: truncate(sNumeroFactura, 50),
+      FECHASALIDA: facturaData.FECHASALIDA ? String(facturaData.FECHASALIDA).split("T")[0] : new Date().toISOString().split("T")[0],
+      FECHAENTRADA: facturaData.FECHAENTRADA ? String(facturaData.FECHAENTRADA).split("T")[0] : new Date().toISOString().split("T")[0],
       FTOTALDEPOSITO: Number(facturaData.FTOTALDEPOSITO) || 0,
       FTOTALVENTADEPOSITO: Number(facturaData.FTOTALVENTADEPOSITO) || 0,
-      FORMAPAGO: facturaData.FORMAPAGO || "EFECTIVO",
-      MODO: facturaData.MODO || "ALQUILER",
-      VENDEDOR: facturaData.VENDEDOR || "ADMINISTRADOR",
-      CCLIENTE: (facturaData.CCLIENTE || "GENERAL").toUpperCase(),
+      FORMAPAGO: truncate(facturaData.FORMAPAGO || "EFECTIVO", 50),
+      MODO: truncate(facturaData.MODO || "ALQUILER", 50),
+      VENDEDOR: truncate(facturaData.VENDEDOR || "ADMINISTRADOR", 50),
+      CCLIENTE: truncate((facturaData.CCLIENTE || "GENERAL").toUpperCase(), 50),
       CAMBIOS: Number(facturaData.CAMBIOS) || 0,
       PAGACON: Number(facturaData.PAGACON) || 0,
-      ESTADOCLIENTE: facturaData.ESTADOCLIENTE || "EN ALQUILER",
-      CDIRECCION: facturaData.CDIRECCION || "",
-      CTELEFONO: facturaData.CTELEFONO || "",
-      CTELEFONO1: facturaData.CTELEFONO1 || "",
-      CEMPRESA: facturaData.CEMPRESA || "",
-      CCEDULA: String(facturaData.CCEDULA || ""),
+      ESTADOCLIENTE: truncate(facturaData.ESTADOCLIENTE || "EN ALQUILER", 50),
+      CDIRECCION: truncate(facturaData.CDIRECCION || "", 50),
+      CTELEFONO: truncate(facturaData.CTELEFONO || "", 50),
+      CTELEFONO1: truncate(facturaData.CTELEFONO1 || "", 50),
+      CEMPRESA: truncate(facturaData.CEMPRESA || "", 50),
+      CCEDULA: truncate(String(facturaData.CCEDULA || ""), 50),
       PAGOCONEFECTIVO: Number(facturaData.PAGOCONEFECTIVO) || 0,
       PAGOCONTRANFERENCIA: Number(facturaData.PAGOCONTRANFERENCIA) || 0,
       FTOTALALQUILER: Number(facturaData.FTOTALALQUILER) || 0,
-      FPAGOTRANS: facturaData.FPAGOTRANS || "",
+      FPAGOTRANS: truncate(facturaData.FPAGOTRANS || "", 50),
       DESCUENTO: Number(facturaData.DESCUENTO) || 0,
       TOTAL_SALDO: Number(facturaData.TOTAL_SALDO) || 0,
-      FECHA_RECIBO: facturaData.FECHA_RECIBO || new Date().toISOString().split("T")[0],
+      FECHA_RECIBO: facturaData.FECHA_RECIBO ? String(facturaData.FECHA_RECIBO).split("T")[0] : new Date().toISOString().split("T")[0],
     };
 
     let facturaInsertada: Factura | null = null;
@@ -968,19 +970,19 @@ export async function registrarAlquilerFactura(
 
     // 4. Insertar los ítems en CAMPOFACTURA en Supabase (sin AUTOMATIC para permitir auto-serial de PostgreSQL)
     const camposParaSupabase = items.map((item) => ({
-      DESCRIPCION: item.DESCRIPCION || "",
+      DESCRIPCION: truncate(item.DESCRIPCION || "", 300),
       CANTIDAD: Number(item.CANTIDAD) || 1,
       VALOR: Number(item.VALOR) || 0,
       TOTAL: Number(item.TOTAL) || 0,
-      BARRAS: item.BARRAS || "0",
-      NUMEROFACT: sNumeroFactura,
+      BARRAS: truncate(item.BARRAS || "0", 50),
+      NUMEROFACT: truncate(sNumeroFactura, 50),
       IDFACTURA: Number(facturaInsertada.IDFACTURA) || Date.now(),
       VALORDEPOSITO: Number(item.VALORDEPOSITO) || 0,
       TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
       TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
       ES_ACCESORIO: Boolean((item as any).ES_ACCESORIO),
-      ID_TRAJE_PADRE: (item as any).ID_TRAJE_PADRE || "",
-      PIEZAS_INCLUIDAS: (item as any).PIEZAS_INCLUIDAS || "",
+      ID_TRAJE_PADRE: truncate((item as any).ID_TRAJE_PADRE || "", 50),
+      PIEZAS_INCLUIDAS: truncate((item as any).PIEZAS_INCLUIDAS || "", 500),
     }));
 
     try {

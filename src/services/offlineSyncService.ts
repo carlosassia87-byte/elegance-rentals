@@ -342,7 +342,7 @@ function liberarSemaforo(cajaId: string | number) {
 // PROCESAMIENTO DE LA COLA DE SINCRONIZACIÓN (SUBIDA A SUPABASE CON SEMÁFORO)
 // =========================================================================
 
-// Sets de validación de esquemas exactos para evitar errores PGRST204 de Supabase
+// Sets de validación de esquemas exactos para evitar errores PGRST204 y 22001 de Supabase
 const COLUMNAS_FACTURA = new Set([
   "NUMEROFACT",
   "FECHASALIDA",
@@ -378,16 +378,63 @@ const COLUMNAS_FACTURA = new Set([
   "FECHAINGRESO",
 ]);
 
+const VARCHAR_50_FACTURA = new Set([
+  "NUMEROFACT",
+  "FORMAPAGO",
+  "MODO",
+  "VENDEDOR",
+  "CCLIENTE",
+  "ESTADOCLIENTE",
+  "CDIRECCION",
+  "CTELEFONO",
+  "CTELEFONO1",
+  "CEMPRESA",
+  "CCEDULA",
+  "GASTOS",
+  "FPAGOTRANS",
+]);
+
+const NUMERIC_FACTURA = new Set([
+  "FTOTALDEPOSITO",
+  "FTOTALVENTADEPOSITO",
+  "CAMBIOS",
+  "PAGACON",
+  "PAGOCONEFECTIVO",
+  "PAGOCONTRANFERENCIA",
+  "FTOTALALQUILER",
+  "DESCUENTO",
+  "P_SALDO_EFECTIVO",
+  "P_SALDO_TRANFERENCIA",
+  "TOTAL_SALDO",
+  "SALDOA_BONADO",
+]);
+
+const BIGINT_FACTURA = new Set([
+  "AUTOMATIC",
+  "IDFCLIENTES",
+  "IDF_PAGO",
+]);
+
 function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
   if (!factura || typeof factura !== "object") return {};
   const clean: Record<string, any> = {};
   for (const [key, val] of Object.entries(factura)) {
-    if (COLUMNAS_FACTURA.has(key) && val !== undefined) {
+    if (!COLUMNAS_FACTURA.has(key) || val === undefined) continue;
+
+    if (VARCHAR_50_FACTURA.has(key)) {
+      clean[key] = val !== null ? String(val).trim().slice(0, 50) : null;
+    } else if (NUMERIC_FACTURA.has(key)) {
+      clean[key] = val !== null ? Number(val) || 0 : 0;
+    } else if (BIGINT_FACTURA.has(key)) {
+      clean[key] = val !== null ? Math.floor(Number(val) || 0) : 0;
+    } else if (key.startsWith("FECHA")) {
+      clean[key] = val ? String(val).split("T")[0] : null;
+    } else {
       clean[key] = val;
     }
   }
   if (!clean["NUMEROFACT"] && factura.NUMEROFACT) {
-    clean["NUMEROFACT"] = String(factura.NUMEROFACT);
+    clean["NUMEROFACT"] = String(factura.NUMEROFACT).trim().slice(0, 50);
   }
   return clean;
 }
@@ -408,11 +455,27 @@ const COLUMNAS_CAMPOFACTURA = new Set([
   "PIEZAS_INCLUIDAS",
 ]);
 
+const VARCHAR_50_CAMPOFACTURA = new Set(["BARRAS", "NUMEROFACT", "ID_TRAJE_PADRE"]);
+
 function sanitizarItemCampoFactura(item: any): Record<string, any> {
   if (!item || typeof item !== "object") return {};
   const clean: Record<string, any> = {};
   for (const [key, val] of Object.entries(item)) {
-    if (COLUMNAS_CAMPOFACTURA.has(key) && val !== undefined) {
+    if (!COLUMNAS_CAMPOFACTURA.has(key) || val === undefined) continue;
+
+    if (key === "DESCRIPCION") {
+      clean[key] = val !== null ? String(val).trim().slice(0, 300) : "";
+    } else if (key === "PIEZAS_INCLUIDAS") {
+      clean[key] = val !== null ? String(val).trim().slice(0, 500) : "";
+    } else if (VARCHAR_50_CAMPOFACTURA.has(key)) {
+      clean[key] = val !== null ? String(val).trim().slice(0, 50) : "";
+    } else if (["CANTIDAD", "VALOR", "TOTAL", "VALORDEPOSITO", "TOTALALQUILER", "TOTALDEPOSITO"].includes(key)) {
+      clean[key] = Number(val) || 0;
+    } else if (key === "IDFACTURA") {
+      clean[key] = Math.floor(Number(val) || 0);
+    } else if (key === "ES_ACCESORIO") {
+      clean[key] = Boolean(val);
+    } else {
       clean[key] = val;
     }
   }
@@ -435,12 +498,21 @@ function sanitizarClienteParaSupabase(cliente: any): Record<string, any> {
   if (!cliente || typeof cliente !== "object") return {};
   const clean: Record<string, any> = {};
   for (const [key, val] of Object.entries(cliente)) {
-    if (COLUMNAS_CLIENTES.has(key) && val !== undefined) {
+    if (!COLUMNAS_CLIENTES.has(key) || val === undefined) continue;
+
+    if (key === "CEDULA") {
+      clean[key] = Number(val) || 0;
+    } else if (key === "SALDO") {
+      clean[key] = Number(val) || 0;
+    } else if (key === "NOTA") {
+      clean[key] = val !== null ? String(val).trim().slice(0, 2000) : "";
+    } else if (["DIRECCION", "DIRECCIONEMP", "NOMBRE"].includes(key)) {
+      clean[key] = val !== null ? String(val).trim().slice(0, 200) : "";
+    } else if (["TELEFONO", "TELEFONO2", "EMPRESA"].includes(key)) {
+      clean[key] = val !== null ? String(val).trim().slice(0, 50) : "";
+    } else {
       clean[key] = val;
     }
-  }
-  if (clean["CEDULA"] !== undefined) {
-    clean["CEDULA"] = Number(clean["CEDULA"]);
   }
   return clean;
 }
