@@ -560,21 +560,24 @@ TicketFactura80mm.displayName = "TicketFactura80mm";
 
 // Helper universal para disparar impresión de tirilla 80mm de forma limpia, nítida y siempre en primer plano
 function ejecutarImpresionEnIframe(htmlCompleto: string) {
-  let iframe = document.getElementById("pos-print-iframe") as HTMLIFrameElement;
-  if (!iframe) {
-    iframe = document.createElement("iframe");
-    iframe.id = "pos-print-iframe";
-    iframe.name = "pos-print-iframe";
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    iframe.style.visibility = "hidden";
-    iframe.style.zIndex = "-9999";
-    document.body.appendChild(iframe);
+  // Eliminar iframe previo si existe para evitar conflictos de contexto o traps de foco
+  const prevIframe = document.getElementById("pos-print-iframe");
+  if (prevIframe) {
+    prevIframe.remove();
   }
+
+  const iframe = document.createElement("iframe");
+  iframe.id = "pos-print-iframe";
+  iframe.name = "pos-print-iframe";
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
+  iframe.style.zIndex = "-9999";
+  document.body.appendChild(iframe);
 
   const iframeWin = iframe.contentWindow;
   const iframeDoc = iframeWin?.document || iframe.contentDocument;
@@ -591,14 +594,22 @@ function ejecutarImpresionEnIframe(htmlCompleto: string) {
       } catch (err) {
         console.warn("Fallo en impresión por iframe, fallback a window.print:", err);
         window.print();
+      } finally {
+        setTimeout(() => {
+          try {
+            iframe.remove();
+          } catch {}
+          window.focus();
+          document.body.style.pointerEvents = "auto";
+        }, 600);
       }
     };
 
     if (iframeDoc.readyState === "complete") {
-      setTimeout(ejecutarPrint, 200);
+      setTimeout(ejecutarPrint, 250);
     } else {
       iframeWin.onload = () => {
-        setTimeout(ejecutarPrint, 200);
+        setTimeout(ejecutarPrint, 250);
       };
     }
   } else {

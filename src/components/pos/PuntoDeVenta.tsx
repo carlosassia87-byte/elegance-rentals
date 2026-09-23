@@ -3954,20 +3954,26 @@ export function PuntoDeVenta() {
                   type="button"
                   onClick={() => {
                     setModalImprimirAbono80mm(false);
+                    setTicketAbonoData(null);
                     handleLimpiar(true);
                   }}
-                  className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 transition-all"
+                  className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95"
                 >
                   Cerrar
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    imprimirTicketPOS80mm(ticketAbonoRef.current, `Recibo-Abono-${ticketAbonoData.recibo}`);
+                    const ticketEl = ticketAbonoRef.current;
+                    const reciboNum = ticketAbonoData.recibo;
                     setModalImprimirAbono80mm(false);
+                    setTicketAbonoData(null);
                     handleLimpiar(true);
+                    setTimeout(() => {
+                      imprimirTicketPOS80mm(ticketEl, `Recibo-Abono-${reciboNum}`);
+                    }, 50);
                   }}
-                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm transition-all"
+                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
                 >
                   <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
                 </button>
@@ -3985,11 +3991,24 @@ export function PuntoDeVenta() {
         onOpenChange={(open) => {
           setModalImprimir(open);
           if (!open) {
+            setTicketReciboVenta(null);
             handleLimpiar(true);
           }
         }}
       >
-        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh]">
+        <DialogContent
+          onPointerDownOutside={() => {
+            setModalImprimir(false);
+            setTicketReciboVenta(null);
+            handleLimpiar(true);
+          }}
+          onEscapeKeyDown={() => {
+            setModalImprimir(false);
+            setTicketReciboVenta(null);
+            handleLimpiar(true);
+          }}
+          className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] z-[99999]"
+        >
           {ticketReciboVenta && (
             <div className="space-y-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 border border-slate-200 overflow-y-auto max-h-[65vh] flex justify-center">
@@ -4030,20 +4049,26 @@ export function PuntoDeVenta() {
                   type="button"
                   onClick={() => {
                     setModalImprimir(false);
+                    setTicketReciboVenta(null);
                     handleLimpiar(true);
                   }}
-                  className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300"
+                  className="rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95"
                 >
                   Cerrar
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    imprimirTicketPOS80mm(ticketVentaRef.current, `Recibo-${ticketReciboVenta.numeroRecibo}`);
+                    const ticketEl = ticketVentaRef.current;
+                    const numRecibo = ticketReciboVenta.numeroRecibo;
                     setModalImprimir(false);
+                    setTicketReciboVenta(null);
                     handleLimpiar(true);
+                    setTimeout(() => {
+                      imprimirTicketPOS80mm(ticketEl, `Recibo-${numRecibo}`);
+                    }, 50);
                   }}
-                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm"
+                  className="rounded-xl bg-slate-900 hover:bg-black px-5 py-2 text-xs font-black text-white flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
                 >
                   <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Recibo 80mm
                 </button>
