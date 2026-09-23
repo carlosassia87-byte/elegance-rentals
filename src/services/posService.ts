@@ -50,7 +50,7 @@ export function invalidarCacheClientes() {
   _mapClientesPorCedula.clear();
 }
 
-function indexarArticulosEnMemoria(arts: Articulo[]) {
+export function indexarArticulosEnMemoria(arts: Articulo[]) {
   _cacheArticulos = arts;
   _cacheArticulosTimestamp = Date.now();
   _mapArticulosPorBarras.clear();
@@ -66,7 +66,7 @@ function indexarArticulosEnMemoria(arts: Articulo[]) {
   }
 }
 
-function indexarClientesEnMemoria(clis: Cliente[]) {
+export function indexarClientesEnMemoria(clis: Cliente[]) {
   _cacheClientes = clis;
   _cacheClientesTimestamp = Date.now();
   _mapClientesPorCedula.clear();

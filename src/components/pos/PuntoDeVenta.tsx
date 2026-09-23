@@ -504,6 +504,14 @@ export function PuntoDeVenta() {
       setCajero(sesion.usuario.nombre);
       setVistaActiva("menu");
     }
+
+    const handleDatosSincronizados = () => {
+      cargarArticulos(true);
+    };
+    window.addEventListener("pos_datos_sincronizados", handleDatosSincronizados);
+    return () => {
+      window.removeEventListener("pos_datos_sincronizados", handleDatosSincronizados);
+    };
   }, []);
 
   // Sincronizar y actualizar automáticamente el consecutivo siempre que se ingrese al POS o cambie la caja

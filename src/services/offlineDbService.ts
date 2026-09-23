@@ -9,7 +9,8 @@ const DB_VERSION = 1;
 
 export interface OfflineArticulo {
   IDARTICULO: number;
-  BARRAS: string;
+  BARRAS?: string;
+  CODBARRAS?: string;
   DESCRIPCION: string;
   TALLA?: string;
   VALORALQUILER?: number;
@@ -21,6 +22,7 @@ export interface OfflineArticulo {
   COLOR?: string;
   CATEGORIA?: string;
   FOTO?: string;
+  STOCK?: number;
   [key: string]: any;
 }
 
@@ -108,8 +110,13 @@ export interface ConsecutivoReserva {
   fechaReserva: string;
 }
 
-// Abrir la base de datos IndexedDB
+// Abrir la base de datos IndexedDB con persistencia garantizada en disco
 export function openDB(): Promise<IDBDatabase> {
+  // Solicitar almacenamiento persistente al navegador/SO para que nunca lo borre
+  if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
+
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       return reject(new Error("IndexedDB no está disponible en este entorno"));
@@ -186,7 +193,12 @@ export async function guardarArticulosLote(articulos: OfflineArticulo[]): Promis
     const store = tx.objectStore("articulos");
     for (const art of articulos) {
       if (art && art.IDARTICULO) {
-        store.put(art);
+        const cod = (art.CODBARRAS || art.BARRAS || "").trim().toUpperCase();
+        store.put({
+          ...art,
+          BARRAS: cod,
+          CODBARRAS: cod,
+        });
       }
     }
     tx.oncomplete = () => resolve();
@@ -301,13 +313,30 @@ export async function obtenerTodasLasFacturasOffline(): Promise<OfflineFactura[]
 
 export async function buscarArticuloPorBarrasOffline(codigoBarras: string): Promise<OfflineArticulo | null> {
   if (!codigoBarras) return null;
+  const clean = codigoBarras.trim().toUpperCase();
   const db = await openDB();
   return new Promise((resolve) => {
     const tx = db.transaction("articulos", "readonly");
     const store = tx.objectStore("articulos");
     const index = store.index("by_barras");
-    const req = index.get(codigoBarras.trim());
-    req.onsuccess = () => resolve(req.result || null);
+    const req = index.get(clean);
+    req.onsuccess = () => {
+      if (req.result) {
+        resolve(req.result);
+      } else {
+        const getAllReq = store.getAll();
+        getAllReq.onsuccess = () => {
+          const all = (getAllReq.result || []) as OfflineArticulo[];
+          const match = all.find(
+            (a) =>
+              (a.CODBARRAS && a.CODBARRAS.trim().toUpperCase() === clean) ||
+              (a.BARRAS && a.BARRAS.trim().toUpperCase() === clean)
+          );
+          resolve(match || null);
+        };
+        getAllReq.onerror = () => resolve(null);
+      }
+    };
     req.onerror = () => resolve(null);
   });
 }

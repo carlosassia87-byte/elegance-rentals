@@ -21,6 +21,8 @@ import {
   OfflineAbono,
   SyncQueueItem,
 } from "./offlineDbService";
+import { indexarArticulosEnMemoria, indexarClientesEnMemoria } from "./posService";
+import { saveLocalAccesorios } from "./accesoriosService";
 
 export interface SyncState {
   isOnline: boolean;
@@ -55,35 +57,80 @@ export function subscribeSyncState(listener: SyncListener): () => void {
 // PRECARGA INTELIGENTE Y ACTUALIZACIÓN EN SEGUNDO PLANO
 // =========================================================================
 
+// Función auxiliar para descargar tablas completas con paginación automática (superando límite de 1000 de Supabase)
+async function descargarTablaPaginada(
+  nombreTabla: string,
+  ordenColumna = "ID" + nombreTabla,
+  batchSize = 1000,
+  maxLimite = 50000
+): Promise<any[]> {
+  const todos: any[] = [];
+  let from = 0;
+
+  while (from < maxLimite) {
+    const to = from + batchSize - 1;
+    let query = supabase.from(nombreTabla as any).select("*").range(from, to);
+
+    try {
+      query = query.order(ordenColumna, { ascending: true });
+    } catch {}
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn(`Aviso descargando ${nombreTabla} (bloque ${from}-${to}):`, error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+
+    todos.push(...data);
+    if (data.length < batchSize) break;
+    from += batchSize;
+  }
+
+  return todos;
+}
+
 /**
- * Descarga y refresca los artículos, clientes y facturas recientes en IndexedDB.
- * Se ejecuta en segundo plano cuando hay conexión sin congelar la UI.
+ * Descarga y refresca los artículos, clientes, accesorios y facturas recientes en IndexedDB y memoria RAM.
+ * Se ejecuta automáticamente al iniciar la PWA y en segundo plano sin congelar la interfaz.
  */
 export async function precargarDatosOffline(forzarCompleto = false): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
   try {
-    // 1. Descargar catálogo de Artículos
-    const { data: articulos, error: errArt } = await supabase
-      .from("ARTICULO" as any)
-      .select("*")
-      .limit(5000);
+    currentState = {
+      ...currentState,
+      isSyncing: true,
+    };
+    notifyListeners();
 
-    if (!errArt && articulos && articulos.length > 0) {
+    // 1. Descargar catálogo COMPLETO de Artículos con paginación (supera el límite de 1000)
+    const articulos = await descargarTablaPaginada("ARTICULO", "IDARTICULO", 1000, 50000);
+    if (articulos && articulos.length > 0) {
       await guardarArticulosLote(articulos as unknown as OfflineArticulo[]);
+      try {
+        indexarArticulosEnMemoria(articulos as any);
+      } catch {}
     }
 
-    // 2. Descargar Clientes
-    const { data: clientes, error: errCli } = await supabase
-      .from("CLIENTES" as any)
-      .select("*")
-      .limit(10000);
-
-    if (!errCli && clientes && clientes.length > 0) {
+    // 2. Descargar catálogo COMPLETO de Clientes con paginación
+    const clientes = await descargarTablaPaginada("CLIENTES", "IDCLIENTES", 1000, 50000);
+    if (clientes && clientes.length > 0) {
       await guardarClientesLote(clientes as unknown as OfflineCliente[]);
+      try {
+        indexarClientesEnMemoria(clientes as any);
+      } catch {}
     }
 
-    // 3. Descargar Facturas de los últimos 60 días o pendientes
+    // 3. Descargar catálogo COMPLETO de Accesorios
+    const accesorios = await descargarTablaPaginada("ACCESORIOS", "IDACCESORIO", 1000, 10000);
+    if (accesorios && accesorios.length > 0) {
+      try {
+        saveLocalAccesorios(accesorios);
+      } catch {}
+    }
+
+    // 4. Descargar Facturas de los últimos 60 días o pendientes
     const hace60Dias = new Date();
     hace60Dias.setDate(hace60Dias.getDate() - 60);
     const fechaStr = hace60Dias.toISOString().split("T")[0];
@@ -92,29 +139,33 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       .from("FACTURA" as any)
       .select("*")
       .gte("FECHASALIDA", fechaStr)
+      .order("IDFACTURA", { ascending: false })
       .limit(3000);
 
     if (!errFact && facturas && facturas.length > 0) {
       const numFacts = (facturas as any[]).map((f) => f.NUMEROFACT).filter(Boolean);
 
-      // Descargar items relacionados
-      let camposFactura: OfflineCampoFactura[] = [];
-      if (numFacts.length > 0) {
+      // Descargar items relacionados por bloques de 80 para no saturar URL
+      const camposFactura: OfflineCampoFactura[] = [];
+      const CHUNK_SIZE = 80;
+      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
+        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
         const { data: campos } = await supabase
           .from("CAMPOFACTURA" as any)
           .select("*")
-          .in("NUMEROFACT", numFacts.slice(0, 500));
-        if (campos) camposFactura = campos as unknown as OfflineCampoFactura[];
+          .in("NUMEROFACT", chunk);
+        if (campos) camposFactura.push(...(campos as unknown as OfflineCampoFactura[]));
       }
 
       // Descargar abonos relacionados
-      let abonosFactura: OfflineAbono[] = [];
-      if (numFacts.length > 0) {
+      const abonosFactura: OfflineAbono[] = [];
+      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
+        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
         const { data: abonos } = await supabase
           .from("ABONO_CLIENTE" as any)
           .select("*")
-          .in("AFACTURA", numFacts.slice(0, 500));
-        if (abonos) abonosFactura = abonos as unknown as OfflineAbono[];
+          .in("AFACTURA", chunk);
+        if (abonos) abonosFactura.push(...(abonos as unknown as OfflineAbono[]));
       }
 
       await guardarFacturasLote(
@@ -124,19 +175,38 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       );
     }
 
-    // 4. Asegurar bloque de reserva de consecutivos para emergencias offline
+    // 5. Asegurar bloque de reserva de consecutivos para emergencias offline
     await renovarBloqueConsecutivosOffline();
 
-    // Actualizar conteo de pendientes
+    // Actualizar conteo de pendientes y estado final
     const pendientes = await contarItemsPendientesSincronizar();
     currentState = {
       ...currentState,
+      isSyncing: false,
       pendingCount: pendientes,
       lastSyncTime: new Date(),
     };
     notifyListeners();
+
+    // Notificar globalmente a las vistas (POS, Modales, Catálogo) para refrescar datos en vivo
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pos_datos_sincronizados", {
+          detail: {
+            articulosCount: articulos.length,
+            clientesCount: clientes.length,
+            timestamp: Date.now(),
+          },
+        })
+      );
+    }
   } catch (err) {
     console.warn("Fallo durante la precarga offline:", err);
+    currentState = {
+      ...currentState,
+      isSyncing: false,
+    };
+    notifyListeners();
   }
 }
 
