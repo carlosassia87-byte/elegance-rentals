@@ -693,14 +693,18 @@ export async function anularFacturaOperacion(
 
     // 1. Actualizar estado en Supabase
     try {
-      await supabase
+      const { error: errUpdate } = await supabase
         .from("FACTURA" as any)
         .update({
-          ESTADO: "ANULADA",
           ESTADOCLIENTE: "ANULADO",
+          MODO: "ANULADO",
           GASTOS: motivo.slice(0, 50),
         })
         .eq("NUMEROFACT", numClean);
+
+      if (errUpdate) {
+        console.warn("Aviso actualizando FACTURA en Supabase:", errUpdate.message);
+      }
 
       // 1.1 Reponer el stock de los artículos en Supabase
       const { data: itemsDb } = await supabase
@@ -741,7 +745,6 @@ export async function anularFacturaOperacion(
                   .from("ARTICULO" as any)
                   .update({
                     STOCK: stockActual + cant,
-                    DISPONIBLE: true,
                   })
                   .eq("IDARTICULO", (art as any).IDARTICULO);
               }
