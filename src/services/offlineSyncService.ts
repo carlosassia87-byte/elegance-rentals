@@ -487,7 +487,10 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
           const { factura, items } = item.datos;
           const cleanFactura = sanitizarFacturaParaSupabase(factura);
 
-          // 1. Insertar Factura con verificación segura para evitar 400 por onConflict o columnas inexistentes
+          // Remover identificadores de cliente temporales
+          delete cleanFactura["AUTOMATIC"];
+          delete cleanFactura["IDCAMPOSFACTURA"];
+
           const numFact = cleanFactura["NUMEROFACT"] || (factura as any)?.NUMEROFACT;
           const { data: factExistente } = await supabase
             .from("FACTURA" as any)
@@ -495,22 +498,48 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             .eq("NUMEROFACT", numFact)
             .maybeSingle();
 
+          let realIdFactura: number | null = null;
+
           if (factExistente && (factExistente as any).IDFACTURA) {
+            realIdFactura = Number((factExistente as any).IDFACTURA);
             const { error: errFact } = await supabase
               .from("FACTURA" as any)
               .update(cleanFactura)
-              .eq("IDFACTURA", (factExistente as any).IDFACTURA);
+              .eq("IDFACTURA", realIdFactura);
             if (errFact) throw errFact;
           } else {
-            const { error: errFact } = await supabase
+            delete cleanFactura["IDFACTURA"];
+            const { data: factCreada, error: errFact } = await supabase
               .from("FACTURA" as any)
-              .insert(cleanFactura);
+              .insert(cleanFactura)
+              .select("IDFACTURA")
+              .maybeSingle();
+
             if (errFact && errFact.code !== "23505") throw errFact;
+            if (factCreada && (factCreada as any).IDFACTURA) {
+              realIdFactura = Number((factCreada as any).IDFACTURA);
+            }
           }
 
           // 2. Insertar Campos Factura (prendas)
           if (items && items.length > 0) {
-            const cleanItems = items.map(sanitizarItemCampoFactura);
+            const cleanItems = items.map((it: any) => {
+              const sanitized = sanitizarItemCampoFactura(it);
+              delete sanitized["AUTOMATIC"];
+              delete sanitized["IDCAMPOSFACTURA"];
+              sanitized["NUMEROFACT"] = numFact;
+              if (realIdFactura) {
+                sanitized["IDFACTURA"] = realIdFactura;
+              }
+              return sanitized;
+            });
+
+            // Limpiar duplicados previos del mismo número antes de reinsertar
+            await supabase
+              .from("CAMPOFACTURA" as any)
+              .delete()
+              .eq("NUMEROFACT", numFact);
+
             const { error: errItems } = await supabase
               .from("CAMPOFACTURA" as any)
               .insert(cleanItems);
@@ -697,24 +726,33 @@ export function inicializarDetectorOffline(): void {
 
   const verificarEstadoInmediato = async () => {
     const hayInternet = await probarConectividadReal();
-    const cambioEstado = hayInternet !== currentState.isOnline;
+    const cambioAOnline = hayInternet && !currentState.isOnline;
+    currentState.isOnline = hayInternet;
 
-    if (cambioEstado) {
-      currentState.isOnline = hayInternet;
-      if (!hayInternet) {
-        currentState.pendingCount = await contarItemsPendientesSincronizar();
-        notifyListeners();
-      } else {
-        notifyListeners();
-        // Si regresó la red, sincronizar automáticamente
-        procesarColaSincronizacion();
-        precargarDatosOffline();
+    const pendientes = await contarItemsPendientesSincronizar();
+    currentState.pendingCount = pendientes;
+    notifyListeners();
+
+    if (hayInternet && (cambioAOnline || pendientes > 0)) {
+      if (!currentState.isSyncing) {
+        procesarColaSincronizacion(true).then((res) => {
+          if (res.exitosas > 0) {
+            precargarDatosOffline();
+          }
+        });
       }
     }
   };
 
   const handleOnline = async () => {
+    currentState.isOnline = true;
+    notifyListeners();
     await verificarEstadoInmediato();
+    procesarColaSincronizacion(true).then((res) => {
+      if (res.exitosas > 0) {
+        precargarDatosOffline();
+      }
+    });
   };
 
   const handleOffline = async () => {
@@ -726,17 +764,18 @@ export function inicializarDetectorOffline(): void {
   window.addEventListener("online", handleOnline);
   window.addEventListener("offline", handleOffline);
 
-  // Verificación periódica silenciosa cada 15 segundos
-  setInterval(verificarEstadoInmediato, 15000);
+  // Verificación periódica activa cada 10 segundos
+  setInterval(verificarEstadoInmediato, 10000);
 
-  // Precarga inicial al abrir la aplicación
+  // Precarga y sincronización inmediata al abrir la aplicación
   setTimeout(async () => {
     await verificarEstadoInmediato();
     if (currentState.isOnline) {
-      precargarDatosOffline();
-      procesarColaSincronizacion(true);
+      procesarColaSincronizacion(true).then(() => {
+        precargarDatosOffline();
+      });
     }
-  }, 1000);
+  }, 500);
 }
 
 // Auto-inicialización global inmediata al importar el módulo
