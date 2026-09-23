@@ -541,9 +541,9 @@ export async function marcarTrajeDevuelto(
       }
     } catch {}
 
-    // Registrar en DEPOSITOENTREGADO si corresponde
+    // Registrar en depositoentregado si corresponde
     try {
-      await supabase.from("DEPOSITOENTREGADO" as any).insert({
+      await supabase.from("depositoentregado" as any).insert({
         NUMEROFACTURA: numeroFact,
         VALOR: 0,
         FECHA: new Date().toISOString(),

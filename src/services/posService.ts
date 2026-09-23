@@ -1206,7 +1206,7 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
     let totalDevuelto = 0;
     try {
       const { data: depsRaw } = await supabase
-        .from("DEPOSITOENTREGADO" as any)
+        .from("depositoentregado" as any)
         .select("*")
         .eq("NUMEROFACTURA", facturaEncontrada.NUMEROFACT);
       if (depsRaw && depsRaw.length > 0) {
@@ -1446,7 +1446,7 @@ export async function registrarDevolucionVestido(params: {
 
     try {
       const { data, error } = await supabase
-        .from("DEPOSITOENTREGADO" as any)
+        .from("depositoentregado" as any)
         .insert(depData)
         .select()
         .single();

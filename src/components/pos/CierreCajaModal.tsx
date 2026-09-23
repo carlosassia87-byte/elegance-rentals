@@ -144,7 +144,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       let depDevueltos = 0;
       try {
         const { data: deps } = await supabase
-          .from("DEPOSITOENTREGADO" as any)
+          .from("depositoentregado" as any)
           .select("*")
           .eq("FECHA", fecha);
 

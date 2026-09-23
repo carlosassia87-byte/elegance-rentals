@@ -376,7 +376,6 @@ const COLUMNAS_FACTURA = new Set([
   "FECHA_RECIBO",
   "SALDOA_BONADO",
   "FECHAINGRESO",
-  "ESTADOFIN",
 ]);
 
 function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
@@ -546,16 +545,27 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
           }
 
-          // 3. Actualizar estado de artículos en Supabase
+          // 3. Descontar stock de artículos en Supabase
           for (const it of items || []) {
             if (it.BARRAS) {
-              await supabase
+              const { data: artExistente } = await supabase
                 .from("ARTICULO" as any)
-                .update({
-                  ESTADO: factura.MODO === "VENTA" ? "VENDIDO" : "ALQUILADO",
-                  ESTADOCLIENTE: factura.ESTADOCLIENTE || "EN BODEGA",
-                })
-                .eq("CODBARRAS", it.BARRAS);
+                .select("IDARTICULO, STOCK")
+                .eq("CODBARRAS", it.BARRAS)
+                .maybeSingle();
+
+              if (artExistente) {
+                const stockActual = Number((artExistente as any).STOCK) || 0;
+                const cant = Number(it.CANTIDAD) || 1;
+                const nuevoStock = Math.max(0, stockActual - cant);
+                await supabase
+                  .from("ARTICULO" as any)
+                  .update({
+                    STOCK: nuevoStock,
+                    DISPONIBLE: nuevoStock > 0,
+                  })
+                  .eq("IDARTICULO", (artExistente as any).IDARTICULO);
+              }
             }
           }
         } else if (item.tipo === "NUEVO_ABONO") {
@@ -580,38 +590,30 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
         } else if (item.tipo === "DEVOLUCION_TRAJE") {
           const { numeroFact, itemsDevueltos, barrasArticulos, montoNetoDevuelto, fecha } = item.datos;
 
-          // 1. Insertar egreso de reintegro en DEPOSITOENTREGADO si hubo valor
+          // 1. Insertar egreso de reintegro en depositoentregado si hubo valor
           if (montoNetoDevuelto && Number(montoNetoDevuelto) > 0) {
             try {
-              await supabase.from("DEPOSITOENTREGADO" as any).insert({
+              await supabase.from("depositoentregado" as any).insert({
                 NUMEROFACTURA: numeroFact,
                 VALOR: Number(montoNetoDevuelto),
                 FECHA: fecha || new Date().toISOString().split("T")[0],
               });
-            } catch {
-              try {
-                await supabase.from("depositoentregado" as any).insert({
-                  NUMEROFACTURA: numeroFact,
-                  VALOR: Number(montoNetoDevuelto),
-                  FECHA: fecha || new Date().toISOString().split("T")[0],
-                });
-              } catch (e) {
-                console.warn("Aviso insertando DEPOSITOENTREGADO sincronizado:", e);
-              }
+            } catch (e) {
+              console.warn("Aviso insertando depositoentregado sincronizado:", e);
             }
           }
 
           // 2. Marcar factura como ENTREGADO
           await supabase
             .from("FACTURA" as any)
-            .update({ ESTADOCLIENTE: "ENTREGADO", ESTADOFIN: "DEVUELTO" })
+            .update({ ESTADOCLIENTE: "ENTREGADO" })
             .eq("NUMEROFACT", numeroFact);
 
           // 3. Devolver prendas / reponer stock
           if (itemsDevueltos && Array.isArray(itemsDevueltos)) {
             for (const it of itemsDevueltos) {
               try {
-                let query = supabase.from("ARTICULO" as any).select("*");
+                let query = supabase.from("ARTICULO" as any).select("IDARTICULO, STOCK");
                 if (it.codigoBarras) {
                   query = query.eq("CODBARRAS", it.codigoBarras);
                 } else if (it.descripcion) {
@@ -620,12 +622,12 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                 const { data: artRaw } = await query.maybeSingle();
                 const art = artRaw as any;
                 if (art) {
+                  const nuevoStock = (Number(art.STOCK) || 0) + (Number(it.cantidad) || 1);
                   await supabase
                     .from("ARTICULO" as any)
                     .update({
-                      STOCK: (Number(art.STOCK) || 0) + (Number(it.cantidad) || 1),
-                      ESTADO: "DISPONIBLE",
-                      ESTADOCLIENTE: "ENTREGADO",
+                      STOCK: nuevoStock,
+                      DISPONIBLE: nuevoStock > 0,
                     })
                     .eq("IDARTICULO", art.IDARTICULO);
                 }
@@ -633,10 +635,22 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             }
           } else if (barrasArticulos && Array.isArray(barrasArticulos)) {
             for (const barras of barrasArticulos) {
-              await supabase
+              const { data: artRaw } = await supabase
                 .from("ARTICULO" as any)
-                .update({ ESTADO: "DISPONIBLE", ESTADOCLIENTE: "ENTREGADO" })
-                .eq("BARRAS", barras);
+                .select("IDARTICULO, STOCK")
+                .eq("CODBARRAS", barras)
+                .maybeSingle();
+              const art = artRaw as any;
+              if (art) {
+                const nuevoStock = (Number(art.STOCK) || 0) + 1;
+                await supabase
+                  .from("ARTICULO" as any)
+                  .update({
+                    STOCK: nuevoStock,
+                    DISPONIBLE: nuevoStock > 0,
+                  })
+                  .eq("IDARTICULO", art.IDARTICULO);
+              }
             }
           }
         } else if (item.tipo === "NUEVO_CLIENTE") {

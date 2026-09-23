@@ -163,7 +163,7 @@ export async function buscarFacturaParaDevolucion(
     let totalYaDevuelto = 0;
     try {
       const { data: depsRaw } = await supabase
-        .from("DEPOSITOENTREGADO" as any)
+        .from("depositoentregado" as any)
         .select("*")
         .eq("NUMEROFACTURA", numFact);
       if (depsRaw && depsRaw.length > 0) {
@@ -251,11 +251,11 @@ export async function registrarDevolucionCompleta(
     let guardadoEnSupabase = false;
     try {
       if (typeof navigator === "undefined" || navigator.onLine) {
-        const { error: errDep } = await supabase.from("DEPOSITOENTREGADO" as any).insert(depData);
+        const { error: errDep } = await supabase.from("depositoentregado" as any).insert(depData);
         if (!errDep) guardadoEnSupabase = true;
       }
     } catch (e) {
-      console.warn("Fallo guardando en tabla DEPOSITOENTREGADO Supabase:", e);
+      console.warn("Fallo guardando en tabla depositoentregado Supabase:", e);
     }
     saveLocalDepositoEntregado(depData);
 
