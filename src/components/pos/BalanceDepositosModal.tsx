@@ -45,6 +45,7 @@ export function BalanceDepositosModal({
   const [fechaFin, setFechaFin] = useState(hoyStr);
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstadoDeposito, setFiltroEstadoDeposito] = useState<"TODOS" | "PENDIENTES" | "LIQUIDADOS">("TODOS");
+  const [filtroEstadoPrenda, setFiltroEstadoPrenda] = useState<"TODOS" | "EN_ALQUILER" | "EN_BODEGA" | "ENTREGADO" | "ANULADOS">("TODOS");
   const [cargando, setCargando] = useState(false);
 
   // Modal de Devolución integrado
@@ -178,14 +179,31 @@ export function BalanceDepositosModal({
     });
   }, [operaciones]);
 
-  // Filtrado según estado (Todos / Pendientes / Liquidados)
+  // Filtrado según estado de depósito y estado de prenda/operación
   const facturasFiltradas = useMemo(() => {
     return facturasProcesadas.filter((f) => {
-      if (filtroEstadoDeposito === "PENDIENTES") return f.depPendiente > 0;
-      if (filtroEstadoDeposito === "LIQUIDADOS") return f.depPendiente === 0 && f.depCobrado > 0;
+      if (filtroEstadoDeposito === "PENDIENTES" && f.depPendiente <= 0) return false;
+      if (filtroEstadoDeposito === "LIQUIDADOS" && (f.depPendiente > 0 || f.depCobrado <= 0)) return false;
+
+      const ec = (f.estadoCliente || "").toUpperCase();
+      const eg = (f.estadoGeneral || "").toUpperCase();
+
+      if (filtroEstadoPrenda === "ANULADOS") {
+        return ec === "ANULADO" || eg === "ANULADA" || eg === "ANULADO";
+      }
+      if (filtroEstadoPrenda === "EN_ALQUILER") {
+        return (ec === "EN ALQUILER" || f.items.some((it) => it.estadoPrenda === "EN ALQUILER")) && ec !== "ANULADO" && eg !== "ANULADO";
+      }
+      if (filtroEstadoPrenda === "EN_BODEGA") {
+        return (ec === "EN BODEGA" || f.items.some((it) => it.estadoPrenda === "EN BODEGA")) && ec !== "ANULADO" && eg !== "ANULADO";
+      }
+      if (filtroEstadoPrenda === "ENTREGADO") {
+        return (ec === "ENTREGADO" || ec === "DEVUELTO" || f.items.some((it) => it.estadoPrenda === "ENTREGADO")) && ec !== "ANULADO" && eg !== "ANULADO";
+      }
+
       return true;
     });
-  }, [facturasProcesadas, filtroEstadoDeposito]);
+  }, [facturasProcesadas, filtroEstadoDeposito, filtroEstadoPrenda]);
 
   const abrirDevolucionFactura = (numFact: string) => {
     setFacturaADevolver(numFact);
@@ -429,42 +447,103 @@ export function BalanceDepositosModal({
               </div>
             </div>
 
-            {/* Filtros rápidos de estado de fianza */}
-            <div className="flex items-center gap-2 overflow-x-auto border-t border-slate-100 pt-1 text-xs">
-              <span className="font-bold text-slate-400 text-[10px] uppercase">Filtrar Facturas:</span>
-              <button
-                type="button"
-                onClick={() => setFiltroEstadoDeposito("TODOS")}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                  filtroEstadoDeposito === "TODOS"
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Todas ({facturasProcesadas.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFiltroEstadoDeposito("PENDIENTES")}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                  filtroEstadoDeposito === "PENDIENTES"
-                    ? "bg-amber-600 text-white shadow-xs"
-                    : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
-                }`}
-              >
-                Con Depósito Pendiente ({facturasProcesadas.filter((f) => f.depPendiente > 0).length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFiltroEstadoDeposito("LIQUIDADOS")}
-                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                  filtroEstadoDeposito === "LIQUIDADOS"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
-                }`}
-              >
-                Completamente Liquidados ({facturasProcesadas.filter((f) => f.depPendiente === 0 && f.depCobrado > 0).length})
-              </button>
+            {/* Filtros rápidos de estado de fianza y estado de prendas */}
+            <div className="flex flex-col gap-2 border-t border-slate-100 pt-1.5 text-xs">
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <span className="font-bold text-slate-500 text-[10px] uppercase shrink-0">Depósitos:</span>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoDeposito("TODOS")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoDeposito === "TODOS"
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  Todos ({facturasProcesadas.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoDeposito("PENDIENTES")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoDeposito === "PENDIENTES"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
+                  }`}
+                >
+                  Con Depósito Pendiente ({facturasProcesadas.filter((f) => f.depPendiente > 0).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoDeposito("LIQUIDADOS")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoDeposito === "LIQUIDADOS"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+                  }`}
+                >
+                  Completamente Liquidados ({facturasProcesadas.filter((f) => f.depPendiente === 0 && f.depCobrado > 0).length})
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5">
+                <span className="font-bold text-slate-500 text-[10px] uppercase shrink-0">Estado Prendas:</span>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("TODOS")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "TODOS"
+                      ? "bg-slate-800 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  📋 Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("EN_ALQUILER")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "EN_ALQUILER"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
+                  }`}
+                >
+                  👗 En Alquiler ({metricas.totalFacturasEnAlquiler})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("EN_BODEGA")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "EN_BODEGA"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100"
+                  }`}
+                >
+                  📦 En Bodega / Apartados ({metricas.totalFacturasEnBodega})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("ENTREGADO")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "ENTREGADO"
+                      ? "bg-emerald-700 text-white shadow-xs"
+                      : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+                  }`}
+                >
+                  ✅ Entregados ({metricas.totalFacturasEntregadas})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("ANULADOS")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "ANULADOS"
+                      ? "bg-rose-700 text-white shadow-xs"
+                      : "bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100"
+                  }`}
+                >
+                  🚫 Anulados ({metricas.totalFacturasAnuladas})
+                </button>
+              </div>
             </div>
           </div>
 
