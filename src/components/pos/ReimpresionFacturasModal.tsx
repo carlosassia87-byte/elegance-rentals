@@ -412,7 +412,11 @@ export function ReimpresionFacturasModal({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setFacturaSeleccionada(op);
-                                setTimeout(handleImprimirTicket, 50);
+                                setTimeout(() => {
+                                  if (ticketRef.current) {
+                                    imprimirTicketPOS80mm(ticketRef.current, `Recibo-${op.numeroFact}`);
+                                  }
+                                }, 100);
                               }}
                               className="rounded-lg bg-slate-100 hover:bg-cyan-600 hover:text-white p-1.5 text-slate-600 transition-all"
                               title="Imprimir directamente"

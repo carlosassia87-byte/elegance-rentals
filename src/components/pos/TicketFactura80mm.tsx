@@ -558,6 +558,54 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
 
 TicketFactura80mm.displayName = "TicketFactura80mm";
 
+// Helper universal para disparar impresión de tirilla 80mm de forma limpia, nítida y siempre en primer plano
+function ejecutarImpresionEnIframe(htmlCompleto: string) {
+  let iframe = document.getElementById("pos-print-iframe") as HTMLIFrameElement;
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.id = "pos-print-iframe";
+    iframe.name = "pos-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    iframe.style.zIndex = "-9999";
+    document.body.appendChild(iframe);
+  }
+
+  const iframeWin = iframe.contentWindow;
+  const iframeDoc = iframeWin?.document || iframe.contentDocument;
+
+  if (iframeWin && iframeDoc) {
+    iframeDoc.open();
+    iframeDoc.write(htmlCompleto);
+    iframeDoc.close();
+
+    const ejecutarPrint = () => {
+      try {
+        iframeWin.focus();
+        iframeWin.print();
+      } catch (err) {
+        console.warn("Fallo en impresión por iframe, fallback a window.print:", err);
+        window.print();
+      }
+    };
+
+    if (iframeDoc.readyState === "complete") {
+      setTimeout(ejecutarPrint, 200);
+    } else {
+      iframeWin.onload = () => {
+        setTimeout(ejecutarPrint, 200);
+      };
+    }
+  } else {
+    window.print();
+  }
+}
+
 // Helper universal para disparar impresión de tirilla 80mm de forma limpia y nítida (por defecto 2 copias: Original y Copia)
 export function imprimirTicketPOS80mm(
   ticketElement: HTMLElement | null,
@@ -570,186 +618,160 @@ export function imprimirTicketPOS80mm(
   }
 
   const printContent = ticketElement.innerHTML;
-  const printWindow = window.open("", "_blank", "width=450,height=750");
+  const cuerpoCopias =
+    copias === 2
+      ? `
+      <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+        <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
+          *** ORIGINAL - CLIENTE ***
+        </div>
+        ${printContent}
+      </div>
+      <div style="text-align: center; font-size: 11px; margin: 14px 0 10px 0; border-top: 2px dashed #000000; padding-top: 8px; font-weight: 900; color: #000000;">
+        - - - - - - - - CORTAR AQUÍ - - - - - - - -
+      </div>
+      <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+        <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
+          *** COPIA - CAJA / ARCHIVO ***
+        </div>
+        ${printContent}
+      </div>
+    `
+      : `
+      <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+        ${printContent}
+      </div>
+    `;
 
-  if (printWindow) {
-    const cuerpoCopias =
-      copias === 2
-        ? `
-        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
-          <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
-            *** ORIGINAL - CLIENTE ***
-          </div>
-          ${printContent}
-        </div>
-        <div style="text-align: center; font-size: 11px; margin: 14px 0 10px 0; border-top: 2px dashed #000000; padding-top: 8px; font-weight: 900; color: #000000;">
-          - - - - - - - - CORTAR AQUÍ - - - - - - - -
-        </div>
-        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
-          <div style="text-align: center; font-size: 10.5px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 3px; border-bottom: 1.5px dashed #000000; padding-bottom: 2px;">
-            *** COPIA - CAJA / ARCHIVO ***
-          </div>
-          ${printContent}
-        </div>
-      `
-        : `
-        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
-          ${printContent}
-        </div>
-      `;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>${titulo}</title>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 1.5mm 1mm;
-            }
-            @media print {
-              html, body {
-                width: 80mm;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-              }
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color: #000000 !important;
-              }
-            }
-            body {
-              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-              font-size: 13px;
-              font-weight: 700;
-              line-height: 1.35;
+  const htmlDocumento = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${titulo}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 1.5mm 1mm;
+          }
+          @media print {
+            html, body {
+              width: 80mm;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
               color: #000000 !important;
-              margin: 0;
-              padding: 2mm 1mm;
-              background: #ffffff;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            img {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-              filter: contrast(125%) brightness(95%);
             }
             * {
-              box-sizing: border-box;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color: #000000 !important;
             }
-          </style>
-        </head>
-        <body>
-          ${cuerpoCopias}
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 600);
-              }, 300);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  } else {
-    window.print();
-  }
+          }
+          body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+            color: #000000 !important;
+            margin: 0;
+            padding: 2mm 1mm;
+            background: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          img {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            filter: contrast(125%) brightness(95%);
+          }
+          * {
+            box-sizing: border-box;
+          }
+        </style>
+      </head>
+      <body>
+        ${cuerpoCopias}
+      </body>
+    </html>
+  `;
+
+  ejecutarImpresionEnIframe(htmlDocumento);
 }
 
 // Helper universal para imprimir cualquier Reporte en formato Tirilla 80mm con contraste profesional
 export function imprimirReporte80mmHtml(titulo: string, contenidoHtml: string) {
-  const printWindow = window.open("", "_blank", "width=450,height=750");
-
-  if (printWindow) {
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>${titulo}</title>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 2mm 1mm;
-            }
-            @media print {
-              html, body {
-                width: 80mm;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-              }
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color: #000000 !important;
-              }
-            }
-            body {
-              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-              font-size: 13px;
-              font-weight: 700;
-              line-height: 1.35;
+  const htmlDocumento = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${titulo}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 2mm 1mm;
+          }
+          @media print {
+            html, body {
+              width: 80mm;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
               color: #000000 !important;
-              margin: 0;
-              padding: 2mm 1.5mm;
-              background: #ffffff;
             }
             * {
-              box-sizing: border-box;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
               color: #000000 !important;
             }
-            h1, h2, h3, h4 {
-              margin: 2px 0;
-              font-weight: 900;
-              text-transform: uppercase;
-              color: #000000 !important;
-            }
-            hr {
-              border: none;
-              border-top: 2px solid #000000;
-              margin: 5px 0;
-            }
-            .border-b {
-              border-bottom: 1.5px solid #000000;
-            }
-            .grid-row {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-              font-size: 13px;
-            }
-            .bold {
-              font-weight: 900;
-            }
-          </style>
-        </head>
-        <body>
-          <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
-            ${contenidoHtml}
-          </div>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 600);
-              }, 300);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  } else {
-    window.print();
-  }
+          }
+          body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.35;
+            color: #000000 !important;
+            margin: 0;
+            padding: 2mm 1.5mm;
+            background: #ffffff;
+          }
+          * {
+            box-sizing: border-box;
+            color: #000000 !important;
+          }
+          h1, h2, h3, h4 {
+            margin: 2px 0;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #000000 !important;
+          }
+          hr {
+            border: none;
+            border-top: 2px solid #000000;
+            margin: 5px 0;
+          }
+          .border-b {
+            border-bottom: 1.5px solid #000000;
+          }
+          .grid-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 13px;
+          }
+          .bold {
+            font-weight: 900;
+          }
+        </style>
+      </head>
+      <body>
+        <div style="width: 76mm; max-width: 76mm; margin: 0 auto; color: #000000;">
+          ${contenidoHtml}
+        </div>
+      </body>
+    </html>
+  `;
+
+  ejecutarImpresionEnIframe(htmlDocumento);
 }

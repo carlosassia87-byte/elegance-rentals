@@ -192,7 +192,7 @@ export async function buscarFacturaParaDevolucion(
       const keyOv = `${numFact}_${cod || desc}`;
       const ov = overrides[keyOv];
       const estadoActual: EstadoPrenda = ov ? ov.estado : "EN ALQUILER";
-      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA";
+      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA" || estadoActual === "ENTREGADO";
 
       return {
         id: c.AUTOMATIC || `${numFact}-${idx}`,

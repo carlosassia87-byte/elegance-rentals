@@ -4,6 +4,7 @@ import type { Articulo, Factura, CampoFactura } from "@/types/database.types";
 export type EstadoPrenda =
   | "EN ALQUILER"
   | "ENTREGADO"
+  | "DEVUELTO A TIENDA"
   | "EN BODEGA"
   | "VENTA"
   | "ANULADO";
@@ -443,7 +444,7 @@ export async function consultarMovimientos(
       metricas.totalFacturasAnuladas++;
     } else if (ec === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) {
       metricas.totalFacturasEnAlquiler++;
-    } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) {
+    } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO" || it.estadoPrenda === "DEVUELTO A TIENDA")) {
       metricas.totalFacturasEntregadas++;
     } else if (ec === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) {
       metricas.totalFacturasEnBodega++;
@@ -460,6 +461,7 @@ export async function consultarMovimientos(
           metricas.totalPrendasEnAlquiler += it.cantidad;
           break;
         case "ENTREGADO":
+        case "DEVUELTO A TIENDA":
           metricas.totalPrendasEntregadas += it.cantidad;
           break;
         case "EN BODEGA":
