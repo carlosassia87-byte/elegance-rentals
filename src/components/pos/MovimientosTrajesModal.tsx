@@ -356,7 +356,28 @@ export function MovimientosTrajesModal({
               <button
                 type="button"
                 onClick={() => {
-                  const itemsList = operacionesFiltradas.slice(0, 50);
+                  if (operacionesFiltradas.length === 0) {
+                    toast.info("No hay registros en la pestaña actual para imprimir.");
+                    return;
+                  }
+
+                  let tituloSubmodulo = "MOVIMIENTOS GENERALES";
+                  if (submoduloActivo === "EN_ALQUILER") {
+                    tituloSubmodulo = "TRAJES EN ALQUILER (EN LA CALLE)";
+                  } else if (submoduloActivo === "EN_BODEGA") {
+                    tituloSubmodulo = "TRAJES EN BODEGA / APARTADOS";
+                  } else if (submoduloActivo === "ENTREGADO") {
+                    tituloSubmodulo = "HISTÓRICO ENTREGADOS Y DEVUELTOS";
+                  } else if (submoduloActivo === "VENTA") {
+                    tituloSubmodulo = "VENTAS REALIZADAS";
+                  } else if (submoduloActivo === "ANULADOS") {
+                    tituloSubmodulo = "FACTURAS ANULADAS";
+                  }
+
+                  const totalAlq = operacionesFiltradas.reduce((a, b) => a + b.totalAlquiler, 0);
+                  const totalDep = operacionesFiltradas.reduce((a, b) => a + b.totalDeposito, 0);
+                  const totalSaldo = operacionesFiltradas.reduce((a, b) => a + b.saldoPendiente, 0);
+                  const totalPrendas = operacionesFiltradas.reduce((a, b) => a + b.items.reduce((acc, it) => acc + it.cantidad, 0), 0);
 
                   const htmlMovimientos = `
                     <div style="text-align: center; margin-bottom: 6px;">
@@ -366,54 +387,89 @@ export function MovimientosTrajesModal({
                       <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
                     </div>
                     <hr />
-                    <div style="text-align: center; font-weight: 900; font-size: 13px; margin: 4px 0; text-transform: uppercase;">
-                      *** REPORTE: ${submoduloActivo.replace("_", " ")} ***
+                    <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">
+                      *** ${tituloSubmodulo} ***
                     </div>
                     <hr />
-                    <div style="font-size: 12px; font-weight: 700; margin: 4px 0;">
+                    <div style="font-size: 11.5px; font-weight: 700; margin: 4px 0;">
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                         <span>RANGO:</span>
                         <span style="font-weight: 900;">${fechaInicio || "INICIO"} A ${fechaFin || "HOY"}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>SUB-MÓDULO:</span>
+                        <span style="font-weight: 900;">${submoduloActivo.replace("_", " ")}</span>
+                      </div>
+                      ${busqueda.trim() ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>BÚSQUEDA:</span>
+                          <span style="font-weight: 900;">${busqueda}</span>
+                        </div>
+                      ` : ""}
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                         <span>TOTAL FACTURAS:</span>
-                        <span style="font-weight: 900;">${itemsList.length}</span>
+                        <span style="font-weight: 900;">${operacionesFiltradas.length}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>TOTAL PRENDAS:</span>
+                        <span style="font-weight: 900;">${totalPrendas}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                         <span>FECHA IMPRESIÓN:</span>
                         <span style="font-weight: 800;">${new Date().toLocaleString("es-CO")}</span>
                       </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>CAJERO:</span>
+                        <span style="font-weight: 800;">${cajeroNombre}</span>
+                      </div>
                     </div>
                     <hr />
 
+                    <div style="margin: 6px 0; font-size: 11.5px; font-weight: 700;">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Total Alquiler / Venta:</span>
+                        <span style="font-weight: 900;">$${totalAlq.toLocaleString("es-CO")}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Total Depósitos Fianza:</span>
+                        <span style="font-weight: 900;">$${totalDep.toLocaleString("es-CO")}</span>
+                      </div>
+                      ${totalSaldo > 0 ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>Saldo Pendiente Cobro:</span>
+                          <span style="font-weight: 900; color: #b91c1c;">$${totalSaldo.toLocaleString("es-CO")}</span>
+                        </div>
+                      ` : ""}
+                    </div>
+
+                    <hr />
+
                     <div style="margin: 6px 0;">
-                      <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
+                      <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
                         LISTADO DE PRENDAS Y CLIENTES
                       </div>
-                      ${itemsList.map((op: OperacionClienteMovimiento) => `
+                      ${operacionesFiltradas.map((op: any) => `
                         <div style="margin-bottom: 8px; border-bottom: 1px dashed #000; padding-bottom: 4px;">
-                          <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 900;">
+                          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900;">
                             <span>FACT: ${op.numeroFact}</span>
-                            <span>${op.fechaEntregaPactada}</span>
+                            <span>${op.fechaSalida}</span>
                           </div>
-                          <div style="font-size: 12px; font-weight: 800; text-transform: uppercase;">
+                          <div style="font-size: 11.5px; font-weight: 800; text-transform: uppercase;">
                             ${op.clienteNombre} (${op.clienteTelefono || "S/T"})
                           </div>
+                          <div style="font-size: 10.5px; font-weight: 700; color: #333;">
+                            CC: ${op.clienteCedula} · Pactada: ${op.fechaEntregaPactada || "—"}
+                          </div>
                           <div style="margin-top: 2px; padding-left: 4px;">
-                            ${op.items.map((it: ItemMovimiento) => `
-                              <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700;">
+                            ${op.items.map((it: any) => `
+                              <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700;">
                                 <span>• ${it.cantidad}x ${it.descripcion} (${it.talla})</span>
-                                <span style="font-weight: 800;">Dep: $${it.valorDeposito.toLocaleString("es-CO")}</span>
+                                <span style="font-weight: 800;">Dep: $${it.valorDeposito.toLocaleString("es-CO")} [${it.estadoPrenda}]</span>
                               </div>
                             `).join("")}
                           </div>
                         </div>
                       `).join("")}
-                    </div>
-
-                    <div style="margin-top: 10px; font-size: 13px; font-weight: 900; text-align: right; border-top: 2px solid #000; padding-top: 4px;">
-                      <div>PRENDAS POR DEVOLVER: ${metricas.totalPrendasEnAlquiler}</div>
-                      <div>TOTAL DEPÓSITOS CUSTODIA: $${totalDepositosPorDevolver.toLocaleString("es-CO")}</div>
                     </div>
 
                     <div style="margin-top: 32px; text-align: center;">
@@ -423,8 +479,8 @@ export function MovimientosTrajesModal({
                   `;
                   imprimirReporte80mmHtml(`Reporte-Movimientos-${submoduloActivo}`, htmlMovimientos);
                 }}
-                className="hidden items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all sm:flex shadow-xs"
-                title="Imprimir Reporte 80mm"
+                className="flex items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all shadow-xs shrink-0"
+                title="Imprimir Reporte Selección 80mm"
               >
                 <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
               </button>

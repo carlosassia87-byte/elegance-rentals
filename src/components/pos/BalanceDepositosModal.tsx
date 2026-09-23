@@ -301,17 +301,31 @@ export function BalanceDepositosModal({
               <button
                 type="button"
                 onClick={() => {
-                  let depPorDevolver = 0;
-                  let depDevuelto = 0;
-                  operaciones.forEach((op) => {
-                    op.items.forEach((it) => {
-                      if (esAlquiler(it.estadoPrenda)) {
-                        depPorDevolver += it.valorDeposito * it.cantidad;
-                      } else if (esDevuelta(it.estadoPrenda)) {
-                        depDevuelto += it.valorDeposito * it.cantidad;
-                      }
-                    });
-                  });
+                  if (facturasFiltradas.length === 0) {
+                    toast.info("No hay facturas en la selección actual para imprimir.");
+                    return;
+                  }
+
+                  let tituloReporte = "BALANCE GENERAL DE DEPÓSITOS";
+                  if (filtroEstadoPrenda === "EN_ALQUILER") {
+                    tituloReporte = "TRAJES EN ALQUILER (EN LA CALLE)";
+                  } else if (filtroEstadoPrenda === "EN_BODEGA") {
+                    tituloReporte = "TRAJES EN BODEGA / APARTADOS";
+                  } else if (filtroEstadoPrenda === "ENTREGADO") {
+                    tituloReporte = "HISTÓRICO ENTREGADOS Y LIQUIDADOS";
+                  } else if (filtroEstadoPrenda === "ANULADOS") {
+                    tituloReporte = "FACTURAS ANULADAS";
+                  } else if (filtroEstadoDeposito === "PENDIENTES") {
+                    tituloReporte = "DEPÓSITOS PENDIENTES POR DEVOLVER";
+                  } else if (filtroEstadoDeposito === "LIQUIDADOS") {
+                    tituloReporte = "DEPÓSITOS COMPLETAMENTE LIQUIDADOS";
+                  }
+
+                  const totalAlqSel = facturasFiltradas.reduce((a, b) => a + b.totalAlquiler, 0);
+                  const totalCobSel = facturasFiltradas.reduce((a, b) => a + b.depCobrado, 0);
+                  const totalDevSel = facturasFiltradas.reduce((a, b) => a + b.depDevuelto, 0);
+                  const totalPendSel = facturasFiltradas.reduce((a, b) => a + b.depPendiente, 0);
+                  const totalPrendasSel = facturasFiltradas.reduce((a, b) => a + b.items.reduce((acc, it) => acc + it.cantidad, 0), 0);
 
                   const htmlBalance = `
                     <div style="text-align: center; margin-bottom: 6px;">
@@ -321,67 +335,111 @@ export function BalanceDepositosModal({
                       <div style="font-size: 11.5px; font-weight: 800;">TEL: 6076963959 - 3202375610</div>
                     </div>
                     <hr />
-                    <div style="text-align: center; font-weight: 900; font-size: 13px; margin: 4px 0; text-transform: uppercase;">
-                      *** BALANCE GENERAL DE DEPÓSITOS ***
+                    <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">
+                      *** ${tituloReporte} ***
                     </div>
                     <hr />
-                    <div style="font-size: 12.5px; font-weight: 700; margin: 4px 0;">
+                    <div style="font-size: 11.5px; font-weight: 700; margin: 4px 0;">
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                        <span>RANGO FECHAS:</span>
+                        <span>RANGO:</span>
                         <span style="font-weight: 900;">${fechaInicio || "INICIO"} A ${fechaFin || "HOY"}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                        <span>FILTRO ESTADO:</span>
+                        <span>ESTADO PRENDAS:</span>
+                        <span style="font-weight: 900;">${filtroEstadoPrenda.replace("_", " ")}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>ESTADO DEPÓSITOS:</span>
                         <span style="font-weight: 900;">${filtroEstadoDeposito}</span>
+                      </div>
+                      ${busqueda.trim() ? `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                          <span>BÚSQUEDA:</span>
+                          <span style="font-weight: 900;">${busqueda}</span>
+                        </div>
+                      ` : ""}
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>FACTURAS LISTADAS:</span>
+                        <span style="font-weight: 900;">${facturasFiltradas.length}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>TOTAL PRENDAS:</span>
+                        <span style="font-weight: 900;">${totalPrendasSel}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
                         <span>FECHA IMPRESIÓN:</span>
                         <span style="font-weight: 800;">${new Date().toLocaleString("es-CO")}</span>
                       </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>CAJERO / AUDITOR:</span>
+                        <span style="font-weight: 800;">${cajeroNombre}</span>
+                      </div>
                     </div>
                     <hr />
 
                     <div style="margin: 8px 0; padding: 6px; border: 2px solid #000; text-align: center;">
-                      <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase;">DEPÓSITOS EN CUSTODIA (PENDIENTES)</div>
-                      <div style="font-size: 18px; font-weight: 900; margin: 2px 0;">$${depPorDevolver.toLocaleString("es-CO")}</div>
+                      <div style="font-size: 11px; font-weight: 900; text-transform: uppercase;">
+                        ${filtroEstadoDeposito === "LIQUIDADOS" || filtroEstadoPrenda === "ENTREGADO" ? "DEPÓSITOS TOTALES ENTREGADOS" : "DEPÓSITO PENDIENTE EN ESTA SELECCIÓN"}
+                      </div>
+                      <div style="font-size: 17px; font-weight: 900; margin: 2px 0;">
+                        $${(filtroEstadoDeposito === "LIQUIDADOS" || filtroEstadoPrenda === "ENTREGADO" ? totalDevSel : totalPendSel).toLocaleString("es-CO")}
+                      </div>
                     </div>
 
-                    <div style="margin: 6px 0; font-size: 13px; font-weight: 700;">
+                    <div style="margin: 6px 0; font-size: 11.5px; font-weight: 700;">
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                        <span>Total Depósitos Devueltos:</span>
-                        <span style="font-weight: 900;">$${depDevuelto.toLocaleString("es-CO")}</span>
+                        <span>Total Alquiler:</span>
+                        <span style="font-weight: 900;">$${totalAlqSel.toLocaleString("es-CO")}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                        <span>Total Depósitos Histórico:</span>
-                        <span style="font-weight: 900;">$${(depPorDevolver + depDevuelto).toLocaleString("es-CO")}</span>
+                        <span>Depósitos Cobrados:</span>
+                        <span style="font-weight: 900;">$${totalCobSel.toLocaleString("es-CO")}</span>
                       </div>
                       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
-                        <span>Prendas en Alquiler:</span>
-                        <span style="font-weight: 900;">${metricas.totalPrendasEnAlquiler}</span>
+                        <span>Depósitos Ya Devueltos:</span>
+                        <span style="font-weight: 900;">$${totalDevSel.toLocaleString("es-CO")}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                        <span>Fianzas Por Devolver:</span>
+                        <span style="font-weight: 900;">$${totalPendSel.toLocaleString("es-CO")}</span>
                       </div>
                     </div>
 
                     <hr />
 
                     <div style="margin-top: 8px;">
-                      <div style="font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
-                        DETALLE POR CLIENTE (PENDIENTES)
+                      <div style="font-size: 11.5px; font-weight: 900; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px;">
+                        DETALLE DE FACTURAS Y PRENDAS
                       </div>
-                      ${operaciones.slice(0, 40).map((op) => {
-                        const depOp = op.items.reduce((acc, it) => acc + (it.estadoPrenda === "EN ALQUILER" ? it.valorDeposito * it.cantidad : 0), 0);
-                        if (depOp <= 0 && filtroEstadoDeposito === "PENDIENTES") return "";
-                        return `
-                          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-bottom: 4px; border-bottom: 1px dashed #ccc; padding-bottom: 2px;">
-                            <div>
-                              <div>FACT #${op.numeroFact} - ${op.clienteNombre}</div>
-                              <div style="font-size: 10.5px; font-weight: 700;">Dev: ${op.fechaEntregaPactada} · Tel: ${op.clienteTelefono || "N/A"}</div>
-                            </div>
-                            <div style="font-size: 12.5px; font-weight: 900; text-align: right;">
-                              $${depOp.toLocaleString("es-CO")}
-                            </div>
+                      ${facturasFiltradas.map((op) => `
+                        <div style="margin-bottom: 7px; border-bottom: 1px dashed #000; padding-bottom: 4px;">
+                          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 900;">
+                            <span>FACT #${op.numeroFact}</span>
+                            <span>${op.fechaSalida}</span>
                           </div>
-                        `;
-                      }).join("")}
+                          <div style="font-size: 11.5px; font-weight: 800; text-transform: uppercase;">
+                            ${op.clienteNombre} (${op.clienteCedula})
+                          </div>
+                          <div style="font-size: 10.5px; font-weight: 700; color: #222;">
+                            Tel: ${op.clienteTelefono || "S/T"} · Pactada: ${op.fechaEntregaPactada || "—"}
+                          </div>
+                          <div style="margin-top: 2px; padding-left: 3px;">
+                            ${op.items.map((it) => `
+                              <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700;">
+                                <span>• ${it.cantidad}x ${it.descripcion} (${it.talla})</span>
+                                <span style="font-weight: 800;">[${it.estadoPrenda}]</span>
+                              </div>
+                            `).join("")}
+                          </div>
+                          <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; margin-top: 2px; border-top: 0.5px solid #ddd; padding-top: 2px;">
+                            <span>Alq: $${op.totalAlquiler.toLocaleString("es-CO")}</span>
+                            <span>Dep: $${op.depCobrado.toLocaleString("es-CO")}</span>
+                            <span style="font-weight: 900;">
+                              ${op.depPendiente > 0 ? `Pend: $${op.depPendiente.toLocaleString("es-CO")}` : "✓ Liquidado"}
+                            </span>
+                          </div>
+                        </div>
+                      `).join("")}
                     </div>
 
                     <div style="margin-top: 36px; text-align: center;">
@@ -389,12 +447,13 @@ export function BalanceDepositosModal({
                       <div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Firma de Auditoría y Control</div>
                     </div>
                   `;
-                  imprimirReporte80mmHtml("Balance-Depositos-80mm", htmlBalance);
+
+                  imprimirReporte80mmHtml(`Reporte-${tituloReporte.replace(/\s+/g, "_")}`, htmlBalance);
                 }}
-                className="hidden items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all sm:flex shadow-xs"
-                title="Imprimir Balance 80mm"
+                className="flex items-center gap-1.5 h-8 rounded-xl bg-slate-900 hover:bg-black text-white px-3 text-xs font-bold transition-all shadow-xs shrink-0"
+                title="Imprimir Reporte Seleccionado 80mm"
               >
-                <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
+                <Printer className="h-4 w-4 text-emerald-400" /> Imprimir Reporte (80mm)
               </button>
               <button
                 onClick={() => onOpenChange(false)}
