@@ -28,11 +28,14 @@ import {
   ShoppingBag,
   Wallet,
   AlertTriangle,
+  Ban,
+  Trash2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   consultarMovimientos,
+  anularFacturaOperacion,
   type OperacionClienteMovimiento,
   type ItemMovimiento,
   type EstadoPrenda,
@@ -71,6 +74,12 @@ export function MovimientosTrajesModal({
   // Modal de Devolución integrado
   const [modalDevolucionOpen, setModalDevolucionOpen] = useState(false);
   const [facturaADevolver, setFacturaADevolver] = useState("");
+
+  // Modal de Anulación integrado
+  const [modalAnulacionOpen, setModalAnulacionOpen] = useState(false);
+  const [facturaAAnular, setFacturaAAnular] = useState<OperacionClienteMovimiento | null>(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState("CANCELACIÓN DE APARTADO / ALQUILER");
+  const [anulando, setAnulando] = useState(false);
 
   // Datos
   const [operaciones, setOperaciones] = useState<OperacionClienteMovimiento[]>([]);
@@ -228,6 +237,32 @@ export function MovimientosTrajesModal({
   const abrirDevolucionFactura = (numFact: string) => {
     setFacturaADevolver(numFact);
     setModalDevolucionOpen(true);
+  };
+
+  const abrirAnulacionFactura = (op: OperacionClienteMovimiento) => {
+    setFacturaAAnular(op);
+    setMotivoAnulacion(op.estadoCliente === "EN BODEGA" ? "CANCELACIÓN DE APARTADO (EN BODEGA)" : "ANULACIÓN DE ALQUILER");
+    setModalAnulacionOpen(true);
+  };
+
+  const confirmarAnulacion = async () => {
+    if (!facturaAAnular) return;
+    setAnulando(true);
+    try {
+      const res = await anularFacturaOperacion(facturaAAnular.numeroFact, motivoAnulacion);
+      if (res.success) {
+        toast.success(res.mensaje);
+        setModalAnulacionOpen(false);
+        setFacturaAAnular(null);
+        await cargarDatos();
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al anular la factura");
+    } finally {
+      setAnulando(false);
+    }
   };
 
   const abrirWhatsApp = (telefono: string, cliente: string, factura: string) => {
@@ -750,20 +785,36 @@ export function MovimientosTrajesModal({
                                 </span>
                               </td>
                               <td className="p-2 text-center">
-                                {ec === "EN ALQUILER" ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      abrirDevolucionFactura(op.numeroFact);
-                                    }}
-                                    className="flex items-center gap-1 h-6 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-2 text-[10px] font-black shadow-2xs transition-all mx-auto whitespace-nowrap"
-                                  >
-                                    <RotateCcw className="h-3 w-3" /> Devolver
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 font-bold">—</span>
-                                )}
+                                <div className="flex items-center justify-center gap-1">
+                                  {ec === "EN ALQUILER" && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirDevolucionFactura(op.numeroFact);
+                                      }}
+                                      className="flex items-center gap-1 h-6 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
+                                      title="Devolver traje y reintegrar depósito"
+                                    >
+                                      <RotateCcw className="h-3 w-3" /> Devolver
+                                    </button>
+                                  )}
+                                  {ec !== "ANULADO" && ec !== "ANULADA" ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirAnulacionFactura(op);
+                                      }}
+                                      className="flex items-center gap-1 h-6 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
+                                      title="Anular factura / cancelar apartado y reponer stock"
+                                    >
+                                      <Ban className="h-3 w-3 text-rose-600" /> Anular
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-rose-500 font-bold">Anulada</span>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -776,19 +827,31 @@ export function MovimientosTrajesModal({
 
               {/* TABLA DE DETALLE DE PRENDAS DE LA FACTURA SELECCIONADA (CAMPOFACTURA) */}
               <div className="col-span-12 lg:col-span-5 flex flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-                <div className="bg-slate-900 px-4 py-2.5 text-white shrink-0 flex justify-between items-center">
-                  <span className="text-xs font-black uppercase tracking-wider">
+                <div className="bg-slate-900 px-4 py-2.5 text-white shrink-0 flex justify-between items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider truncate">
                     Detalle de Prendas {clienteSeleccionado ? `(#${clienteSeleccionado.numeroFact})` : ""}
                   </span>
-                  {clienteSeleccionado && (clienteSeleccionado.estadoCliente === "EN ALQUILER" || clienteSeleccionado.items.some((i) => i.estadoPrenda === "EN ALQUILER")) && (
-                    <button
-                      type="button"
-                      onClick={() => abrirDevolucionFactura(clienteSeleccionado.numeroFact)}
-                      className="flex items-center gap-1 h-6 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 px-2.5 text-[10px] font-black transition-all"
-                    >
-                      <RotateCcw className="h-3 w-3" /> Procesar Devolución
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {clienteSeleccionado && (clienteSeleccionado.estadoCliente === "EN ALQUILER" || clienteSeleccionado.items.some((i) => i.estadoPrenda === "EN ALQUILER")) && (
+                      <button
+                        type="button"
+                        onClick={() => abrirDevolucionFactura(clienteSeleccionado.numeroFact)}
+                        className="flex items-center gap-1 h-6 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 px-2.5 text-[10px] font-black transition-all"
+                      >
+                        <RotateCcw className="h-3 w-3" /> Devolución
+                      </button>
+                    )}
+                    {clienteSeleccionado && clienteSeleccionado.estadoCliente !== "ANULADO" && clienteSeleccionado.estadoCliente !== "ANULADA" && (
+                      <button
+                        type="button"
+                        onClick={() => abrirAnulacionFactura(clienteSeleccionado)}
+                        className="flex items-center gap-1 h-6 rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-2.5 text-[10px] font-black transition-all shadow-xs"
+                        title="Anular factura / cancelar apartado"
+                      >
+                        <Ban className="h-3 w-3" /> Anular
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -861,6 +924,67 @@ export function MovimientosTrajesModal({
           cargarDatos();
         }}
       />
+
+      {/* MODAL DE CONFIRMACIÓN DE ANULACIÓN DE FACTURA / APARTADO */}
+      <Dialog open={modalAnulacionOpen} onOpenChange={setModalAnulacionOpen}>
+        <DialogContent className="max-w-md bg-white p-6 rounded-2xl border border-slate-200 shadow-2xl text-slate-900">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-12 w-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-black shrink-0">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900">Anular Factura / Apartado</h3>
+              <p className="text-xs text-slate-500">
+                Factura #{facturaAAnular?.numeroFact} · {facturaAAnular?.clienteNombre}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs text-rose-900 mb-4 space-y-1">
+            <p className="font-bold">⚠️ Esta acción realizará lo siguiente:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-800">
+              <li>Marcará la factura como <strong>ANULADA</strong>.</li>
+              <li>Liberará y repondrá automáticamente el <strong>stock de las prendas</strong> en el inventario.</li>
+              <li>Actualizará tanto la base de datos local como Supabase.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1.5 mb-5">
+            <label className="text-xs font-bold text-slate-700">Motivo de Anulación:</label>
+            <input
+              type="text"
+              value={motivoAnulacion}
+              onChange={(e) => setMotivoAnulacion(e.target.value)}
+              placeholder="Ej: Cliente canceló el apartado, cambio de fecha, etc."
+              className="w-full h-9 px-3 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setModalAnulacionOpen(false)}
+              disabled={anulando}
+              className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={confirmarAnulacion}
+              disabled={anulando}
+              className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-sm transition-all"
+            >
+              {anulando ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Ban className="h-4 w-4" />
+              )}
+              <span>Confirmar Anulación</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

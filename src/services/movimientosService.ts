@@ -679,3 +679,118 @@ export async function marcarTrajeDevuelto(
     return false;
   }
 }
+
+/**
+ * Anula una factura (Alquiler, Venta o Apartado en Bodega),
+ * actualiza el estado a ANULADO y repone el stock de las prendas en inventario.
+ */
+export async function anularFacturaOperacion(
+  numeroFact: string,
+  motivo: string = "ANULACIÓN DE FACTURA / APARTADO"
+): Promise<{ success: boolean; mensaje: string }> {
+  try {
+    const numClean = String(numeroFact).trim();
+
+    // 1. Actualizar estado en Supabase
+    try {
+      await supabase
+        .from("FACTURA" as any)
+        .update({
+          ESTADO: "ANULADA",
+          ESTADOCLIENTE: "ANULADO",
+          GASTOS: motivo.slice(0, 50),
+        })
+        .eq("NUMEROFACT", numClean);
+
+      // 1.1 Reponer el stock de los artículos en Supabase
+      const { data: itemsDb } = await supabase
+        .from("CAMPOFACTURA" as any)
+        .select("*")
+        .eq("NUMEROFACT", numClean);
+
+      if (itemsDb && Array.isArray(itemsDb)) {
+        for (const it of itemsDb) {
+          const cant = Number(it.CANTIDAD) || 1;
+          if (it.BARRAS && String(it.BARRAS).startsWith("ACC-")) {
+            try {
+              const { data: acc } = await supabase
+                .from("ACCESORIOS" as any)
+                .select("IDACCESORIO, STOCK")
+                .eq("CODBARRAS", it.BARRAS)
+                .maybeSingle();
+              if (acc) {
+                const stockActual = Number((acc as any).STOCK) || 0;
+                await supabase
+                  .from("ACCESORIOS" as any)
+                  .update({ STOCK: stockActual + cant })
+                  .eq("IDACCESORIO", (acc as any).IDACCESORIO);
+              }
+            } catch {}
+          } else if (it.BARRAS || it.DESCRIPCION) {
+            try {
+              let query = supabase.from("ARTICULO" as any).select("IDARTICULO, STOCK");
+              if (it.BARRAS) {
+                query = query.eq("CODBARRAS", it.BARRAS);
+              } else {
+                query = query.eq("DESCRIPCION", it.DESCRIPCION);
+              }
+              const { data: art } = await query.maybeSingle();
+              if (art) {
+                const stockActual = Number((art as any).STOCK) || 0;
+                await supabase
+                  .from("ARTICULO" as any)
+                  .update({
+                    STOCK: stockActual + cant,
+                    DISPONIBLE: true,
+                  })
+                  .eq("IDARTICULO", (art as any).IDARTICULO);
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (eDb) {
+      console.warn("Aviso actualizando anulación en Supabase:", eDb);
+    }
+
+    // 2. Actualizar en IndexedDB
+    try {
+      const { obtenerTodasLasFacturasOffline, guardarFacturasLote } = await import("./offlineDbService");
+      const facts = await obtenerTodasLasFacturasOffline();
+      const target = facts.find((f) => f.NUMEROFACT === numClean);
+      if (target) {
+        target.ESTADO = "ANULADA";
+        target.ESTADOCLIENTE = "ANULADO";
+        await guardarFacturasLote([target]);
+      }
+    } catch {}
+
+    // 3. Actualizar en LocalStorage
+    try {
+      const raw = localStorage.getItem("elegance_local_facturas");
+      if (raw) {
+        const list: any[] = JSON.parse(raw);
+        const idx = list.findIndex((f) => f.NUMEROFACT === numClean);
+        if (idx >= 0) {
+          list[idx].ESTADO = "ANULADA";
+          list[idx].ESTADOCLIENTE = "ANULADO";
+          localStorage.setItem("elegance_local_facturas", JSON.stringify(list));
+        }
+      }
+    } catch {}
+
+    // 4. Registrar estado en override de memoria
+    guardarEstadoPrendaOverride(numClean, "GENERAL", "GENERAL", "ANULADO");
+
+    return {
+      success: true,
+      mensaje: `Factura #${numClean} anulada correctamente. Las prendas fueron reintegradas al inventario.`,
+    };
+  } catch (err: any) {
+    console.error("Error al anular factura:", err);
+    return {
+      success: false,
+      mensaje: err?.message || "Ocurrió un error al anular la factura",
+    };
+  }
+}
