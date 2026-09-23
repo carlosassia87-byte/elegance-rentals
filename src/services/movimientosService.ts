@@ -563,15 +563,52 @@ export async function consultarMovimientos(
     metricas.totalSaldoPorCobrar += op.saldoPendiente;
 
     const ec = (op.estadoCliente || "").toUpperCase();
-    if (ec === "ANULADO" || ec === "ANULADA") {
+    const eg = (op.estadoGeneral || "").toUpperCase();
+    const esAnulada = ec === "ANULADO" || ec === "ANULADA" || eg === "ANULADA" || eg === "ANULADO";
+
+    const cantAlquiler = op.items.filter((it) => it.estadoPrenda === "EN ALQUILER").length;
+    const cantBodega = op.items.filter((it) => it.estadoPrenda === "EN BODEGA").length;
+    const cantDevueltas = op.items.filter(
+      (it) => it.estadoPrenda === "ENTREGADO" || it.estadoPrenda === "DEVUELTO A TIENDA" || (it.estadoPrenda as any) === "DEVUELTO"
+    ).length;
+    const cantVenta = op.items.filter((it) => it.estadoPrenda === "VENTA").length;
+
+    const esEntregadaTotal =
+      !esAnulada &&
+      (ec === "ENTREGADO" ||
+        ec === "DEVUELTO" ||
+        ec === "DEVUELTO A TIENDA" ||
+        (cantDevueltas > 0 && cantAlquiler === 0 && cantBodega === 0) ||
+        (op.items.length > 0 &&
+          op.items.every(
+            (it) =>
+              it.estadoPrenda === "ENTREGADO" ||
+              it.estadoPrenda === "DEVUELTO A TIENDA" ||
+              (it.estadoPrenda as any) === "DEVUELTO"
+          )));
+
+    const esVenta = !esAnulada && (ec === "VENTA" || op.tipoOperacion === "VENTA" || cantVenta > 0);
+    const esAlquilerActivo =
+      !esAnulada &&
+      !esEntregadaTotal &&
+      !esVenta &&
+      (cantAlquiler > 0 || (ec === "EN ALQUILER" && cantDevueltas === 0));
+    const esBodegaActiva =
+      !esAnulada &&
+      !esEntregadaTotal &&
+      !esVenta &&
+      !esAlquilerActivo &&
+      (cantBodega > 0 || ec === "EN BODEGA" || op.tipoOperacion === "APARTADO / ABONO");
+
+    if (esAnulada) {
       metricas.totalFacturasAnuladas++;
-    } else if (ec === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) {
-      metricas.totalFacturasEnAlquiler++;
-    } else if (ec === "ENTREGADO" || ec === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO" || it.estadoPrenda === "DEVUELTO A TIENDA")) {
+    } else if (esEntregadaTotal) {
       metricas.totalFacturasEntregadas++;
-    } else if (ec === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) {
+    } else if (esAlquilerActivo) {
+      metricas.totalFacturasEnAlquiler++;
+    } else if (esBodegaActiva) {
       metricas.totalFacturasEnBodega++;
-    } else if (ec === "VENTA" || op.tipoOperacion === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) {
+    } else if (esVenta) {
       metricas.totalFacturasVenta++;
     }
 
@@ -707,27 +744,27 @@ export async function anularFacturaOperacion(
       }
 
       // 1.1 Reponer el stock de los artículos en Supabase
-      const { data: itemsDb } = await supabase
+      const { data: itemsDb } = (await supabase
         .from("CAMPOFACTURA" as any)
         .select("*")
-        .eq("NUMEROFACT", numClean);
+        .eq("NUMEROFACT", numClean)) as any;
 
       if (itemsDb && Array.isArray(itemsDb)) {
-        for (const it of itemsDb) {
+        for (const it of itemsDb as any[]) {
           const cant = Number(it.CANTIDAD) || 1;
           if (it.BARRAS && String(it.BARRAS).startsWith("ACC-")) {
             try {
-              const { data: acc } = await supabase
+              const { data: acc } = (await supabase
                 .from("ACCESORIOS" as any)
                 .select("IDACCESORIO, STOCK")
                 .eq("CODBARRAS", it.BARRAS)
-                .maybeSingle();
+                .maybeSingle()) as any;
               if (acc) {
-                const stockActual = Number((acc as any).STOCK) || 0;
+                const stockActual = Number(acc.STOCK) || 0;
                 await supabase
                   .from("ACCESORIOS" as any)
                   .update({ STOCK: stockActual + cant })
-                  .eq("IDACCESORIO", (acc as any).IDACCESORIO);
+                  .eq("IDACCESORIO", acc.IDACCESORIO);
               }
             } catch {}
           } else if (it.BARRAS || it.DESCRIPCION) {
@@ -738,7 +775,7 @@ export async function anularFacturaOperacion(
               } else {
                 query = query.eq("DESCRIPCION", it.DESCRIPCION);
               }
-              const { data: art } = await query.maybeSingle();
+              const { data: art } = (await query.maybeSingle()) as any;
               if (art) {
                 const stockActual = Number((art as any).STOCK) || 0;
                 await supabase

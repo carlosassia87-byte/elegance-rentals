@@ -132,32 +132,7 @@ export function BalanceDepositosModal({
     return e === "EN ALQUILER";
   };
 
-  // Cálculos consolidados de depósitos
-  const totalDepositosYaDevueltos = useMemo(() => {
-    let sum = 0;
-    operaciones.forEach((op) => {
-      op.items.forEach((it) => {
-        if (esDevuelta(it.estadoPrenda)) {
-          sum += it.valorDeposito * it.cantidad;
-        }
-      });
-    });
-    return sum;
-  }, [operaciones]);
-
-  const totalDepositosPorDevolver = useMemo(() => {
-    let sum = 0;
-    operaciones.forEach((op) => {
-      op.items.forEach((it) => {
-        if (esAlquiler(it.estadoPrenda)) {
-          sum += it.valorDeposito * it.cantidad;
-        }
-      });
-    });
-    return sum;
-  }, [operaciones]);
-
-  // Lista de facturas con cálculo detallado de depósitos
+  // Lista de facturas con cálculo detallado de depósitos y estados estrictos
   const facturasProcesadas = useMemo(() => {
     return operaciones.map((op) => {
       const depCobrado = op.totalDeposito;
@@ -166,7 +141,36 @@ export function BalanceDepositosModal({
         .reduce((a, b) => a + b.valorDeposito * b.cantidad, 0);
       const depPendiente = Math.max(0, depCobrado - depDevuelto);
       const prendasEnAlquiler = op.items.filter((it) => esAlquiler(it.estadoPrenda)).length;
+      const prendasEnBodega = op.items.filter((it) => (it.estadoPrenda || "").toUpperCase() === "EN BODEGA").length;
       const prendasDevueltas = op.items.filter((it) => esDevuelta(it.estadoPrenda)).length;
+      const prendasVenta = op.items.filter((it) => (it.estadoPrenda || "").toUpperCase() === "VENTA").length;
+
+      const ec = (op.estadoCliente || "").toUpperCase();
+      const eg = (op.estadoGeneral || "").toUpperCase();
+      const esAnulada = ec === "ANULADO" || ec === "ANULADA" || eg === "ANULADA" || eg === "ANULADO";
+
+      const esLiquidadaOEntregada =
+        !esAnulada &&
+        (ec === "ENTREGADO" ||
+          ec === "DEVUELTO" ||
+          ec === "DEVUELTO A TIENDA" ||
+          (prendasDevueltas > 0 && prendasEnAlquiler === 0 && prendasEnBodega === 0) ||
+          (op.items.length > 0 && op.items.every((it) => esDevuelta(it.estadoPrenda))));
+
+      const esVenta = !esAnulada && (op.tipoOperacion === "VENTA" || ec === "VENTA" || prendasVenta > 0);
+
+      const esAlquilerActivo =
+        !esAnulada &&
+        !esLiquidadaOEntregada &&
+        !esVenta &&
+        (prendasEnAlquiler > 0 || (ec === "EN ALQUILER" && prendasDevueltas === 0));
+
+      const esBodegaActiva =
+        !esAnulada &&
+        !esLiquidadaOEntregada &&
+        !esVenta &&
+        !esAlquilerActivo &&
+        (prendasEnBodega > 0 || ec === "EN BODEGA" || op.tipoOperacion === "APARTADO / ABONO");
 
       return {
         ...op,
@@ -174,10 +178,57 @@ export function BalanceDepositosModal({
         depDevuelto,
         depPendiente,
         prendasEnAlquiler,
+        prendasEnBodega,
         prendasDevueltas,
+        esAnulada,
+        esLiquidadaOEntregada,
+        esAlquilerActivo,
+        esBodegaActiva,
+        esVenta,
       };
     });
   }, [operaciones]);
+
+  // Cálculos consolidados de depósitos
+  const totalDepositosYaDevueltos = useMemo(() => {
+    return facturasProcesadas.reduce((sum, f) => sum + f.depDevuelto, 0);
+  }, [facturasProcesadas]);
+
+  const totalDepositosPorDevolver = useMemo(() => {
+    return facturasProcesadas.reduce((sum, f) => {
+      if (!f.esAnulada && !f.esLiquidadaOEntregada && f.depPendiente > 0) {
+        return sum + f.depPendiente;
+      }
+      return sum;
+    }, 0);
+  }, [facturasProcesadas]);
+
+  // Conteos exactos de pestañas
+  const conteosEstado = useMemo(() => {
+    let enAlquiler = 0;
+    let enBodega = 0;
+    let entregados = 0;
+    let anulados = 0;
+
+    facturasProcesadas.forEach((f) => {
+      if (f.esAnulada) {
+        anulados++;
+      } else if (f.esLiquidadaOEntregada) {
+        entregados++;
+      } else if (f.esAlquilerActivo) {
+        enAlquiler++;
+      } else if (f.esBodegaActiva) {
+        enBodega++;
+      }
+    });
+
+    return {
+      enAlquiler,
+      enBodega,
+      entregados,
+      anulados,
+    };
+  }, [facturasProcesadas]);
 
   // Filtrado según estado de depósito y estado de prenda/operación
   const facturasFiltradas = useMemo(() => {
@@ -185,20 +236,19 @@ export function BalanceDepositosModal({
       if (filtroEstadoDeposito === "PENDIENTES" && f.depPendiente <= 0) return false;
       if (filtroEstadoDeposito === "LIQUIDADOS" && (f.depPendiente > 0 || f.depCobrado <= 0)) return false;
 
-      const ec = (f.estadoCliente || "").toUpperCase();
-      const eg = (f.estadoGeneral || "").toUpperCase();
-
       if (filtroEstadoPrenda === "ANULADOS") {
-        return ec === "ANULADO" || eg === "ANULADA" || eg === "ANULADO";
+        return f.esAnulada;
       }
+      if (f.esAnulada) return false;
+
       if (filtroEstadoPrenda === "EN_ALQUILER") {
-        return (ec === "EN ALQUILER" || f.items.some((it) => it.estadoPrenda === "EN ALQUILER")) && ec !== "ANULADO" && eg !== "ANULADO";
+        return f.esAlquilerActivo;
       }
       if (filtroEstadoPrenda === "EN_BODEGA") {
-        return (ec === "EN BODEGA" || f.items.some((it) => it.estadoPrenda === "EN BODEGA")) && ec !== "ANULADO" && eg !== "ANULADO";
+        return f.esBodegaActiva;
       }
       if (filtroEstadoPrenda === "ENTREGADO") {
-        return (ec === "ENTREGADO" || ec === "DEVUELTO" || f.items.some((it) => it.estadoPrenda === "ENTREGADO")) && ec !== "ANULADO" && eg !== "ANULADO";
+        return f.esLiquidadaOEntregada;
       }
 
       return true;
@@ -508,7 +558,7 @@ export function BalanceDepositosModal({
                       : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
                   }`}
                 >
-                  👗 En Alquiler ({metricas.totalFacturasEnAlquiler})
+                  👗 En Alquiler ({conteosEstado.enAlquiler})
                 </button>
                 <button
                   type="button"
@@ -519,7 +569,7 @@ export function BalanceDepositosModal({
                       : "bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100"
                   }`}
                 >
-                  📦 En Bodega / Apartados ({metricas.totalFacturasEnBodega})
+                  📦 En Bodega / Apartados ({conteosEstado.enBodega})
                 </button>
                 <button
                   type="button"
@@ -530,7 +580,7 @@ export function BalanceDepositosModal({
                       : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
                   }`}
                 >
-                  ✅ Entregados ({metricas.totalFacturasEntregadas})
+                  ✅ Entregados ({conteosEstado.entregados})
                 </button>
                 <button
                   type="button"
@@ -541,7 +591,7 @@ export function BalanceDepositosModal({
                       : "bg-rose-50 text-rose-900 border border-rose-200 hover:bg-rose-100"
                   }`}
                 >
-                  🚫 Anulados ({metricas.totalFacturasAnuladas})
+                  🚫 Anulados ({conteosEstado.anulados})
                 </button>
               </div>
             </div>
@@ -656,9 +706,23 @@ export function BalanceDepositosModal({
                             <div className="text-[10px] text-slate-500">CC: {op.clienteCedula}</div>
                           </td>
                           <td className="p-2.5 text-center">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200">
-                              {op.prendasEnAlquiler} en alquiler · {op.prendasDevueltas} devueltas
-                            </span>
+                            {op.esAnulada ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                Anulada
+                              </span>
+                            ) : op.esLiquidadaOEntregada ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {op.prendasDevueltas || op.items.length} devuelta{op.prendasDevueltas === 1 ? "" : "s"} · Entregado
+                              </span>
+                            ) : op.esAlquilerActivo ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                                {op.prendasEnAlquiler} en alquiler · {op.prendasDevueltas} devueltas
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                                {op.prendasEnBodega || op.items.length} en bodega (Apartado)
+                              </span>
+                            )}
                           </td>
                           <td className="p-2.5 text-right font-mono text-slate-700">
                             ${op.totalAlquiler.toLocaleString("es-CO")}

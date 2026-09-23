@@ -162,48 +162,86 @@ export function MovimientosTrajesModal({
     setFechaFin("");
   };
 
-  // Filtrado según ESTADO_CLIENTE del sistema Windev
-  const operacionesAnuladas = useMemo(() => {
-    return operaciones.filter((op) =>
-      op.estadoCliente === "ANULADO" || op.estadoGeneral === "ANULADA" || op.estadoGeneral === "ANULADO"
-    );
+  const esDevueltaEstado = (estado?: string) => {
+    const e = (estado || "").trim().toUpperCase();
+    return e === "DEVUELTO A TIENDA" || e === "ENTREGADO" || e === "DEVUELTO";
+  };
+  const esAlquilerEstado = (estado?: string) => {
+    const e = (estado || "").trim().toUpperCase();
+    return e === "EN ALQUILER";
+  };
+  const esBodegaEstado = (estado?: string) => {
+    const e = (estado || "").trim().toUpperCase();
+    return e === "EN BODEGA";
+  };
+
+  const operacionesClasificadas = useMemo(() => {
+    return operaciones.map((op) => {
+      const ec = (op.estadoCliente || "").toUpperCase();
+      const eg = (op.estadoGeneral || "").toUpperCase();
+      const esAnulada = ec === "ANULADO" || ec === "ANULADA" || eg === "ANULADA" || eg === "ANULADO";
+
+      const cantAlquiler = op.items.filter((it) => esAlquilerEstado(it.estadoPrenda)).length;
+      const cantBodega = op.items.filter((it) => esBodegaEstado(it.estadoPrenda)).length;
+      const cantDevueltas = op.items.filter((it) => esDevueltaEstado(it.estadoPrenda)).length;
+      const cantVenta = op.items.filter((it) => (it.estadoPrenda || "").toUpperCase() === "VENTA").length;
+
+      const esEntregadaTotal =
+        !esAnulada &&
+        (ec === "ENTREGADO" ||
+          ec === "DEVUELTO" ||
+          ec === "DEVUELTO A TIENDA" ||
+          (cantDevueltas > 0 && cantAlquiler === 0 && cantBodega === 0) ||
+          (op.items.length > 0 && op.items.every((it) => esDevueltaEstado(it.estadoPrenda))));
+
+      const esVenta = !esAnulada && (op.tipoOperacion === "VENTA" || ec === "VENTA" || cantVenta > 0);
+
+      const esAlquilerActivo =
+        !esAnulada &&
+        !esEntregadaTotal &&
+        !esVenta &&
+        (cantAlquiler > 0 || (ec === "EN ALQUILER" && cantDevueltas === 0));
+
+      const esBodegaActiva =
+        !esAnulada &&
+        !esEntregadaTotal &&
+        !esVenta &&
+        !esAlquilerActivo &&
+        (cantBodega > 0 || ec === "EN BODEGA" || op.tipoOperacion === "APARTADO / ABONO");
+
+      return {
+        ...op,
+        esAnulada,
+        esEntregadaTotal,
+        esVenta,
+        esAlquilerActivo,
+        esBodegaActiva,
+        cantAlquiler,
+        cantBodega,
+        cantDevueltas,
+      };
+    });
   }, [operaciones]);
+
+  const operacionesAnuladas = useMemo(() => {
+    return operacionesClasificadas.filter((op) => op.esAnulada);
+  }, [operacionesClasificadas]);
 
   const operacionesEnAlquiler = useMemo(() => {
-    return operaciones.filter((op) =>
-      (op.estadoCliente === "EN ALQUILER" || op.items.some((it) => it.estadoPrenda === "EN ALQUILER")) &&
-      op.estadoCliente !== "ANULADO" &&
-      op.estadoGeneral !== "ANULADA" &&
-      op.estadoGeneral !== "ANULADO"
-    );
-  }, [operaciones]);
+    return operacionesClasificadas.filter((op) => op.esAlquilerActivo);
+  }, [operacionesClasificadas]);
 
   const operacionesEntregados = useMemo(() => {
-    return operaciones.filter((op) =>
-      (op.estadoCliente === "ENTREGADO" || op.estadoCliente === "DEVUELTO" || op.items.some((it) => it.estadoPrenda === "ENTREGADO")) &&
-      op.estadoCliente !== "ANULADO" &&
-      op.estadoGeneral !== "ANULADA" &&
-      op.estadoGeneral !== "ANULADO"
-    );
-  }, [operaciones]);
+    return operacionesClasificadas.filter((op) => op.esEntregadaTotal);
+  }, [operacionesClasificadas]);
 
   const operacionesEnBodega = useMemo(() => {
-    return operaciones.filter((op) =>
-      (op.estadoCliente === "EN BODEGA" || op.items.some((it) => it.estadoPrenda === "EN BODEGA")) &&
-      op.estadoCliente !== "ANULADO" &&
-      op.estadoGeneral !== "ANULADA" &&
-      op.estadoGeneral !== "ANULADO"
-    );
-  }, [operaciones]);
+    return operacionesClasificadas.filter((op) => op.esBodegaActiva);
+  }, [operacionesClasificadas]);
 
   const operacionesVentas = useMemo(() => {
-    return operaciones.filter((op) =>
-      (op.tipoOperacion === "VENTA" || op.estadoCliente === "VENTA" || op.items.some((it) => it.estadoPrenda === "VENTA")) &&
-      op.estadoCliente !== "ANULADO" &&
-      op.estadoGeneral !== "ANULADA" &&
-      op.estadoGeneral !== "ANULADO"
-    );
-  }, [operaciones]);
+    return operacionesClasificadas.filter((op) => op.esVenta);
+  }, [operacionesClasificadas]);
 
   // Operaciones mostradas según la pestaña o filtro seleccionado
   const operacionesFiltradas = useMemo(() => {
@@ -220,16 +258,16 @@ export function MovimientosTrajesModal({
         return operacionesAnuladas;
       case "TODOS":
       default:
-        return operaciones;
+        return operacionesClasificadas;
     }
-  }, [submoduloActivo, operacionesEnAlquiler, operacionesEntregados, operacionesEnBodega, operacionesVentas, operacionesAnuladas, operaciones]);
+  }, [submoduloActivo, operacionesEnAlquiler, operacionesEntregados, operacionesEnBodega, operacionesVentas, operacionesAnuladas, operacionesClasificadas]);
 
-  // Depósitos que todavía falta devolver a los clientes (tomado directamente de FACTURA.FTOTALDEPOSITO)
+  // Depósitos que todavía falta devolver a los clientes
   const totalDepositosPorDevolver = useMemo(() => {
     return operacionesEnAlquiler.reduce((sum, op) => sum + (Number(op.totalDeposito) || 0), 0);
   }, [operacionesEnAlquiler]);
 
-  // Depósitos ya entregados / liquidados (tomado directamente de FACTURA.FTOTALDEPOSITO)
+  // Depósitos ya entregados / liquidados
   const totalDepositosYaDevueltos = useMemo(() => {
     return operacionesEntregados.reduce((sum, op) => sum + (Number(op.totalDeposito) || 0), 0);
   }, [operacionesEntregados]);
@@ -511,7 +549,7 @@ export function MovimientosTrajesModal({
                       submoduloActivo === "TODOS" ? "bg-white/20 text-white" : "bg-slate-300 text-slate-900"
                     }`}
                   >
-                    {metricas.totalOperaciones}
+                    {operacionesClasificadas.length}
                   </span>
                 </button>
 
@@ -529,9 +567,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "EN_ALQUILER" ? "bg-black/20 text-white" : "bg-amber-200 text-amber-950"
                     }`}
-                    title={`${metricas.totalFacturasEnAlquiler} Facturas (${metricas.totalPrendasEnAlquiler} prendas)`}
+                    title={`${operacionesEnAlquiler.length} Facturas`}
                   >
-                    {metricas.totalFacturasEnAlquiler}
+                    {operacionesEnAlquiler.length}
                   </span>
                 </button>
 
@@ -549,9 +587,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "ENTREGADO" ? "bg-black/20 text-white" : "bg-emerald-200 text-emerald-950"
                     }`}
-                    title={`${metricas.totalFacturasEntregadas} Facturas (${metricas.totalPrendasEntregadas} prendas)`}
+                    title={`${operacionesEntregados.length} Facturas`}
                   >
-                    {metricas.totalFacturasEntregadas}
+                    {operacionesEntregados.length}
                   </span>
                 </button>
 
@@ -569,9 +607,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "EN_BODEGA" ? "bg-black/20 text-white" : "bg-blue-200 text-blue-950"
                     }`}
-                    title={`${metricas.totalFacturasEnBodega} Facturas (${metricas.totalPrendasEnBodega} prendas)`}
+                    title={`${operacionesEnBodega.length} Facturas`}
                   >
-                    {metricas.totalFacturasEnBodega}
+                    {operacionesEnBodega.length}
                   </span>
                 </button>
 
@@ -589,9 +627,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "VENTA" ? "bg-black/20 text-white" : "bg-purple-200 text-purple-950"
                     }`}
-                    title={`${metricas.totalFacturasVenta} Facturas (${metricas.totalPrendasVenta} prendas)`}
+                    title={`${operacionesVentas.length} Facturas`}
                   >
-                    {metricas.totalFacturasVenta}
+                    {operacionesVentas.length}
                   </span>
                 </button>
 
@@ -609,9 +647,9 @@ export function MovimientosTrajesModal({
                     className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
                       submoduloActivo === "ANULADOS" ? "bg-black/20 text-white" : "bg-rose-200 text-rose-950"
                     }`}
-                    title={`${metricas.totalFacturasAnuladas} Facturas Anuladas`}
+                    title={`${operacionesAnuladas.length} Facturas Anuladas`}
                   >
-                    {metricas.totalFacturasAnuladas}
+                    {operacionesAnuladas.length}
                   </span>
                 </button>
               </div>
