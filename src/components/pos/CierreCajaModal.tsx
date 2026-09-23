@@ -54,55 +54,86 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       let allGastos: any[] = [];
       let allDeposDev: any[] = [];
 
-      // 1. Facturas del día exacto
+      // 1. Facturas del día exacto (por FECHASALIDA, FECHA_RECIBO o FECHAINGRESO)
+      const facturasMap = new Map<string, any>();
       try {
         const { data: facts } = await supabase
           .from("FACTURA" as any)
           .select("*")
-          .eq("FECHASALIDA", fecha);
+          .or(`FECHASALIDA.eq.${fecha},FECHA_RECIBO.eq.${fecha},FECHAINGRESO.eq.${fecha}`);
 
         if (facts && facts.length > 0) {
-          allFacts = facts;
           facts.forEach((f: any) => {
-            alqEfec += Number(f.PAGOCONEFECTIVO || 0);
-            alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
-            depRecib += Number(f.FTOTALDEPOSITO || 0);
-            countFacts++;
+            const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
+            if (!facturasMap.has(numFact)) {
+              facturasMap.set(numFact, f);
+            }
           });
         }
       } catch (e) {
         console.warn("Fallo lectura de facturas en Supabase:", e);
       }
 
-      // Facturas locales
+      // Facturas de IndexedDB y cola offline
+      try {
+        const { obtenerTodasLasFacturasOffline, obtenerColaSincronizacion } = await import("@/services/offlineDbService");
+        const [offlineFacts, cola] = await Promise.all([
+          obtenerTodasLasFacturasOffline().catch(() => []),
+          obtenerColaSincronizacion().catch(() => []),
+        ]);
+
+        const itemsCola = (cola || [])
+          .filter((it) => it.tipo === "NUEVA_FACTURA" && it.datos?.factura)
+          .map((it) => it.datos.factura);
+
+        [...(offlineFacts || []), ...itemsCola].forEach((f: any) => {
+          const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
+          const fSalida = f.FECHASALIDA || f.FECHA_RECIBO;
+          const fRecibo = f.FECHA_RECIBO || fSalida;
+          if ((fSalida === fecha || fRecibo === fecha) && !facturasMap.has(numFact)) {
+            facturasMap.set(numFact, f);
+          }
+        });
+      } catch {}
+
+      // Facturas locales de respaldo
       try {
         const raw = localStorage.getItem("elegance_local_facturas");
         const localFacts = raw ? JSON.parse(raw) : [];
-        if (localFacts && localFacts.length > 0 && countFacts === 0) {
+        if (localFacts && Array.isArray(localFacts)) {
           localFacts.forEach((f: any) => {
-            if (f.FECHASALIDA === fecha) {
-              allFacts.push(f);
-              alqEfec += Number(f.PAGOCONEFECTIVO || 0);
-              alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
-              depRecib += Number(f.FTOTALDEPOSITO || 0);
-              countFacts++;
+            const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
+            const fSalida = f.FECHASALIDA || f.FECHA_RECIBO;
+            const fRecibo = f.FECHA_RECIBO || fSalida;
+            if ((fSalida === fecha || fRecibo === fecha) && !facturasMap.has(numFact)) {
+              facturasMap.set(numFact, f);
             }
           });
         }
       } catch {}
 
+      allFacts = Array.from(facturasMap.values());
+      allFacts.forEach((f: any) => {
+        alqEfec += Number(f.PAGOCONEFECTIVO || 0);
+        alqTrans += Number(f.PAGOCONTRANFERENCIA || 0);
+        depRecib += Number(f.FTOTALDEPOSITO || 0);
+        countFacts++;
+      });
+
       // 1.1 Abonos recibidos en el día (ABONO_CLIENTE)
+      const abonosMap = new Map<string, any>();
       try {
         const { data: abonos } = await supabase
           .from("ABONO_CLIENTE" as any)
           .select("*")
-          .eq("FECHAABONO", fecha);
+          .or(`FECHAABONO.eq.${fecha},FECHA.eq.${fecha},AFECHA.eq.${fecha}`);
 
         if (abonos && abonos.length > 0) {
-          allAbonos = abonos;
           abonos.forEach((ab: any) => {
-            alqEfec += Number(ab.PAGOEFECTIVO || 0);
-            alqTrans += Number(ab.PAGOTRANFE || 0);
+            const idAb = String(ab.IDABONO_CLIENTE || ab.ID || `${ab.AFACTURA}_${ab.AVALOR}`);
+            if (!abonosMap.has(idAb)) {
+              abonosMap.set(idAb, ab);
+            }
           });
         }
       } catch (e) {
@@ -113,16 +144,22 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       try {
         const rawAb = localStorage.getItem("elegance_local_abonos");
         const localAbonos = rawAb ? JSON.parse(rawAb) : [];
-        if (localAbonos && localAbonos.length > 0) {
+        if (localAbonos && Array.isArray(localAbonos)) {
           localAbonos.forEach((ab: any) => {
-            if (ab.FECHAABONO === fecha) {
-              allAbonos.push(ab);
-              alqEfec += Number(ab.PAGOEFECTIVO || 0);
-              alqTrans += Number(ab.PAGOTRANFE || 0);
+            const fAb = ab.FECHAABONO || ab.FECHA || ab.AFECHA;
+            const idAb = String(ab.IDABONO_CLIENTE || ab.ID || `${ab.AFACTURA}_${ab.AVALOR}`);
+            if (fAb === fecha && !abonosMap.has(idAb)) {
+              abonosMap.set(idAb, ab);
             }
           });
         }
       } catch {}
+
+      allAbonos = Array.from(abonosMap.values());
+      allAbonos.forEach((ab: any) => {
+        alqEfec += Number(ab.PAGOEFECTIVO || ab.AVALOR || 0);
+        alqTrans += Number(ab.PAGOTRANFE || 0);
+      });
 
       // 2. Gastos de hoy
       let gastosTotal = 0;

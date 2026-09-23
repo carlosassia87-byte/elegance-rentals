@@ -120,11 +120,16 @@ export async function consultarMovimientos(
       const to = from + BATCH_SIZE - 1;
       let query = supabase.from("FACTURA" as any).select("*").order("IDFACTURA", { ascending: false }).range(from, to);
 
-      if (filtros.fechaInicio) {
-        query = query.gte("FECHASALIDA", filtros.fechaInicio);
-      }
-      if (filtros.fechaFin) {
-        query = query.lte("FECHASALIDA", filtros.fechaFin);
+      if (filtros.fechaInicio && filtros.fechaFin) {
+        if (filtros.fechaInicio === filtros.fechaFin) {
+          query = query.or(`FECHASALIDA.eq.${filtros.fechaInicio},FECHA_RECIBO.eq.${filtros.fechaInicio},FECHAINGRESO.eq.${filtros.fechaInicio}`);
+        } else {
+          query = query.or(
+            `and(FECHASALIDA.gte.${filtros.fechaInicio},FECHASALIDA.lte.${filtros.fechaFin}),and(FECHA_RECIBO.gte.${filtros.fechaInicio},FECHA_RECIBO.lte.${filtros.fechaFin}),and(FECHAINGRESO.gte.${filtros.fechaInicio},FECHAINGRESO.lte.${filtros.fechaFin})`
+          );
+        }
+      } else if (filtros.fechaInicio) {
+        query = query.or(`FECHASALIDA.gte.${filtros.fechaInicio},FECHA_RECIBO.gte.${filtros.fechaInicio}`);
       }
 
       const { data: facturasRaw, error } = await query;
@@ -169,7 +174,7 @@ export async function consultarMovimientos(
         operacionesMap.set(numFact, {
           idFactura: Number(f.IDFACTURA),
           numeroFact: numFact,
-          fechaSalida: f.FECHASALIDA || new Date().toISOString().split("T")[0],
+          fechaSalida: f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0],
           fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || f.FECHASALIDA || "",
           hora: f.HORA || "",
           clienteNombre: (f.CCLIENTE || f.NOMBRE || "CLIENTE GENERAL").trim(),
@@ -197,17 +202,135 @@ export async function consultarMovimientos(
     console.warn("Fallo lectura Supabase FACTURA:", err);
   }
 
-  // 2. Obtener Facturas Locales de respaldo
+  // 2. Obtener Facturas de IndexedDB y Cola de Sincronización Local
+  try {
+    const { obtenerTodasLasFacturasOffline, obtenerColaSincronizacion } = await import("./offlineDbService");
+    const [offlineFacts, cola] = await Promise.all([
+      obtenerTodasLasFacturasOffline().catch(() => []),
+      obtenerColaSincronizacion().catch(() => []),
+    ]);
+
+    const itemsFromCola = (cola || [])
+      .filter((it) => it.tipo === "NUEVA_FACTURA" && it.datos?.factura)
+      .map((it) => ({
+        ...it.datos.factura,
+        items: it.datos.items,
+      }));
+
+    const todasLocales = [...(offlineFacts || []), ...itemsFromCola];
+
+    for (const f of todasLocales) {
+      const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
+      const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0];
+      const fechaRecibo = f.FECHA_RECIBO || fechaSalida;
+
+      const coincideFecha =
+        !filtros.fechaInicio ||
+        (fechaSalida >= filtros.fechaInicio && (!filtros.fechaFin || fechaSalida <= filtros.fechaFin)) ||
+        (fechaRecibo >= filtros.fechaInicio && (!filtros.fechaFin || fechaRecibo <= filtros.fechaFin));
+
+      if (!coincideFecha) continue;
+
+      if (!operacionesMap.has(numFact)) {
+        const alq = Number(f.FTOTALALQUILER || 0);
+        const dep = Number(f.FTOTALDEPOSITO || 0);
+        let totalVenta = Number(f.FTOTALVENTADEPOSITO || 0);
+        if (totalVenta <= 0 || (totalVenta === alq && dep > 0)) {
+          totalVenta = alq + dep;
+        }
+        const pagado = Number(f.PAGOCONEFECTIVO || 0) + Number(f.PAGOCONTRANFERENCIA || 0) || Number(f.PAGACON || 0);
+        const totalSaldoDb = f.TOTAL_SALDO !== undefined && f.TOTAL_SALDO !== null ? Number(f.TOTAL_SALDO) : null;
+        let saldo = 0;
+        if (pagado >= totalVenta && totalVenta > 0) {
+          saldo = 0;
+        } else if (totalSaldoDb !== null && totalSaldoDb > 0) {
+          saldo = totalSaldoDb;
+        } else {
+          saldo = Math.max(0, totalVenta - pagado);
+        }
+
+        const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
+        let estadoCliRaw = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+
+        if (estadoGenRaw === "ANULADA" || estadoGenRaw === "ANULADO" || estadoCliRaw === "ANULADA" || estadoCliRaw === "ANULADO") {
+          estadoCliRaw = "ANULADO";
+        } else if (!estadoCliRaw) {
+          estadoCliRaw = f.MODO === "VENTA" ? "VENTA" : "EN ALQUILER";
+        } else if (estadoCliRaw === "DEVUELTO" || estadoCliRaw === "DEVUELTO A TIENDA") {
+          estadoCliRaw = "ENTREGADO";
+        }
+
+        let tipo: "ALQUILER" | "VENTA" | "APARTADO / ABONO" | string = f.MODO === "VENTA" || estadoCliRaw === "VENTA" ? "VENTA" : "ALQUILER";
+        if (f.MODO === "APARTADO" || estadoCliRaw === "EN BODEGA") {
+          tipo = "APARTADO / ABONO";
+        }
+
+        const itemsDerivados: ItemMovimiento[] = [];
+        if (f.items && Array.isArray(f.items)) {
+          f.items.forEach((it: any, idx: number) => {
+            itemsDerivados.push({
+              id: `${numFact}-${idx}`,
+              automatic: idx + 1,
+              idFactura: Number(f.IDFACTURA) || Date.now(),
+              numeroFact: numFact,
+              codigoBarras: it.BARRAS || "",
+              descripcion: it.DESCRIPCION || "PRENDA",
+              talla: it.TALLA || "U",
+              cantidad: Number(it.CANTIDAD || 1),
+              valorAlquiler: Number(it.VALOR || 0),
+              valorDeposito: Number(it.VALORDEPOSITO || 0),
+              total: Number(it.TOTAL || it.VALOR || 0),
+              estadoPrenda: (estadoCliRaw === "ENTREGADO" ? "ENTREGADO" : "EN ALQUILER") as EstadoPrenda,
+              fechaSalida,
+              fechaEntregaPactada: f.FECHAENTRADA || fechaSalida,
+            });
+          });
+        }
+
+        operacionesMap.set(numFact, {
+          idFactura: Number(f.IDFACTURA) || Date.now(),
+          numeroFact: numFact,
+          fechaSalida,
+          fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || fechaSalida,
+          hora: f.HORA || "",
+          clienteNombre: (f.CCLIENTE || f.NOMBRE || "CLIENTE GENERAL").trim(),
+          clienteCedula: String(f.CCEDULA || f.CEDULA || "—"),
+          clienteTelefono: f.CTELEFONO || f.CTELEFONO1 || f.TELEFONO || "—",
+          clienteDireccion: f.CDIRECCION || f.DIRECCION || "—",
+          tipoOperacion: tipo,
+          totalAlquiler: alq,
+          totalDeposito: dep,
+          totalVentaDeposito: totalVenta,
+          pagoEfectivo: Number(f.PAGOCONEFECTIVO || 0),
+          pagoTransferencia: Number(f.PAGOCONTRANFERENCIA || 0),
+          saldoPendiente: Math.max(0, saldo),
+          estadoGeneral: f.ESTADO || (saldo > 0 ? "CON SALDO" : "PAGADO"),
+          estadoCliente: estadoCliRaw,
+          vendedor: f.VENDEDOR || "CAJERO",
+          items: itemsDerivados,
+        });
+      }
+    }
+  } catch (errIndexed) {
+    console.warn("Fallo lectura IndexedDB en movimientos:", errIndexed);
+  }
+
+  // 2.1 Obtener Facturas Locales de LocalStorage de respaldo
   try {
     const rawLocal = localStorage.getItem("elegance_local_facturas");
     if (rawLocal) {
       const localList: any[] = JSON.parse(rawLocal);
       for (const f of localList) {
         const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
-        const fechaSalida = f.FECHASALIDA || new Date().toISOString().split("T")[0];
+        const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0];
+        const fechaRecibo = f.FECHA_RECIBO || fechaSalida;
 
-        if (filtros.fechaInicio && fechaSalida < filtros.fechaInicio) continue;
-        if (filtros.fechaFin && fechaSalida > filtros.fechaFin) continue;
+        const coincideFecha =
+          !filtros.fechaInicio ||
+          (fechaSalida >= filtros.fechaInicio && (!filtros.fechaFin || fechaSalida <= filtros.fechaFin)) ||
+          (fechaRecibo >= filtros.fechaInicio && (!filtros.fechaFin || fechaRecibo <= filtros.fechaFin));
+
+        if (!coincideFecha) continue;
 
         if (!operacionesMap.has(numFact)) {
           const alq = Number(f.FTOTALALQUILER || 0);

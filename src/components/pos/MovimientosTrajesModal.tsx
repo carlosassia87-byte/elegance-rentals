@@ -60,7 +60,7 @@ export function MovimientosTrajesModal({
   const hoyStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   // Submódulo / Estado activo (coincide con los estados reales de Windev)
-  const [submoduloActivo, setSubmoduloActivo] = useState<SubmoduloTipo>("EN_ALQUILER");
+  const [submoduloActivo, setSubmoduloActivo] = useState<SubmoduloTipo>("TODOS");
 
   // Filtros de fecha marcando el día en curso por defecto
   const [fechaInicio, setFechaInicio] = useState(hoyStr);
@@ -463,6 +463,25 @@ export function MovimientosTrajesModal({
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 <button
                   type="button"
+                  onClick={() => setSubmoduloActivo("TODOS")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    submoduloActivo === "TODOS"
+                      ? "bg-slate-900 text-white shadow-sm ring-2 ring-slate-400/50"
+                      : "bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200"
+                  }`}
+                >
+                  <span>📋 TODOS (DEL DÍA)</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
+                      submoduloActivo === "TODOS" ? "bg-white/20 text-white" : "bg-slate-300 text-slate-900"
+                    }`}
+                  >
+                    {metricas.totalOperaciones}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setSubmoduloActivo("EN_ALQUILER")}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
                     submoduloActivo === "EN_ALQUILER"
@@ -518,25 +537,6 @@ export function MovimientosTrajesModal({
                     title={`${metricas.totalFacturasEnBodega} Facturas (${metricas.totalPrendasEnBodega} prendas)`}
                   >
                     {metricas.totalFacturasEnBodega}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSubmoduloActivo("TODOS")}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                    submoduloActivo === "TODOS"
-                      ? "bg-slate-800 text-white shadow-sm ring-2 ring-slate-400/50"
-                      : "bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200"
-                  }`}
-                >
-                  <span>📋 TODOS</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.2 rounded-full font-black ${
-                      submoduloActivo === "TODOS" ? "bg-black/20 text-white" : "bg-slate-300 text-slate-900"
-                    }`}
-                  >
-                    {metricas.totalOperaciones}
                   </span>
                 </button>
 
