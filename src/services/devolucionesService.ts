@@ -320,7 +320,6 @@ export async function registrarDevolucionCompleta(
           .from("FACTURA" as any)
           .update({
             ESTADOCLIENTE: "ENTREGADO",
-            ESTADOFIN: "DEVUELTO",
           })
           .eq("NUMEROFACT", params.numeroFactura);
       } catch (e) {

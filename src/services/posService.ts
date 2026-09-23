@@ -1234,7 +1234,7 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
       if (rawOv) overrides = JSON.parse(rawOv);
     } catch {}
 
-    const facturaDevuelta = totalDevuelto > 0 || facturaEncontrada.ESTADOCLIENTE === "DEVUELTO" || facturaEncontrada.ESTADOFIN === "DEVUELTO";
+    const facturaDevuelta = totalDevuelto > 0 || facturaEncontrada.ESTADOCLIENTE === "DEVUELTO" || facturaEncontrada.ESTADOCLIENTE === "ENTREGADO";
 
     const itemsConEstado: ItemApartadoConEstado[] = itemsEncontrados.map((it) => {
       const cod = it.BARRAS || "";
@@ -1248,9 +1248,9 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
         estadoPrenda = "DEVUELTO A TIENDA";
       } else if (
         ov?.estado === "EN ALQUILER" ||
-        facturaEncontrada.ESTADOCLIENTE === "ENTREGADO" ||
-        facturaEncontrada.ESTADOFIN === "EN ALQUILER" ||
-        facturaEncontrada.MODO === "EN ALQUILER"
+        facturaEncontrada.ESTADOCLIENTE === "EN ALQUILER" ||
+        facturaEncontrada.MODO === "EN ALQUILER" ||
+        facturaEncontrada.MODO === "ALQUILER"
       ) {
         estadoPrenda = "EN ALQUILER";
       } else {
@@ -1378,7 +1378,6 @@ export async function registrarSalidaVestidoApartado(
         .from("FACTURA" as any)
         .update({
           ESTADOCLIENTE: "EN ALQUILER",
-          ESTADOFIN: "EN ALQUILER",
           MODO: "ALQUILER",
           FECHASALIDA: hoy,
           FECHAENTRADA: dDevolucion,
