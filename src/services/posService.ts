@@ -1357,6 +1357,117 @@ export async function registrarAbonoCliente(params: {
   }
 }
 
+/**
+ * Elimina o anula un abono individual mal registrado:
+ * 1. Lo borra de ABONO_CLIENTE en Supabase y de LocalStorage.
+ * 2. Recalcula el saldo pendiente de la factura con base en los abonos restantes.
+ * 3. Actualiza TOTAL_SALDO en FACTURA sin anular la factura.
+ */
+export async function eliminarAbonoCliente(
+  numeroAbono: string,
+  numeroFactura: string
+): Promise<{ ok: boolean; mensaje: string; nuevoSaldo?: number }> {
+  try {
+    const numAbonoClean = String(numeroAbono).trim();
+    const numFactClean = String(numeroFactura).trim();
+
+    if (!numAbonoClean || !numFactClean) {
+      return { ok: false, mensaje: "Datos incompletos para eliminar el abono" };
+    }
+
+    // 1. Obtener la factura para saber los totales
+    let factura: any = null;
+    try {
+      const { data } = await supabase
+        .from("FACTURA" as any)
+        .select("*")
+        .eq("NUMEROFACT", numFactClean)
+        .maybeSingle();
+      if (data) factura = data;
+    } catch {}
+
+    if (!factura) {
+      const facts = getLocalFacturas();
+      factura = facts.find((f) => f.NUMEROFACT === numFactClean);
+    }
+
+    // 2. Eliminar el abono de Supabase
+    try {
+      await supabase
+        .from("ABONO_CLIENTE" as any)
+        .delete()
+        .eq("NUMEROABONO", numAbonoClean);
+    } catch (e) {
+      console.warn("Aviso eliminando abono en Supabase:", e);
+    }
+
+    // 3. Eliminar de LocalStorage
+    try {
+      const abonosLocales = getLocalAbonos().filter((a) => a.NUMEROABONO !== numAbonoClean);
+      localStorage.setItem(KEY_LOCAL_ABONOS, JSON.stringify(abonosLocales));
+    } catch {}
+
+    // 4. Consultar los abonos restantes de esta factura para recalcular el saldo real exacto
+    let abonosRestantes: AbonoCliente[] = [];
+    try {
+      const { data: abs } = await supabase
+        .from("ABONO_CLIENTE" as any)
+        .select("*")
+        .eq("AFACTURA", numFactClean)
+        .order("IDABONO_CLIENTE", { ascending: true });
+      if (abs) abonosRestantes = abs as unknown as AbonoCliente[];
+    } catch {}
+
+    if (abonosRestantes.length === 0) {
+      abonosRestantes = getLocalAbonos().filter((a) => a.AFACTURA === numFactClean);
+    }
+
+    const totalAbonadoRestante = abonosRestantes.reduce((sum, a) => sum + (Number(a.TOTAL_ABONO) || 0), 0);
+
+    // Calcular el saldo
+    let totalOperacion = 0;
+    let pagoInicial = 0;
+    if (factura) {
+      const alq = Number(factura.FTOTALALQUILER || 0);
+      const dep = Number(factura.FTOTALDEPOSITO || 0);
+      totalOperacion = Number(factura.FTOTALVENTADEPOSITO || 0);
+      if (totalOperacion <= 0 || (totalOperacion === alq && dep > 0)) {
+        totalOperacion = alq + dep;
+      }
+      pagoInicial = Number(factura.PAGOCONEFECTIVO || 0) + Number(factura.PAGOCONTRANFERENCIA || 0) || Number(factura.PAGACON || 0);
+    }
+
+    const nuevoSaldo = Math.max(0, totalOperacion - pagoInicial - totalAbonadoRestante);
+
+    // 5. Actualizar TOTAL_SALDO en FACTURA en Supabase y local
+    try {
+      await supabase
+        .from("FACTURA" as any)
+        .update({ TOTAL_SALDO: nuevoSaldo })
+        .eq("NUMEROFACT", numFactClean);
+    } catch {}
+
+    const facts = getLocalFacturas();
+    const factIdx = facts.findIndex((f) => f.NUMEROFACT === numFactClean);
+    if (factIdx >= 0 && facts[factIdx]) {
+      facts[factIdx]!.TOTAL_SALDO = nuevoSaldo;
+      localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
+    }
+
+    return {
+      ok: true,
+      mensaje: `Abono ${numAbonoClean} eliminado correctamente. El saldo pendiente fue recalculado en $${nuevoSaldo.toLocaleString("es-CO")}.`,
+      nuevoSaldo,
+    };
+  } catch (err: any) {
+    console.error("Error al eliminar abono cliente:", err);
+    return {
+      ok: false,
+      mensaje: err?.message || "Ocurrió un error al eliminar el abono",
+    };
+  }
+}
+
 export async function registrarSalidaVestidoApartado(
   numeroFactura: string,
   fechaSalidaPersonalizada?: string,

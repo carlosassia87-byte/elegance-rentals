@@ -30,17 +30,20 @@ import {
   AlertTriangle,
   Ban,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   consultarMovimientos,
   anularFacturaOperacion,
+  cambiarEstadoFacturaABodega,
   type OperacionClienteMovimiento,
   type ItemMovimiento,
   type EstadoPrenda,
   type ResumenMetricasMovimientos,
 } from "@/services/movimientosService";
+import { revertirDevolucionFactura } from "@/services/devolucionesService";
 import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 import { DevolucionTrajesModal } from "./DevolucionTrajesModal";
 import type { EmpresaConfig } from "@/services/empresaCajaService";
@@ -300,6 +303,54 @@ export function MovimientosTrajesModal({
       toast.error(e?.message || "Error al anular la factura");
     } finally {
       setAnulando(false);
+    }
+  };
+
+  const handleCambiarABodega = async (op: OperacionClienteMovimiento) => {
+    const confirmar = window.confirm(
+      `¿Deseas cambiar la Factura #${op.numeroFact} (${op.clienteNombre}) de 'EN ALQUILER' a 'EN BODEGA'?\n\nEl traje se guardará como Apartado en tienda sin anular la factura.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await cambiarEstadoFacturaABodega(op.numeroFact);
+      if (res.success) {
+        toast.success(res.mensaje);
+        await cargarDatos();
+        if (clienteSeleccionado?.numeroFact === op.numeroFact) {
+          setClienteSeleccionado((prev) =>
+            prev ? { ...prev, estadoCliente: "EN BODEGA", tipoOperacion: "APARTADO / ABONO" } : null
+          );
+        }
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al cambiar estado a bodega");
+    }
+  };
+
+  const handleRevertirDevolucion = async (op: OperacionClienteMovimiento) => {
+    const confirmar = window.confirm(
+      `¿Deseas REVERTIR la devolución de la Factura #${op.numeroFact} (${op.clienteNombre})?\n\n- Se cancelará el egreso del depósito reintegrado.\n- El traje volverá al estado 'EN ALQUILER'.\n- Se descontará del inventario el stock sumado por error.\n\nTodo esto se hace SIN anular la factura.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await revertirDevolucionFactura(op.numeroFact);
+      if (res.ok) {
+        toast.success(res.mensaje);
+        await cargarDatos();
+        if (clienteSeleccionado?.numeroFact === op.numeroFact) {
+          setClienteSeleccionado((prev) =>
+            prev ? { ...prev, estadoCliente: "EN ALQUILER", tipoOperacion: "ALQUILER" } : null
+          );
+        }
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al revertir la devolución");
     }
   };
 
@@ -881,16 +932,42 @@ export function MovimientosTrajesModal({
                               <td className="p-2 text-center">
                                 <div className="flex items-center justify-center gap-1">
                                   {ec === "EN ALQUILER" && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          abrirDevolucionFactura(op.numeroFact);
+                                        }}
+                                        className="flex items-center gap-1 h-6 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
+                                        title="Devolver traje y reintegrar depósito"
+                                      >
+                                        <RotateCcw className="h-3 w-3" /> Devolver
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCambiarABodega(op);
+                                        }}
+                                        className="flex items-center gap-1 h-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
+                                        title="Cambiar estado a EN BODEGA (Apartado en tienda sin anular)"
+                                      >
+                                        <Package className="h-3 w-3" /> A Bodega
+                                      </button>
+                                    </>
+                                  )}
+                                  {(ec === "ENTREGADO" || ec === "DEVUELTO" || ec === "DEVUELTO A TIENDA") && (
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        abrirDevolucionFactura(op.numeroFact);
+                                        handleRevertirDevolucion(op);
                                       }}
-                                      className="flex items-center gap-1 h-6 rounded-lg bg-teal-600 hover:bg-teal-700 text-white px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
-                                      title="Devolver traje y reintegrar depósito"
+                                      className="flex items-center gap-1 h-6 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 px-2 text-[10px] font-black shadow-2xs transition-all whitespace-nowrap"
+                                      title="Revertir devolución errónea y volver a colocar en alquiler"
                                     >
-                                      <RotateCcw className="h-3 w-3" /> Devolver
+                                      <Undo2 className="h-3 w-3" /> Revertir Devolución
                                     </button>
                                   )}
                                   {ec !== "ANULADO" && ec !== "ANULADA" ? (
@@ -927,12 +1004,32 @@ export function MovimientosTrajesModal({
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {clienteSeleccionado && (clienteSeleccionado.estadoCliente === "EN ALQUILER" || clienteSeleccionado.items.some((i) => i.estadoPrenda === "EN ALQUILER")) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => abrirDevolucionFactura(clienteSeleccionado.numeroFact)}
+                          className="flex items-center gap-1 h-6 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 px-2.5 text-[10px] font-black transition-all"
+                        >
+                          <RotateCcw className="h-3 w-3" /> Devolución
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCambiarABodega(clienteSeleccionado)}
+                          className="flex items-center gap-1 h-6 rounded-lg bg-blue-600 hover:bg-blue-500 text-white px-2.5 text-[10px] font-black transition-all shadow-xs"
+                          title="Cambiar estado a EN BODEGA (Apartado en tienda sin anular)"
+                        >
+                          <Package className="h-3 w-3" /> A Bodega
+                        </button>
+                      </>
+                    )}
+                    {clienteSeleccionado && (clienteSeleccionado.estadoCliente === "ENTREGADO" || clienteSeleccionado.estadoCliente === "DEVUELTO" || clienteSeleccionado.estadoCliente === "DEVUELTO A TIENDA") && (
                       <button
                         type="button"
-                        onClick={() => abrirDevolucionFactura(clienteSeleccionado.numeroFact)}
-                        className="flex items-center gap-1 h-6 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 px-2.5 text-[10px] font-black transition-all"
+                        onClick={() => handleRevertirDevolucion(clienteSeleccionado)}
+                        className="flex items-center gap-1 h-6 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 text-[10px] font-black transition-all shadow-xs"
+                        title="Revertir devolución errónea y volver el traje a EN ALQUILER"
                       >
-                        <RotateCcw className="h-3 w-3" /> Devolución
+                        <Undo2 className="h-3 w-3" /> Revertir Devolución
                       </button>
                     )}
                     {clienteSeleccionado && clienteSeleccionado.estadoCliente !== "ANULADO" && clienteSeleccionado.estadoCliente !== "ANULADA" && (

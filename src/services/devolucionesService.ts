@@ -528,3 +528,158 @@ export async function consultarAlquileresActivosCliente(
     return [];
   }
 }
+
+/**
+ * Revierte una devolución realizada por error:
+ * 1. Elimina el registro de egreso de depósitoentregado para cuadrar la caja.
+ * 2. Revierte el stock añadido a los trajes/accesorios (-cantidad).
+ * 3. Cambia el estado de la factura a 'EN ALQUILER'.
+ * 4. Actualiza el estado de las prendas a 'EN ALQUILER' en los overrides locales y base de datos.
+ */
+export async function revertirDevolucionFactura(
+  numeroFactura: string
+): Promise<{ ok: boolean; mensaje: string }> {
+  try {
+    const numClean = String(numeroFactura).trim();
+    if (!numClean) {
+      return { ok: false, mensaje: "Número de factura inválido" };
+    }
+
+    // 1. Obtener los ítems de la factura para revertir el stock sumado
+    let camposRaw: any[] = [];
+    try {
+      const { data } = await supabase
+        .from("CAMPOFACTURA" as any)
+        .select("*")
+        .eq("NUMEROFACT", numClean);
+      if (data && data.length > 0) camposRaw = data;
+    } catch {}
+
+    if (camposRaw.length === 0) {
+      const rawCampos = localStorage.getItem("elegance_local_campos");
+      if (rawCampos) {
+        const all: any[] = JSON.parse(rawCampos);
+        camposRaw = all.filter((c) => c.NUMEROFACT === numClean);
+      }
+    }
+
+    // 2. Revertir stock de cada prenda devuelta (restar la cantidad que se había sumado)
+    for (const item of camposRaw) {
+      const cant = Number(item.CANTIDAD || 1);
+      const cod = item.BARRAS || "";
+      const desc = item.DESCRIPCION || "";
+
+      try {
+        if (cod.startsWith("ACC-")) {
+          const { data: accRaw } = await supabase
+            .from("ACCESORIOS" as any)
+            .select("*")
+            .eq("CODBARRAS", cod)
+            .maybeSingle();
+          const acc = accRaw as any;
+          if (acc) {
+            const nuevoStock = Math.max(0, (Number(acc.STOCK) || 0) - cant);
+            await supabase
+              .from("ACCESORIOS" as any)
+              .update({ STOCK: nuevoStock })
+              .eq("IDACCESORIO", acc.IDACCESORIO);
+          }
+        } else if (cod || desc) {
+          let query = supabase.from("ARTICULO" as any).select("*");
+          if (cod) query = query.eq("CODBARRAS", cod);
+          else query = query.eq("DESCRIPCION", desc);
+
+          const { data: artRaw } = await query.maybeSingle();
+          const art = artRaw as any;
+          if (art) {
+            const nuevoStock = Math.max(0, (Number(art.STOCK) || 0) - cant);
+            await supabase
+              .from("ARTICULO" as any)
+              .update({ STOCK: nuevoStock })
+              .eq("IDARTICULO", art.IDARTICULO);
+
+            emitirEventoRealtime("ARTICULO_ACTUALIZADO", {
+              articulo: { ...art, STOCK: nuevoStock },
+            });
+          }
+        }
+      } catch (eStock) {
+        console.warn("Aviso al revertir stock de prenda:", eStock);
+      }
+
+      // Actualizar override individual a EN ALQUILER
+      guardarEstadoPrendaOverride(numClean, cod, desc, "EN ALQUILER");
+    }
+
+    // Override general
+    guardarEstadoPrendaOverride(numClean, "GENERAL", "GENERAL", "EN ALQUILER");
+    invalidarCacheArticulos();
+
+    // 3. Eliminar el registro en depositoentregado (egreso del reintegro de fianza devuelto por error)
+    try {
+      await supabase
+        .from("depositoentregado" as any)
+        .delete()
+        .eq("NUMEROFACTURA", numClean);
+    } catch (eDep) {
+      console.warn("Aviso eliminando registro de depositoentregado en Supabase:", eDep);
+    }
+
+    // Quitar de localStorage de depósitos entregados
+    try {
+      const deps = getLocalDepositosEntregados();
+      const filtrados = deps.filter((d) => d.NUMEROFACTURA !== numClean);
+      localStorage.setItem("elegance_local_depositos_entregados", JSON.stringify(filtrados));
+    } catch {}
+
+    // 4. Actualizar estado de la factura a 'EN ALQUILER' en Supabase
+    try {
+      await supabase
+        .from("FACTURA" as any)
+        .update({
+          ESTADOCLIENTE: "EN ALQUILER",
+          MODO: "ALQUILER",
+        })
+        .eq("NUMEROFACT", numClean);
+    } catch (eFact) {
+      console.warn("Aviso actualizando factura a EN ALQUILER en Supabase:", eFact);
+    }
+
+    // 5. Actualizar en IndexedDB
+    try {
+      const { obtenerTodasLasFacturasOffline, guardarFacturasLote } = await import("./offlineDbService");
+      const facts = await obtenerTodasLasFacturasOffline();
+      const target = facts.find((f) => f.NUMEROFACT === numClean);
+      if (target) {
+        target.ESTADOCLIENTE = "EN ALQUILER";
+        target.MODO = "ALQUILER";
+        await guardarFacturasLote([target]);
+      }
+    } catch {}
+
+    // 6. Actualizar en LocalStorage de facturas
+    try {
+      const rawLocal = localStorage.getItem("elegance_local_facturas");
+      if (rawLocal) {
+        const list: any[] = JSON.parse(rawLocal);
+        const idx = list.findIndex((f) => f.NUMEROFACT === numClean);
+        if (idx >= 0 && list[idx]) {
+          list[idx].ESTADOCLIENTE = "EN ALQUILER";
+          list[idx].MODO = "ALQUILER";
+          localStorage.setItem("elegance_local_facturas", JSON.stringify(list));
+        }
+      }
+    } catch {}
+
+    return {
+      ok: true,
+      mensaje: `Devolución de la Factura #${numClean} revertida correctamente. La prenda vuelve a estar 'EN ALQUILER' y el egreso de depósito fue cancelado.`,
+    };
+  } catch (err: any) {
+    console.error("Error al revertir devolución:", err);
+    return {
+      ok: false,
+      mensaje: err?.message || "Ocurrió un error al revertir la devolución",
+    };
+  }
+}

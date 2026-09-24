@@ -834,3 +834,95 @@ export async function anularFacturaOperacion(
     };
   }
 }
+
+/**
+ * Cambia el estado de una factura y sus prendas a "EN BODEGA" (Apartado / Guardado en tienda)
+ * revirtiendo una salida accidental o error de alquiler.
+ */
+export async function cambiarEstadoFacturaABodega(
+  numeroFact: string
+): Promise<{ success: boolean; mensaje: string }> {
+  try {
+    const numClean = String(numeroFact).trim();
+
+    // 1. Actualizar en Supabase
+    try {
+      const { error: errUpdate } = await supabase
+        .from("FACTURA" as any)
+        .update({
+          ESTADOCLIENTE: "EN BODEGA",
+          MODO: "APARTADO",
+        })
+        .eq("NUMEROFACT", numClean);
+
+      if (errUpdate) {
+        console.warn("Aviso actualizando FACTURA a EN BODEGA en Supabase:", errUpdate.message);
+      }
+    } catch (eDb) {
+      console.warn("Aviso actualizando a bodega en Supabase:", eDb);
+    }
+
+    // 2. Actualizar en IndexedDB
+    try {
+      const { obtenerTodasLasFacturasOffline, guardarFacturasLote } = await import("./offlineDbService");
+      const facts = await obtenerTodasLasFacturasOffline();
+      const target = facts.find((f) => f.NUMEROFACT === numClean);
+      if (target) {
+        target.ESTADOCLIENTE = "EN BODEGA";
+        target.MODO = "APARTADO";
+        await guardarFacturasLote([target]);
+      }
+    } catch {}
+
+    // 3. Actualizar en LocalStorage
+    try {
+      const raw = localStorage.getItem("elegance_local_facturas");
+      if (raw) {
+        const list: any[] = JSON.parse(raw);
+        const idx = list.findIndex((f) => f.NUMEROFACT === numClean);
+        if (idx >= 0) {
+          list[idx].ESTADOCLIENTE = "EN BODEGA";
+          list[idx].MODO = "APARTADO";
+          localStorage.setItem("elegance_local_facturas", JSON.stringify(list));
+        }
+      }
+    } catch {}
+
+    // 4. Actualizar override de prendas para esta factura
+    try {
+      const rawOv = localStorage.getItem("elegance_estados_prendas_override");
+      const overrides = rawOv ? JSON.parse(rawOv) : {};
+
+      const rawCampos = localStorage.getItem("elegance_local_campos");
+      const allCampos: any[] = rawCampos ? JSON.parse(rawCampos) : [];
+      const itemsFact = allCampos.filter((c: any) => c.NUMEROFACT === numClean);
+
+      if (itemsFact.length > 0) {
+        for (const item of itemsFact) {
+          const key = `${numClean}_${item.BARRAS || item.DESCRIPCION}`;
+          overrides[key] = {
+            estado: "EN BODEGA",
+          };
+        }
+      }
+      overrides[`${numClean}_GENERAL`] = { estado: "EN BODEGA" };
+      localStorage.setItem("elegance_estados_prendas_override", JSON.stringify(overrides));
+    } catch (e) {
+      console.warn("Error actualizando override de prendas a bodega:", e);
+    }
+
+    guardarEstadoPrendaOverride(numClean, "GENERAL", "GENERAL", "EN BODEGA");
+
+    return {
+      success: true,
+      mensaje: `Factura #${numClean} cambiada exitosamente a 'EN BODEGA' (Apartado).`,
+    };
+  } catch (err: any) {
+    console.error("Error al cambiar factura a bodega:", err);
+    return {
+      success: false,
+      mensaje: err?.message || "Ocurrió un error al cambiar el estado a bodega",
+    };
+  }
+}
+

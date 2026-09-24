@@ -33,6 +33,7 @@ import {
   Crown,
   Sparkles,
   Globe,
+  Undo2,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -52,9 +53,12 @@ import {
   registrarGasto,
   buscarFacturaApartado,
   registrarAbonoCliente,
+  eliminarAbonoCliente,
   registrarSalidaVestidoApartado,
   type ItemApartadoConEstado,
 } from "@/services/posService";
+import { cambiarEstadoFacturaABodega } from "@/services/movimientosService";
+import { revertirDevolucionFactura } from "@/services/devolucionesService";
 import { consultarCedulaColombia } from "@/services/consultaCedulaColombiaService";
 import {
   obtenerTerminalConfig,
@@ -481,6 +485,66 @@ export function PuntoDeVenta() {
     // Refrescar inmediatamente los datos del apartado
     await handleConsultarApartado(apartadoFactura.NUMEROFACT);
     setModalImprimirAbono80mm(true);
+  }
+
+  // Eliminar abono erróneo sin anular factura
+  async function handleEliminarAbono(ab: AbonoCliente) {
+    if (!apartadoFactura) return;
+    const monto = Number(ab.TOTAL_ABONO || 0).toLocaleString("es-CO");
+    const confirmar = window.confirm(
+      `¿Deseas ELIMINAR el abono N° ${ab.NUMEROABONO} por valor de $${monto}?\n\n- Se borrará este registro de abono.\n- El saldo de la Factura #${apartadoFactura.NUMEROFACT} se recalculará automáticamente.\n\nTodo esto se hace SIN anular la factura.`
+    );
+    if (!confirmar) return;
+
+    const res = await eliminarAbonoCliente(ab.NUMEROABONO, apartadoFactura.NUMEROFACT);
+    if (res.ok) {
+      toast.success(res.mensaje);
+      await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+    } else {
+      toast.error(res.mensaje);
+    }
+  }
+
+  // Regresar de entregado a bodega si se entregó por error
+  async function handleRegresarABodegaDesdeApartado() {
+    if (!apartadoFactura) return;
+    const confirmar = window.confirm(
+      `¿Deseas regresar la Factura #${apartadoFactura.NUMEROFACT} a 'EN BODEGA'?\n\nEl traje volverá a figurar como Apartado/Guardado en tienda y ya no como entregado al cliente, sin anular la factura.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await cambiarEstadoFacturaABodega(apartadoFactura.NUMEROFACT);
+      if (res.success) {
+        toast.success(res.mensaje);
+        await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al regresar a bodega");
+    }
+  }
+
+  // Revertir devolución si se devolvió por error
+  async function handleRevertirDevolucionDesdeApartado() {
+    if (!apartadoFactura) return;
+    const confirmar = window.confirm(
+      `¿Deseas REVERTIR la devolución de la Factura #${apartadoFactura.NUMEROFACT}?\n\n- Se cancelará el egreso de reintegro de fianza para cuadrar caja.\n- El traje volverá al estado 'EN ALQUILER'.\n- Se descontará del stock sumado.\n\nTodo esto sin anular la factura.`
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await revertirDevolucionFactura(apartadoFactura.NUMEROFACT);
+      if (res.ok) {
+        toast.success(res.mensaje);
+        await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al revertir la devolución");
+    }
   }
 
   useEffect(() => {
@@ -3536,40 +3600,66 @@ export function PuntoDeVenta() {
                   </button>
                 </div>
 
-                {/* BOTÓN SALIDA DE VESTIDO CUANDO EL SALDO ES CERO */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!apartadoFactura) {
-                      toast.error("Busca primero la factura");
-                      return;
-                    }
-                    if (apartadoYaDevuelto) {
-                      toast.info("La prenda ya fue devuelta a la tienda");
-                      return;
-                    }
-                    if (apartadoSaldoRestante > 0) {
-                      toast.warning(`⚠️ No se puede entregar el vestido. Existe un saldo pendiente de $ ${apartadoSaldoRestante.toLocaleString()}`);
-                      return;
-                    }
-                    setModalPreguntaSalida(true);
-                  }}
-                  className={`h-10 rounded-xl px-4 text-xs font-extrabold shadow-sm active:scale-95 uppercase tracking-wider transition-all ${
-                    apartadoYaDevuelto
-                      ? "bg-emerald-100 text-emerald-800 cursor-default border border-emerald-300"
+                {/* BOTÓN SALIDA DE VESTIDO / ACCIONES DE ESTADO */}
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!apartadoFactura) {
+                        toast.error("Busca primero la factura");
+                        return;
+                      }
+                      if (apartadoYaDevuelto) {
+                        toast.info("La prenda ya fue devuelta a la tienda");
+                        return;
+                      }
+                      if (apartadoSaldoRestante > 0) {
+                        toast.warning(`⚠️ No se puede entregar el vestido. Existe un saldo pendiente de $ ${apartadoSaldoRestante.toLocaleString()}`);
+                        return;
+                      }
+                      setModalPreguntaSalida(true);
+                    }}
+                    className={`h-10 rounded-xl px-4 text-xs font-extrabold shadow-sm active:scale-95 uppercase tracking-wider transition-all ${
+                      apartadoYaDevuelto
+                        ? "bg-emerald-100 text-emerald-800 cursor-default border border-emerald-300"
+                        : apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                        : apartadoSaldoRestante === 0 && apartadoFactura
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse"
+                        : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                    }`}
+                  >
+                    {apartadoYaDevuelto
+                      ? "✓ Prenda Ya Devuelta"
                       : apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                      : apartadoSaldoRestante === 0 && apartadoFactura
-                      ? "bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse"
-                      : "bg-slate-200 text-slate-500 cursor-not-allowed"
-                  }`}
-                >
-                  {apartadoYaDevuelto
-                    ? "✓ Prenda Ya Devuelta"
-                    : apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")
-                    ? "👗 Prenda En Alquiler (Entregada)"
-                    : "Entregar Prenda (Saldo $0)"}
-                </button>
+                      ? "👗 Prenda En Alquiler (Entregada)"
+                      : "Entregar Prenda (Saldo $0)"}
+                  </button>
+
+                  {/* SI ESTÁ ENTREGADA (EN ALQUILER) POR ERROR, BOTÓN PARA REGRESAR A BODEGA */}
+                  {(apartadoFactura?.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) && !apartadoYaDevuelto && (
+                    <button
+                      type="button"
+                      onClick={handleRegresarABodegaDesdeApartado}
+                      className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 text-[11px] font-black shadow-xs transition-all"
+                      title="Deshacer entrega errónea: regresa el traje a EN BODEGA sin anular la factura"
+                    >
+                      <Package className="h-3.5 w-3.5" /> Regresar a Bodega (Error Entrega)
+                    </button>
+                  )}
+
+                  {/* SI FUE DEVUELTA POR ERROR, BOTÓN PARA REVERTIR DEVOLUCIÓN */}
+                  {apartadoYaDevuelto && (
+                    <button
+                      type="button"
+                      onClick={handleRevertirDevolucionDesdeApartado}
+                      className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 text-[11px] font-black shadow-xs transition-all"
+                      title="Revertir devolución errónea y volver el traje a EN ALQUILER"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" /> Revertir Devolución (Error Devolver)
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -3591,13 +3681,14 @@ export function PuntoDeVenta() {
                         <th className="p-2.5 border-r border-slate-800 text-right">Efectivo</th>
                         <th className="p-2.5 border-r border-slate-800 text-right">Transf.</th>
                         <th className="p-2.5 border-r border-slate-800 text-center">Fecha</th>
-                        <th className="p-2.5 text-right">Total Abono</th>
+                        <th className="p-2.5 border-r border-slate-800 text-right">Total Abono</th>
+                        <th className="p-2.5 text-center w-16">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {apartadoAbonos.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-16 text-center text-slate-400 text-xs font-semibold">
+                          <td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-semibold">
                             No hay abonos registrados para esta factura.
                           </td>
                         </tr>
@@ -3619,8 +3710,18 @@ export function PuntoDeVenta() {
                             <td className="p-2.5 text-center font-bold text-slate-600 border-r border-slate-100">
                               {ab.FECHAABONO}
                             </td>
-                            <td className="p-2.5 text-right font-mono font-black text-emerald-800">
+                            <td className="p-2.5 text-right font-mono font-black text-emerald-800 border-r border-slate-100">
                               ${Number(ab.TOTAL_ABONO || 0).toLocaleString()}
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleEliminarAbono(ab)}
+                                className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all shadow-2xs active:scale-95"
+                                title="Eliminar abono mal registrado y recalcular saldo sin anular la factura"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </td>
                           </tr>
                         ))
