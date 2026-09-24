@@ -36,8 +36,8 @@ export function exportarCierreCajaExcel(datos: DatosExportacionCierre): void {
   // =========================================================================
   const resumenRows: any[][] = [
     ["LA CASA DEL DISFRAZ - REPORTE DE ARQUEO Y CIERRE DE CAJA"],
-    [`EMPRESA: ${datos.empresa?.NOMBRE_EMPRESA || "LA CASA DEL DISFRAZ"}`],
-    [`NIT: ${datos.empresa?.NIT || "6076963959"} · DIRECCIÓN: ${datos.empresa?.DIRECCION || "Cra 23 #15-34"} · TEL: ${datos.empresa?.TELEFONO || "3202375610"}`],
+    [`EMPRESA: ${datos.empresa?.nombreComercial || (datos.empresa as any)?.NOMBRE_EMPRESA || "LA CASA DEL DISFRAZ"}`],
+    [`NIT: ${datos.empresa?.nit || (datos.empresa as any)?.NIT || "6076963959"} · DIRECCIÓN: ${datos.empresa?.direccion || (datos.empresa as any)?.DIRECCION || "Cra 23 #15-34"} · TEL: ${datos.empresa?.telefono1 || (datos.empresa as any)?.TELEFONO || "3202375610"}`],
     [""],
     ["DATOS DEL CIERRE DE CAJA"],
     ["Caja / Terminal:", datos.nombreCaja],

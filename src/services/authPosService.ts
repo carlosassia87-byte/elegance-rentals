@@ -433,8 +433,9 @@ export async function validarPinSupervisor(pinOClave: string): Promise<{ ok: boo
       .select("*")
       .eq("TIPO", true);
 
-    if (data && Array.isArray(data)) {
-      const adminEncontrado = data.find(
+    const usuariosData: any[] = (data as any) || [];
+    if (usuariosData.length > 0) {
+      const adminEncontrado = usuariosData.find(
         (u: any) =>
           u.PASSWORD === pinLimpio ||
           String(u.ILOGIN) === pinLimpio ||

@@ -41,6 +41,7 @@ import type { UsuarioPos } from "@/services/authPosService";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import { IndicadorModoOffline } from "./IndicadorModoOffline";
 import { PinAdminModal } from "./PinAdminModal";
+import { consultarTodosLosRetrasosYAlertas } from "@/services/alertasRetrasosService";
 import logoAsset from "@/assets/logo.asset.json";
 
 interface MenuPrincipalProps {

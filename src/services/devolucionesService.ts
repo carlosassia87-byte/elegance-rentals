@@ -236,14 +236,16 @@ export async function buscarFacturaParaDevolucion(
       const { data: depsRaw } = await supabase
         .from("depositoentregado" as any)
         .select("*")
-        .eq("NUMEROFACTURA", numFact);
+        .ilike("NUMEROFACTURA", numFact.trim());
       if (depsRaw && depsRaw.length > 0) {
         totalYaDevuelto = depsRaw.reduce((acc, d: any) => acc + (Number(d.VALOR) || 0), 0);
       }
     } catch {}
 
     // Sumar locales
-    const localDeps = getLocalDepositosEntregados().filter((d) => d.NUMEROFACTURA === numFact);
+    const localDeps = getLocalDepositosEntregados().filter(
+      (d) => (d.NUMEROFACTURA || "").trim().toUpperCase() === numFact.trim().toUpperCase()
+    );
     if (localDeps.length > 0 && totalYaDevuelto === 0) {
       totalYaDevuelto = localDeps.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
     }
@@ -297,13 +299,21 @@ export async function buscarFacturaParaDevolucion(
     } catch {}
 
     const totalDepFactura = Number(factura.FTOTALDEPOSITO || 0);
+    const facturaYaDevuelta =
+      estadoCli === "ENTREGADO" ||
+      estadoCli === "DEVUELTO" ||
+      estadoCli === "DEVUELTO A TIENDA" ||
+      (totalDepFactura > 0 && totalYaDevuelto >= totalDepFactura);
 
     const items: ItemDevolucionInfo[] = camposRaw.map((c, idx) => {
       const cod = c.BARRAS || "";
       const desc = c.DESCRIPCION || "PRENDA";
       const keyOv = `${numFact}_${cod || desc}`;
       const ov = overrides[keyOv];
-      let estadoActual: EstadoPrenda = ov ? ov.estado : "EN ALQUILER";
+      let estadoActual: EstadoPrenda = ov ? ov.estado : (facturaYaDevuelta ? "ENTREGADO" : "EN ALQUILER");
+      if (facturaYaDevuelta && !ov) {
+        estadoActual = "ENTREGADO";
+      }
       if (esAnulada) {
         estadoActual = "ANULADO";
       }
@@ -447,11 +457,12 @@ export async function registrarDevolucionCompleta(
     saveLocalDepositoEntregado(depData);
 
     // B. Actualizar estado de las prendas devueltas a "DEVUELTO A TIENDA" y reponer stock
+    guardarEstadoPrendaOverride(params.numeroFactura, "GENERAL", "GENERAL", "ENTREGADO");
     for (const item of params.itemsDevueltos) {
       guardarEstadoPrendaOverride(params.numeroFactura, item.codigoBarras, item.descripcion, "DEVUELTO A TIENDA");
 
       // Reponer Stock en ACCESORIOS o ARTICULO en Supabase si hay red
-      if (guardadoEnSupabase) {
+      if (typeof navigator === "undefined" || navigator.onLine) {
         try {
           if (item.codigoBarras?.startsWith("ACC-")) {
             // Reponer en tabla ACCESORIOS
@@ -500,18 +511,18 @@ export async function registrarDevolucionCompleta(
     // Invalidar caché RAM local para asegurar datos frescos
     invalidarCacheArticulos();
 
-    // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda)
-    if (guardadoEnSupabase) {
-      try {
+    // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda) de forma incondicional
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine) {
         await supabase
           .from("FACTURA" as any)
           .update({
             ESTADOCLIENTE: "ENTREGADO",
           })
-          .eq("NUMEROFACT", params.numeroFactura);
-      } catch (e) {
-        console.warn("Error actualizando estado en FACTURA Supabase:", e);
+          .ilike("NUMEROFACT", params.numeroFactura.trim());
       }
+    } catch (e) {
+      console.warn("Error actualizando estado en FACTURA Supabase:", e);
     }
 
     // Si no se pudo guardar en Supabase o estamos offline, encolar para sincronización automática
@@ -529,12 +540,27 @@ export async function registrarDevolucionCompleta(
       }
     }
 
+    // Actualizar factura en IndexedDB
+    try {
+      const { obtenerTodasLasFacturasOffline, guardarFacturasLote } = await import("./offlineDbService");
+      const facts = await obtenerTodasLasFacturasOffline();
+      const target = facts.find(
+        (f) => (f.NUMEROFACT || "").trim().toUpperCase() === params.numeroFactura.trim().toUpperCase()
+      );
+      if (target) {
+        target.ESTADOCLIENTE = "ENTREGADO";
+        await guardarFacturasLote([target]);
+      }
+    } catch {}
+
     // Actualizar factura en respaldo local si aplica
     try {
       const rawLocal = localStorage.getItem("elegance_local_facturas");
       if (rawLocal) {
         const localList: any[] = JSON.parse(rawLocal);
-        const idx = localList.findIndex((f) => f.NUMEROFACT === params.numeroFactura);
+        const idx = localList.findIndex(
+          (f) => (f.NUMEROFACT || "").trim().toUpperCase() === params.numeroFactura.trim().toUpperCase()
+        );
         if (idx >= 0 && localList[idx]) {
           localList[idx].ESTADOCLIENTE = "ENTREGADO";
           localStorage.setItem("elegance_local_facturas", JSON.stringify(localList));
@@ -590,6 +616,15 @@ export interface AlquilerActivoClienteInfo {
   totalDepositoRetenido: number;
 }
 
+function autoSanarFacturaEntregado(numFactura: string) {
+  Promise.resolve(
+    supabase
+      .from("FACTURA" as any)
+      .update({ ESTADOCLIENTE: "ENTREGADO" })
+      .ilike("NUMEROFACT", numFactura)
+  ).catch(() => {});
+}
+
 export async function consultarAlquileresActivosCliente(
   cedula: string | number
 ): Promise<AlquilerActivoClienteInfo[]> {
@@ -634,10 +669,75 @@ export async function consultarAlquileresActivosCliente(
       }
     }
 
-    for (const f of facturas) {
-      if (f.MODO === "VENTA" || f.ESTADOCLIENTE === "VENTA") continue;
+    // Consultar facturas del cliente que ya fueron devueltas en depositoentregado
+    const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
+    const facturasDevueltasSet = new Set<string>();
 
-      const numFact = f.NUMEROFACT;
+    if (numFacts.length > 0) {
+      try {
+        const { data: deps } = await supabase
+          .from("depositoentregado" as any)
+          .select("NUMEROFACTURA")
+          .in("NUMEROFACTURA", numFacts);
+        if (deps) {
+          deps.forEach((d: any) => {
+            if (d.NUMEROFACTURA) facturasDevueltasSet.add(String(d.NUMEROFACTURA).trim().toUpperCase());
+          });
+        }
+      } catch {}
+
+      const localDeps = getLocalDepositosEntregados();
+      for (const ld of localDeps) {
+        if (ld.NUMEROFACTURA) facturasDevueltasSet.add(String(ld.NUMEROFACTURA).trim().toUpperCase());
+      }
+    }
+
+    for (const f of facturas) {
+      const numFact = (f.NUMEROFACT || "").trim();
+      const numFactUpper = numFact.toUpperCase();
+      const estadoGen = (f.ESTADO || "").trim().toUpperCase();
+      const estadoCli = (f.ESTADOCLIENTE || "").trim().toUpperCase();
+
+      // 1. Descartar facturas de solo venta
+      if (f.MODO === "VENTA" || estadoCli === "VENTA") continue;
+
+      // 2. Descartar facturas anuladas
+      if (estadoGen === "ANULADA" || estadoGen === "ANULADO" || estadoCli === "ANULADA" || estadoCli === "ANULADO") {
+        continue;
+      }
+
+      // 3. Descartar facturas que ya tienen estado ENTREGADO o DEVUELTO
+      if (
+        estadoCli === "ENTREGADO" ||
+        estadoCli === "DEVUELTO" ||
+        estadoCli === "DEVUELTO A TIENDA" ||
+        estadoCli === "EN BODEGA" ||
+        estadoCli === "BODEGA" ||
+        estadoGen === "DEVUELTO" ||
+        estadoGen === "ENTREGADO"
+      ) {
+        continue;
+      }
+
+      // 4. Descartar si el depósito ya fue devuelto en depositoentregado (Devolución completada)
+      if (facturasDevueltasSet.has(numFactUpper)) {
+        // Auto-corregir factura en Supabase a ENTREGADO en segundo plano
+        if (estadoCli === "EN ALQUILER") {
+          autoSanarFacturaEntregado(numFact);
+        }
+        continue;
+      }
+
+      // 5. Descartar si tiene override general de devuelto
+      const ovGeneral = overrides[`${numFact}_GENERAL`];
+      if (
+        ovGeneral &&
+        (ovGeneral.estado === "ENTREGADO" ||
+          ovGeneral.estado === "DEVUELTO A TIENDA" ||
+          ovGeneral.estado === "DEVUELTO")
+      ) {
+        continue;
+      }
 
       // Obtener items de esta factura
       let camposRaw: any[] = [];
@@ -662,7 +762,11 @@ export async function consultarAlquileresActivosCliente(
         const desc = c.DESCRIPCION || "TRAJE";
         const keyOv = `${numFact}_${cod || desc}`;
         const ov = overrides[keyOv];
-        const estadoActual = ov ? ov.estado : "EN ALQUILER";
+        
+        // Si hay override usarlo, de lo contrario solo está en alquiler si la factura explícitamente dice EN ALQUILER
+        const estadoActual = ov
+          ? ov.estado
+          : (estadoCli === "EN ALQUILER" ? "EN ALQUILER" : "ENTREGADO");
 
         if (estadoActual === "EN ALQUILER") {
           const cant = Number(c.CANTIDAD || 1);
@@ -676,6 +780,24 @@ export async function consultarAlquileresActivosCliente(
           });
           totalDepActivo += dep * cant;
         }
+      }
+
+      // Si la factura tenía prendas registradas y todas fueron devueltas, saltar y auto-corregir factura
+      if (camposRaw.length > 0 && prendasActivas.length === 0) {
+        autoSanarFacturaEntregado(numFact);
+        continue;
+      }
+
+      // Si no tiene campos de factura pero el estado de la factura es explícitamente "EN ALQUILER"
+      if (camposRaw.length === 0 && prendasActivas.length === 0 && estadoCli === "EN ALQUILER") {
+        prendasActivas.push({
+          codigoBarras: "",
+          descripcion: "TRAJE EN ALQUILER",
+          talla: "U",
+          cantidad: 1,
+          valorDeposito: Number(f.FTOTALDEPOSITO || 0),
+        });
+        totalDepActivo = Number(f.FTOTALDEPOSITO || 0);
       }
 
       if (prendasActivas.length > 0) {

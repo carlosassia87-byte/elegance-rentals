@@ -183,7 +183,7 @@ export function AlertasRetrasosModal({
         <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 90px; object-fit: contain; margin: 0 auto 4px auto; display: block;" onerror="this.style.display='none'" />
         <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">${empresa.nombreComercial || "LA CASA DEL DISFRAZ"}</div>
         <div style="font-size: 11px; font-weight: 800;">${empresa.direccion || "CRA 23 #15-34 · BUCARAMANGA"}</div>
-        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono || "6076963959 - 3202375610"}</div>
+        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono1 || "6076963959 - 3202375610"}</div>
       </div>
       <hr />
       <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">
@@ -280,7 +280,7 @@ export function AlertasRetrasosModal({
         <img src="/logo_casa_del_disfraz.jpg" alt="Logo" style="width: 80%; max-height: 90px; object-fit: contain; margin: 0 auto 4px auto; display: block;" onerror="this.style.display='none'" />
         <div style="font-weight: 900; font-size: 13px; text-transform: uppercase;">${empresa.nombreComercial || "LA CASA DEL DISFRAZ"}</div>
         <div style="font-size: 11px; font-weight: 800;">${empresa.direccion || "CRA 23 #15-34 · BUCARAMANGA"}</div>
-        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono || "6076963959 - 3202375610"}</div>
+        <div style="font-size: 11px; font-weight: 800;">TEL: ${empresa.telefono1 || "6076963959 - 3202375610"}</div>
       </div>
       <hr />
       <div style="text-align: center; font-weight: 900; font-size: 12.5px; margin: 4px 0; text-transform: uppercase;">

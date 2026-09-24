@@ -33,6 +33,15 @@ export interface MetricasAlertasRetraso {
   totalEnTiempo: number;
 }
 
+function autoSanarFacturaEntregado(numFactura: string) {
+  Promise.resolve(
+    supabase
+      .from("FACTURA" as any)
+      .update({ ESTADOCLIENTE: "ENTREGADO" })
+      .ilike("NUMEROFACT", numFactura)
+  ).catch(() => {});
+}
+
 // Consultar todas las facturas y trajes que no han sido devueltos a la tienda
 export async function consultarTodosLosRetrasosYAlertas(): Promise<{
   alertas: ItemRetrasoAlquiler[];
@@ -101,6 +110,39 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
     }
   }
 
+  // 4.5 Consultar en depositoentregado todas las facturas devueltas (reintegro entregado)
+  const facturasDevueltasSet = new Set<string>();
+  if (numFactsActivas.length > 0) {
+    try {
+      const BATCH = 200;
+      for (let i = 0; i < numFactsActivas.length; i += BATCH) {
+        const chunk = numFactsActivas.slice(i, i + BATCH);
+        const { data: dData } = await supabase
+          .from("depositoentregado" as any)
+          .select("NUMEROFACTURA")
+          .in("NUMEROFACTURA", chunk);
+        if (dData) {
+          dData.forEach((d: any) => {
+            if (d.NUMEROFACTURA) facturasDevueltasSet.add(String(d.NUMEROFACTURA).trim().toUpperCase());
+          });
+        }
+      }
+    } catch (eDep) {
+      console.warn("Fallo verificando depositoentregado en alertas:", eDep);
+    }
+  }
+
+  // También verificar depósitos devueltos locales
+  try {
+    const rawLocalDeps = localStorage.getItem("elegance_local_depositos_entregados");
+    if (rawLocalDeps) {
+      const localDeps: any[] = JSON.parse(rawLocalDeps);
+      for (const ld of localDeps) {
+        if (ld.NUMEROFACTURA) facturasDevueltasSet.add(String(ld.NUMEROFACTURA).trim().toUpperCase());
+      }
+    }
+  } catch {}
+
   // Procesar cada factura
   for (const f of facturas) {
     const estadoGenRaw = (f.ESTADO || "").trim().toUpperCase();
@@ -121,10 +163,29 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
       continue;
     }
 
-    const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
+    const numFact = (f.NUMEROFACT || `F-${f.IDFACTURA}`).trim();
+    const numFactUpper = numFact.toUpperCase();
+
+    // 1. Si la fianza/depósito ya fue devuelta en depositoentregado, esta factura YA FUE DEVUELTA
+    if (facturasDevueltasSet.has(numFactUpper)) {
+      // Auto-corregir factura en Supabase a ENTREGADO en segundo plano
+      autoSanarFacturaEntregado(numFact);
+      continue;
+    }
+
+    // 2. Si tiene override general de devuelto
+    const ovGeneral = overrides[`${numFact}_GENERAL`];
+    if (
+      ovGeneral &&
+      (ovGeneral.estado === "ENTREGADO" ||
+        ovGeneral.estado === "DEVUELTO A TIENDA" ||
+        ovGeneral.estado === "DEVUELTO")
+    ) {
+      continue;
+    }
 
     // Obtener prendas de esta factura
-    let camposFactura = todosCampos.filter((c) => c.NUMEROFACT === numFact);
+    let camposFactura = todosCampos.filter((c) => (c.NUMEROFACT || "").trim().toUpperCase() === numFactUpper);
     if (camposFactura.length === 0 && f.items && Array.isArray(f.items)) {
       camposFactura = f.items;
     }
@@ -158,8 +219,15 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
       totalDepActivo = Number(f.FTOTALDEPOSITO || 0);
     }
 
-    // Si no tiene campos de factura pero el estado de la factura es "EN ALQUILER", crear prenda sintética
-    if (prendasActivas.length === 0 && (estadoCliRaw === "EN ALQUILER" || !estadoCliRaw)) {
+    // Si la factura tenía prendas registradas y TODAS fueron devueltas, la factura está devuelta
+    if (camposFactura.length > 0 && prendasActivas.length === 0) {
+      // Auto-corregir factura en Supabase a ENTREGADO
+      autoSanarFacturaEntregado(numFact);
+      continue;
+    }
+
+    // Si NO tenía campos de factura y el estado de la factura es "EN ALQUILER", crear prenda sintética
+    if (camposFactura.length === 0 && prendasActivas.length === 0 && estadoCliRaw === "EN ALQUILER") {
       prendasActivas.push({
         codigoBarras: "",
         descripcion: "TRAJE EN ALQUILER",
