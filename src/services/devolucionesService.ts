@@ -109,13 +109,12 @@ export async function buscarFacturaParaDevolucion(
   try {
     let factura: any = null;
 
-    // Buscar en Supabase
+    // 1. PRIORIDAD MÁXIMA: Coincidencia EXACTA por número de factura (NUMEROFACT)
     try {
       const { data, error } = await supabase
         .from("FACTURA" as any)
         .select("*")
-        .or(`NUMEROFACT.ilike.%${queryTerm}%,CCLIENTE.ilike.%${queryTerm}%,CCEDULA.ilike.%${queryTerm}%`)
-        .order("IDFACTURA", { ascending: false })
+        .ilike("NUMEROFACT", queryTerm)
         .limit(1);
 
       if (!error && data && data.length > 0) {
@@ -123,18 +122,85 @@ export async function buscarFacturaParaDevolucion(
       }
     } catch {}
 
-    // Fallback Local
+    // 2. Si el término es numérico (ej. "2" o "15"), buscar coincidencia exacta por IDFACTURA
+    if (!factura && !isNaN(Number(queryTerm))) {
+      try {
+        const { data, error } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .eq("IDFACTURA", Number(queryTerm))
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          factura = data[0];
+        }
+      } catch {}
+    }
+
+    // 3. Coincidencia exacta por CCEDULA del cliente
+    if (!factura) {
+      try {
+        const { data, error } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .eq("CCEDULA", queryTerm)
+          .order("IDFACTURA", { ascending: false })
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          factura = data[0];
+        }
+      } catch {}
+    }
+
+    // 4. Búsqueda secundaria: si no hubo coincidencia exacta, buscar por prefijo o nombre de cliente
+    if (!factura) {
+      try {
+        const { data, error } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .or(`NUMEROFACT.ilike.${queryTerm}%,CCLIENTE.ilike.%${queryTerm}%`)
+          .order("IDFACTURA", { ascending: false })
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          factura = data[0];
+        }
+      } catch {}
+    }
+
+    // 5. Fallback Local con la misma jerarquía estricta
     if (!factura) {
       const rawLocal = localStorage.getItem("elegance_local_facturas");
       if (rawLocal) {
         const localList: any[] = JSON.parse(rawLocal);
-        const q = queryTerm.toLowerCase();
+        const qUpper = queryTerm.toUpperCase();
+
+        // 5.1 Coincidencia exacta por NUMEROFACT
         factura = localList.find(
-          (f) =>
-            (f.NUMEROFACT && f.NUMEROFACT.toLowerCase().includes(q)) ||
-            (f.CCLIENTE && f.CCLIENTE.toLowerCase().includes(q)) ||
-            (f.CCEDULA && String(f.CCEDULA).includes(q))
+          (f) => f.NUMEROFACT && f.NUMEROFACT.trim().toUpperCase() === qUpper
         );
+
+        // 5.2 Coincidencia exacta por IDFACTURA
+        if (!factura && !isNaN(Number(queryTerm))) {
+          factura = localList.find((f) => Number(f.IDFACTURA) === Number(queryTerm));
+        }
+
+        // 5.3 Coincidencia exacta por Cédula
+        if (!factura) {
+          factura = localList.find(
+            (f) => String(f.CCEDULA || f.CEDULA || "").trim() === queryTerm
+          );
+        }
+
+        // 5.4 Búsqueda parcial por prefijo o cliente
+        if (!factura) {
+          factura = localList.find(
+            (f) =>
+              (f.NUMEROFACT && f.NUMEROFACT.trim().toUpperCase().startsWith(qUpper)) ||
+              (f.CCLIENTE && f.CCLIENTE.trim().toUpperCase().includes(qUpper))
+          );
+        }
       }
     }
 

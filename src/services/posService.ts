@@ -1123,18 +1123,68 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
     let itemsEncontrados: any[] = [];
     let abonosEncontrados: any[] = [];
 
-    // 1. Buscar en Supabase por igualdad exacta o ilike
+    // 1. PRIORIDAD MÁXIMA: Buscar en Supabase por igualdad EXACTA de NUMEROFACT
     try {
-      const { data: facts } = await supabase
+      const { data: exactFacts } = await supabase
         .from("FACTURA" as any)
         .select("*")
-        .ilike("NUMEROFACT", `%${term}%`)
+        .ilike("NUMEROFACT", term)
         .limit(1);
 
-      if (facts && facts.length > 0) {
-        facturaEncontrada = facts[0];
+      if (exactFacts && exactFacts.length > 0) {
+        facturaEncontrada = exactFacts[0];
+      }
+    } catch (e) {
+      console.warn("Error consultando supabase FACTURA exacta:", e);
+    }
 
-        // Cargar ítems
+    // 1.1 Si el término es numérico, buscar por IDFACTURA exacta
+    if (!facturaEncontrada && !isNaN(Number(term))) {
+      try {
+        const { data: idFacts } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .eq("IDFACTURA", Number(term))
+          .limit(1);
+        if (idFacts && idFacts.length > 0) {
+          facturaEncontrada = idFacts[0];
+        }
+      } catch {}
+    }
+
+    // 1.2 Si no se encuentra, buscar por CCEDULA exacta
+    if (!facturaEncontrada) {
+      try {
+        const { data: cedFacts } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .eq("CCEDULA", term)
+          .order("IDFACTURA", { ascending: false })
+          .limit(1);
+        if (cedFacts && cedFacts.length > 0) {
+          facturaEncontrada = cedFacts[0];
+        }
+      } catch {}
+    }
+
+    // 1.3 Búsqueda secundaria por prefijo o nombre de cliente
+    if (!facturaEncontrada) {
+      try {
+        const { data: prefFacts } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .or(`NUMEROFACT.ilike.${term}%,CCLIENTE.ilike.%${term}%`)
+          .order("IDFACTURA", { ascending: false })
+          .limit(1);
+        if (prefFacts && prefFacts.length > 0) {
+          facturaEncontrada = prefFacts[0];
+        }
+      } catch {}
+    }
+
+    // Si se encontró en Supabase, cargar ítems y abonos
+    if (facturaEncontrada) {
+      try {
         const { data: items } = await supabase
           .from("CAMPOFACTURA" as any)
           .select("*")
@@ -1144,7 +1194,6 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
           itemsEncontrados = items;
         }
 
-        // Cargar abonos
         const { data: abonos } = await supabase
           .from("ABONO_CLIENTE" as any)
           .select("*")
@@ -1154,9 +1203,9 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
         if (abonos && abonos.length > 0) {
           abonosEncontrados = abonos;
         }
+      } catch (eItems) {
+        console.warn("Aviso cargando items/abonos de Supabase:", eItems);
       }
-    } catch (e) {
-      console.warn("Error consultando supabase FACTURA:", e);
     }
 
     // 2. Si no se encontró en Supabase, buscar en IndexedDB
@@ -1171,12 +1220,14 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
       } catch {}
     }
 
-    // 2.1 Si aún no se encontró, buscar en LocalStorage
+    // 2.1 Si aún no se encontró, buscar en LocalStorage (exacto primero)
     if (!facturaEncontrada) {
       const localFacts = getLocalFacturas();
       const match = localFacts.find((f) => 
-        String(f.NUMEROFACT || "").trim().toUpperCase() === term ||
-        String(f.NUMEROFACT || "").trim().toUpperCase().includes(term)
+        String(f.NUMEROFACT || "").trim().toUpperCase() === term
+      ) || localFacts.find((f) =>
+        String(f.NUMEROFACT || "").trim().toUpperCase().startsWith(term) ||
+        String(f.CCLIENTE || "").trim().toUpperCase().includes(term)
       );
 
       if (match) {
