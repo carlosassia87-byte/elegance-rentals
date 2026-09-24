@@ -1223,12 +1223,14 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
     // 2.1 Si aún no se encontró, buscar en LocalStorage (exacto primero)
     if (!facturaEncontrada) {
       const localFacts = getLocalFacturas();
-      const match = localFacts.find((f) => 
-        String(f.NUMEROFACT || "").trim().toUpperCase() === term
-      ) || localFacts.find((f) =>
-        String(f.NUMEROFACT || "").trim().toUpperCase().startsWith(term) ||
-        String(f.CCLIENTE || "").trim().toUpperCase().includes(term)
-      );
+      const match =
+        localFacts.find((f) => String(f.NUMEROFACT || "").trim().toUpperCase() === term) ||
+        (!isNaN(Number(term)) ? localFacts.find((f) => Number(f.IDFACTURA) === Number(term)) : null) ||
+        localFacts.find((f) => String(f.CCEDULA || f.CEDULA || "").trim() === term) ||
+        localFacts.find((f) =>
+          String(f.NUMEROFACT || "").trim().toUpperCase().startsWith(term) ||
+          String(f.CCLIENTE || "").trim().toUpperCase().includes(term)
+        );
 
       if (match) {
         facturaEncontrada = match;
