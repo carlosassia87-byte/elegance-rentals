@@ -30,6 +30,11 @@ export interface FacturaDevolucionDetalle {
   clienteDireccion: string;
   fechaSalida: string;
   fechaEntregaPactada: string;
+  esAnulada: boolean;
+  motivoAnulacion?: string;
+  totalDineroRecibido: number;
+  totalDineroYaReintegrado: number;
+  saldoPendientePorDevolver: number;
 }
 
 export interface ParamsRegistroDevolucion {
@@ -243,6 +248,47 @@ export async function buscarFacturaParaDevolucion(
       totalYaDevuelto = localDeps.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
     }
 
+    // Detectar si la factura fue ANULADA
+    const estadoGen = (factura.ESTADO || "").trim().toUpperCase();
+    const estadoCli = (factura.ESTADOCLIENTE || "").trim().toUpperCase();
+    const modoFact = (factura.MODO || "").trim().toUpperCase();
+    const esAnulada =
+      estadoGen === "ANULADA" ||
+      estadoGen === "ANULADO" ||
+      estadoCli === "ANULADA" ||
+      estadoCli === "ANULADO" ||
+      modoFact === "ANULADO";
+
+    // Calcular cuánto dinero dio el cliente en total (Pago inicial + Abonos registrados)
+    const pagoInicial =
+      Number(factura.PAGOCONEFECTIVO || 0) + Number(factura.PAGOCONTRANFERENCIA || 0) ||
+      Number(factura.PAGACON || 0);
+
+    let totalAbonos = 0;
+    try {
+      const { data: abonosData } = await supabase
+        .from("ABONO_CLIENTE" as any)
+        .select("TOTAL_ABONO")
+        .eq("AFACTURA", numFact);
+      if (abonosData && abonosData.length > 0) {
+        totalAbonos = abonosData.reduce((acc: number, a: any) => acc + (Number(a.TOTAL_ABONO) || 0), 0);
+      }
+    } catch {}
+
+    if (totalAbonos === 0) {
+      const rawLocalAbs = localStorage.getItem("elegance_local_abonos");
+      if (rawLocalAbs) {
+        const listAbs: any[] = JSON.parse(rawLocalAbs);
+        totalAbonos = listAbs
+          .filter((a) => String(a.AFACTURA || "").trim().toUpperCase() === numFact.toUpperCase())
+          .reduce((acc, a) => acc + (Number(a.TOTAL_ABONO) || 0), 0);
+      }
+    }
+
+    const totalDineroRecibido = pagoInicial + totalAbonos;
+    const totalDineroYaReintegrado = totalYaDevuelto;
+    const saldoPendientePorDevolver = Math.max(0, totalDineroRecibido - totalDineroYaReintegrado);
+
     // Leer estados override
     let overrides: Record<string, any> = {};
     try {
@@ -257,8 +303,11 @@ export async function buscarFacturaParaDevolucion(
       const desc = c.DESCRIPCION || "PRENDA";
       const keyOv = `${numFact}_${cod || desc}`;
       const ov = overrides[keyOv];
-      const estadoActual: EstadoPrenda = ov ? ov.estado : "EN ALQUILER";
-      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA" || estadoActual === "ENTREGADO";
+      let estadoActual: EstadoPrenda = ov ? ov.estado : "EN ALQUILER";
+      if (esAnulada) {
+        estadoActual = "ANULADO";
+      }
+      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA" || estadoActual === "ENTREGADO" || esAnulada;
 
       return {
         id: c.AUTOMATIC || `${numFact}-${idx}`,
@@ -270,13 +319,13 @@ export async function buscarFacturaParaDevolucion(
         valorDeposito: Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0),
         total: Number(c.TOTAL || 0),
         estadoActual,
-        seleccionadoParaDevolver: !yaDevuelto,
+        seleccionadoParaDevolver: esAnulada ? false : !yaDevuelto,
         condicionPrenda: "BUENO",
       };
     });
 
     const totalAlquiler = Number(factura.FTOTALALQUILER || 0);
-    const depositoDisponible = Math.max(0, totalDepFactura - totalYaDevuelto);
+    const depositoDisponible = esAnulada ? 0 : Math.max(0, totalDepFactura - totalYaDevuelto);
 
     return {
       factura,
@@ -291,10 +340,82 @@ export async function buscarFacturaParaDevolucion(
       clienteDireccion: factura.CDIRECCION || factura.DIRECCION || "—",
       fechaSalida: factura.FECHASALIDA || new Date().toISOString().split("T")[0],
       fechaEntregaPactada: factura.FECHAENTRADA || factura.FECHAENTREGA || factura.FECHASALIDA || "",
+      esAnulada,
+      motivoAnulacion: factura.GASTOS || "ANULACIÓN DE FACTURA / APARTADO",
+      totalDineroRecibido,
+      totalDineroYaReintegrado,
+      saldoPendientePorDevolver,
     };
   } catch (err) {
     console.error("Error buscando factura para devolución:", err);
     return null;
+  }
+}
+
+/**
+ * Registra el reintegro de dinero por una factura ANULADA:
+ * Registra el egreso en depositoentregado para cuadrar la caja y genera comprobante oficial.
+ */
+export async function registrarReembolsoAnulacion(params: {
+  numeroFactura: string;
+  clienteNombre: string;
+  clienteCedula: string;
+  clienteTelefono: string;
+  montoReembolso: number;
+  formaPago: string;
+  motivo?: string;
+  cajero: string;
+}): Promise<{ ok: boolean; comprobante: ComprobanteDevolucionData | null; mensaje: string }> {
+  try {
+    const fechaHoy = new Date().toISOString().split("T")[0];
+    const horaActual = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    const numComprobante = `REM-${Date.now().toString().slice(-6)}`;
+
+    // Registrar egreso en depositoentregado para cuadrar la caja
+    const depData: DepositoEntregado = {
+      NUMEROFACTURA: params.numeroFactura,
+      VALOR: params.montoReembolso,
+      FECHA: fechaHoy,
+    };
+
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        await supabase.from("depositoentregado" as any).insert(depData);
+      }
+    } catch (e) {
+      console.warn("Aviso insertando reembolso en depositoentregado Supabase:", e);
+    }
+    saveLocalDepositoEntregado(depData);
+
+    const comprobante: ComprobanteDevolucionData = {
+      numeroComprobante: numComprobante,
+      numeroFactura: params.numeroFactura,
+      fecha: fechaHoy,
+      hora: horaActual,
+      cajero: params.cajero,
+      clienteNombre: params.clienteNombre,
+      clienteCedula: params.clienteCedula,
+      clienteTelefono: params.clienteTelefono,
+      itemsDevueltos: [],
+      depositoOriginal: params.montoReembolso,
+      deduccionPenalidad: 0,
+      motivoDeduccion: params.motivo || "REEMBOLSO POR ANULACIÓN DE FACTURA",
+      totalReintegrado: params.montoReembolso,
+      formaPago: params.formaPago,
+    };
+
+    return {
+      ok: true,
+      comprobante,
+      mensaje: `Reembolso por $${params.montoReembolso.toLocaleString("es-CO")} registrado exitosamente.`,
+    };
+  } catch (err: any) {
+    console.error("Error al registrar reembolso por anulación:", err);
+    return {
+      ok: false,
+      comprobante: null,
+      mensaje: err?.message || "Error al registrar el reembolso",
+    };
   }
 }
 

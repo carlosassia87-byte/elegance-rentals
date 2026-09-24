@@ -1226,7 +1226,7 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
       const match =
         localFacts.find((f) => String(f.NUMEROFACT || "").trim().toUpperCase() === term) ||
         (!isNaN(Number(term)) ? localFacts.find((f) => Number(f.IDFACTURA) === Number(term)) : null) ||
-        localFacts.find((f) => String(f.CCEDULA || f.CEDULA || "").trim() === term) ||
+        localFacts.find((f) => String(f.CCEDULA || (f as any).CEDULA || "").trim() === term) ||
         localFacts.find((f) =>
           String(f.NUMEROFACT || "").trim().toUpperCase().startsWith(term) ||
           String(f.CCLIENTE || "").trim().toUpperCase().includes(term)

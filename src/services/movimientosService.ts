@@ -733,6 +733,7 @@ export async function anularFacturaOperacion(
       const { error: errUpdate } = await supabase
         .from("FACTURA" as any)
         .update({
+          ESTADO: "ANULADA",
           ESTADOCLIENTE: "ANULADO",
           MODO: "ANULADO",
           GASTOS: motivo.slice(0, 50),

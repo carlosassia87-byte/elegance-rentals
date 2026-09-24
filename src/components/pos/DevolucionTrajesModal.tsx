@@ -15,12 +15,14 @@ import {
   FileCheck2,
   HelpCircle,
   Sparkles,
+  Ban,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   buscarFacturaParaDevolucion,
   registrarDevolucionCompleta,
+  registrarReembolsoAnulacion,
   type FacturaDevolucionDetalle,
   type ItemDevolucionInfo,
   type ComprobanteDevolucionData,
@@ -201,6 +203,49 @@ export function DevolucionTrajesModal({
     }
   };
 
+  // Confirmar reintegro de dinero por factura ANULADA
+  const handleConfirmarReembolsoAnulacion = async () => {
+    if (!detalle || !detalle.esAnulada) return;
+    if (detalle.saldoPendientePorDevolver <= 0) {
+      toast.info("No hay dinero pendiente por devolver al cliente en esta factura anulada.");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Deseas registrar la DEVOLUCIÓN DE DINERO de $${detalle.saldoPendientePorDevolver.toLocaleString("es-CO")} al cliente ${detalle.clienteNombre}?\n\n- Se registrará la salida del dinero en caja (${formaReintegro}).\n- Se emitirá el comprobante oficial de reembolso por anulación.\n- No afectará el inventario (las prendas ya están reingresadas).`
+    );
+    if (!confirmar) return;
+
+    setProcesando(true);
+    try {
+      const res = await registrarReembolsoAnulacion({
+        numeroFactura: detalle.factura.NUMEROFACT,
+        clienteNombre: detalle.clienteNombre,
+        clienteCedula: detalle.clienteCedula,
+        clienteTelefono: detalle.clienteTelefono,
+        montoReembolso: detalle.saldoPendientePorDevolver,
+        formaPago: formaReintegro,
+        motivo: detalle.motivoAnulacion || "REEMBOLSO POR FACTURA ANULADA",
+        cajero: cajeroNombre,
+      });
+
+      if (res.ok && res.comprobante) {
+        toast.success(res.mensaje);
+        setComprobanteActivo(res.comprobante);
+        setModalComprobanteOpen(true);
+        if (onDevolucionExitosa) onDevolucionExitosa();
+        await ejecutarBusqueda(detalle.factura.NUMEROFACT);
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (err: any) {
+      console.error("Error al registrar reembolso por anulación:", err);
+      toast.error(err?.message || "Error al procesar el reembolso");
+    } finally {
+      setProcesando(false);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -286,6 +331,100 @@ export function DevolucionTrajesModal({
               </div>
             ) : (
               <>
+                {/* BANNER DE ADVERTENCIA SI LA FACTURA FUE ANULADA */}
+                {detalle.esAnulada && (
+                  <div className="rounded-2xl border-2 border-rose-500 bg-rose-50/90 p-4 shadow-sm space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white font-black shadow-xs">
+                        <Ban className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black uppercase text-rose-950 tracking-wide">
+                            FACTURA ANULADA — OPERACIÓN CANCELADA
+                          </h3>
+                          <span className="rounded-full bg-rose-200 px-2 py-0.5 text-[10px] font-black text-rose-900 border border-rose-300">
+                            ANULADA
+                          </span>
+                        </div>
+                        <p className="text-xs text-rose-800 mt-0.5 leading-relaxed">
+                          Esta factura fue cancelada (Motivo: <strong>{detalle.motivoAnulacion || "Cancelación / Anulación"}</strong>). Las prendas ya fueron devueltas al inventario durante la anulación, por lo que <strong>no se realiza devolución física de trajes</strong>.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Balance de dinero dado por el cliente */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-rose-200">
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-rose-200">
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Dinero que dio el cliente</span>
+                        <div className="text-base font-black text-slate-900 font-mono mt-0.5">
+                          ${detalle.totalDineroRecibido.toLocaleString("es-CO")}
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-semibold">(Pago inicial + Abonos)</span>
+                      </div>
+
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-rose-200">
+                        <span className="text-[10px] font-black text-slate-500 uppercase">Dinero ya reintegrado</span>
+                        <div className="text-base font-black text-slate-700 font-mono mt-0.5">
+                          ${detalle.totalDineroYaReintegrado.toLocaleString("es-CO")}
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-semibold">(Reembolsos registrados)</span>
+                      </div>
+
+                      <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${
+                        detalle.saldoPendientePorDevolver > 0
+                          ? "bg-rose-100 border-rose-300 text-rose-950"
+                          : "bg-emerald-50 border-emerald-300 text-emerald-950"
+                      }`}>
+                        <div>
+                          <span className="text-[10px] font-black uppercase">
+                            {detalle.saldoPendientePorDevolver > 0 ? "⚠️ Pendiente por Devolver" : "✓ Estado Financiero"}
+                          </span>
+                          <div className="text-base font-black font-mono mt-0.5">
+                            ${detalle.saldoPendientePorDevolver.toLocaleString("es-CO")}
+                          </div>
+                        </div>
+                        {detalle.saldoPendientePorDevolver > 0 ? (
+                          <span className="text-[10px] font-black text-rose-700 mt-1">
+                            ¡Hay dinero del cliente por reembolsar!
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-emerald-700 mt-1">
+                            Todo el dinero ya fue liquidado ($0 pendiente).
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Botón de acción para devolver dinero si hay saldo pendiente */}
+                    {detalle.saldoPendientePorDevolver > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-rose-200 bg-white/70 p-2.5 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700">Forma de Reintegro:</span>
+                          <select
+                            value={formaReintegro}
+                            onChange={(e) => setFormaReintegro(e.target.value)}
+                            className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-bold text-slate-800"
+                          >
+                            <option value="EFECTIVO">💵 EFECTIVO (Salida de Caja)</option>
+                            <option value="TRANSFERENCIA">💳 TRANSFERENCIA / NEQUI</option>
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={procesando}
+                          onClick={handleConfirmarReembolsoAnulacion}
+                          className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider shadow-sm transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span>Reintegrar ${detalle.saldoPendientePorDevolver.toLocaleString("es-CO")} al Cliente</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* TARJETA RESUMEN DEL CLIENTE Y FACTURA */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
                   <div>
@@ -355,7 +494,9 @@ export function DevolucionTrajesModal({
                           <tr
                             key={item.id || idx}
                             className={`transition-colors ${
-                              yaDevuelto
+                              detalle.esAnulada
+                                ? "bg-rose-50/50 opacity-60 cursor-not-allowed"
+                                : yaDevuelto
                                 ? "bg-slate-50/70 opacity-60"
                                 : item.seleccionadoParaDevolver
                                 ? "bg-teal-50/60 font-semibold"
@@ -365,7 +506,7 @@ export function DevolucionTrajesModal({
                             <td className="p-2.5 text-center">
                               <input
                                 type="checkbox"
-                                disabled={yaDevuelto}
+                                disabled={yaDevuelto || detalle.esAnulada}
                                 checked={item.seleccionadoParaDevolver}
                                 onChange={() => toggleSeleccionItem(idx)}
                                 className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
@@ -552,12 +693,16 @@ export function DevolucionTrajesModal({
 
                       <button
                         type="button"
-                        disabled={procesando || itemsSeleccionados.length === 0}
+                        disabled={procesando || itemsSeleccionados.length === 0 || detalle.esAnulada}
                         onClick={handleConfirmarDevolucion}
                         className="mt-4 w-full h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-all active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>Confirmar Devolución & Reintegro</span>
+                        <span>
+                          {detalle.esAnulada
+                            ? "Factura Anulada (No requiere devolución de prendas)"
+                            : "Confirmar Devolución & Reintegro"}
+                        </span>
                       </button>
                     </div>
                   </div>
