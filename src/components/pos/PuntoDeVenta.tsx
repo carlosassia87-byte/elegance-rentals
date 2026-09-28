@@ -1316,6 +1316,36 @@ export function PuntoDeVenta() {
     toast.info("Artículo eliminado");
   }
 
+  // Modificar depósito de una fila específica (permite dejarlo en $0 o monto acordado)
+  function handleModificarDepositoFila(index: number, nuevoValorDeposito: number) {
+    const valDep = Math.max(0, nuevoValorDeposito);
+    setGridItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        const totDep = valDep * it.cantidad;
+        return {
+          ...it,
+          valorDeposito: valDep,
+          totalDeposito: totDep,
+          totalGeneral: it.totalAlquiler + totDep,
+        };
+      })
+    );
+  }
+
+  // Quitar depósitos a todas las prendas del carrito ($0)
+  function handleQuitarTodosLosDepositos() {
+    setGridItems((prev) =>
+      prev.map((it) => ({
+        ...it,
+        valorDeposito: 0,
+        totalDeposito: 0,
+        totalGeneral: it.totalAlquiler,
+      }))
+    );
+    toast.success("Se quitaron los depósitos de todas las prendas ($0)");
+  }
+
   // Limpiar / Nuevo Alquiler / Reset Completo del POS
   async function handleLimpiar(silencioso = false) {
     try {
@@ -2223,8 +2253,36 @@ export function PuntoDeVenta() {
                       <td className="px-3 py-2 text-right font-mono font-black text-slate-900">
                         ${item.totalAlquiler.toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-bold text-slate-600">
-                        ${item.valorDeposito.toLocaleString()}
+                      <td className="px-2 py-1.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1000}
+                            value={item.valorDeposito === 0 ? "0" : item.valorDeposito}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              handleModificarDepositoFila(index, val);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-22 h-7 text-right font-mono font-bold text-xs text-blue-900 bg-blue-50/70 hover:bg-white focus:bg-white border border-blue-200 focus:border-blue-500 rounded-lg px-2 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all shadow-2xs"
+                            title="Editar depósito de esta prenda (puedes escribir 0)"
+                          />
+                          {item.valorDeposito > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleModificarDepositoFila(index, 0);
+                                toast.info(`Depósito de "${item.descripcion}" ajustado a $0`);
+                              }}
+                              title="Quitar depósito ($0) para esta prenda"
+                              className="px-1.5 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[10px] font-black shrink-0 transition-colors shadow-2xs"
+                            >
+                              $0
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-black text-blue-700">
                         ${item.totalDeposito.toLocaleString()}
@@ -2247,9 +2305,21 @@ export function PuntoDeVenta() {
       <div className="grid grid-cols-12 gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs items-center">
         {/* TARJETA 1: TOTAL DEPOSITO */}
         <div className="col-span-3 h-18 rounded-xl border border-blue-200/80 bg-blue-50/50 p-2.5 flex flex-col justify-between">
-          <span className="text-[11px] font-black uppercase text-blue-900 tracking-wider block">
-            TOTAL DEPOSITO:
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase text-blue-900 tracking-wider block">
+              TOTAL DEPOSITO:
+            </span>
+            {totalDeposito > 0 && (
+              <button
+                type="button"
+                onClick={handleQuitarTodosLosDepositos}
+                title="Quitar depósito a todas las prendas del carrito ($0)"
+                className="px-2 py-0.5 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[10px] font-black transition-colors shadow-2xs"
+              >
+                Quitar ($0)
+              </button>
+            )}
+          </div>
           <div className="font-mono text-2xl font-black text-blue-800 text-right leading-none">
             ${totalDeposito.toLocaleString()}
           </div>
