@@ -706,7 +706,7 @@ export async function marcarTrajeDevuelto(
       await supabase.from("depositoentregado" as any).insert({
         NUMEROFACTURA: numeroFact,
         VALOR: 0,
-        FECHA: new Date().toISOString(),
+        FECHA: new Date().toISOString().split("T")[0],
       });
     } catch {}
 

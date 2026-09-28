@@ -20,6 +20,7 @@ import {
   OfflineCampoFactura,
   OfflineAbono,
   SyncQueueItem,
+  actualizarIdFacturaOffline,
 } from "./offlineDbService";
 import { indexarArticulosEnMemoria, indexarClientesEnMemoria } from "./posService";
 import { saveLocalAccesorios } from "./accesoriosService";
@@ -90,12 +91,18 @@ async function descargarTablaPaginada(
   return todos;
 }
 
+let _precargaEnCurso = false;
+
 /**
  * Descarga y refresca los artículos, clientes, accesorios y facturas recientes en IndexedDB y memoria RAM.
  * Se ejecuta automáticamente al iniciar la PWA y en segundo plano sin congelar la interfaz.
  */
 export async function precargarDatosOffline(forzarCompleto = false): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+  // BUG-17 fix: guard de re-entrada para evitar descargas paralelas
+  if (_precargaEnCurso) return;
+  _precargaEnCurso = true;
 
   try {
     currentState = {
@@ -130,20 +137,33 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       } catch {}
     }
 
-    // 4. Descargar Facturas de los últimos 60 días o pendientes
+    // 4. Descargar Facturas de los últimos 60 días con paginación completa (BUG-08 fix)
     const hace60Dias = new Date();
     hace60Dias.setDate(hace60Dias.getDate() - 60);
     const fechaStr = hace60Dias.toISOString().split("T")[0];
 
-    const { data: facturas, error: errFact } = await supabase
-      .from("FACTURA" as any)
-      .select("*")
-      .gte("FECHASALIDA", fechaStr)
-      .order("IDFACTURA", { ascending: false })
-      .limit(3000);
+    const facturas: any[] = [];
+    let fromFact = 0;
+    while (fromFact < 100000) {
+      const { data: batchFact, error: errBatch } = await supabase
+        .from("FACTURA" as any)
+        .select("*")
+        .gte("FECHASALIDA", fechaStr)
+        .order("IDFACTURA", { ascending: false })
+        .range(fromFact, fromFact + 999);
 
-    if (!errFact && facturas && facturas.length > 0) {
-      const numFacts = (facturas as any[]).map((f) => f.NUMEROFACT).filter(Boolean);
+      if (errBatch) {
+        console.warn("Aviso descargando facturas offline (bloque", fromFact, "):", errBatch.message);
+        break;
+      }
+      if (!batchFact || batchFact.length === 0) break;
+      facturas.push(...batchFact);
+      if (batchFact.length < 1000) break;
+      fromFact += 1000;
+    }
+
+    if (facturas.length > 0) {
+      const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
 
       // Descargar items relacionados por bloques de 80 para no saturar URL
       const camposFactura: OfflineCampoFactura[] = [];
@@ -207,6 +227,9 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       isSyncing: false,
     };
     notifyListeners();
+  } finally {
+    // BUG-17 fix: siempre liberar el guard al terminar
+    _precargaEnCurso = false;
   }
 }
 
@@ -275,7 +298,8 @@ import { obtenerTerminalConfig } from "./empresaCajaService";
 // =========================================================================
 
 const SEMAFORO_LOCK_KEY = "elegance_sync_lock_token";
-const LOCK_EXPIRACION_MS = 15000; // 15 segundos máximo para evitar bloqueos muertos (deadlocks)
+const LOCK_EXPIRACION_MS = 20000; // 20 segundos máximo antes de expirar el lock
+const LOCK_SUPABASE_KEY = "SYNC_LOCK_GLOBAL"; // ID del lock en la tabla CAJAS
 
 interface SemaforoLockData {
   cajaId: string | number;
@@ -284,49 +308,120 @@ interface SemaforoLockData {
 }
 
 /**
+ * BUG-01 fix: Lock de doble capa para coordinación multi-PC real.
+ * Capa 1: Supabase (visible entre PCs — usa upsert en tabla CAJAS como almacén de estado)
+ * Capa 2: localStorage (fallback solo dentro del mismo navegador)
+ */
+async function adquirirLockSupabase(
+  cajaId: string | number,
+  nombreCaja: string
+): Promise<boolean> {
+  try {
+    const ahora = new Date();
+    const expiresMs = LOCK_EXPIRACION_MS;
+
+    // Verificar si hay un lock activo de otra PC
+    const { data: lockRow } = await supabase
+      .from("CAJAS" as any)
+      .select("SYNC_LOCK_AT, SYNC_LOCK_BY")
+      .eq("NOMBRECAJA", LOCK_SUPABASE_KEY)
+      .maybeSingle();
+
+    if (lockRow) {
+      const lockedAt = new Date((lockRow as any).SYNC_LOCK_AT || 0);
+      const age = ahora.getTime() - lockedAt.getTime();
+      const lockedBy = String((lockRow as any).SYNC_LOCK_BY || "");
+      const esMio = lockedBy === String(cajaId);
+
+      if (!esMio && age < expiresMs) {
+        // Otro terminal tiene el lock y no ha expirado
+        return false;
+      }
+    }
+
+    // Intentar tomar el lock mediante upsert
+    const { error } = await supabase
+      .from("CAJAS" as any)
+      .upsert(
+        {
+          NOMBRECAJA: LOCK_SUPABASE_KEY,
+          NUMERACION: 0,
+          PREFIJO: "LOCK",
+          SYNC_LOCK_AT: ahora.toISOString(),
+          SYNC_LOCK_BY: String(cajaId),
+        },
+        { onConflict: "NOMBRECAJA" }
+      );
+
+    return !error;
+  } catch {
+    // Si Supabase no está disponible (offline), confiar en el lock local
+    return true;
+  }
+}
+
+async function liberarLockSupabase(cajaId: string | number): Promise<void> {
+  try {
+    // Expirar el lock inmediatamente poniendo fecha antigua
+    await supabase
+      .from("CAJAS" as any)
+      .update({ SYNC_LOCK_AT: new Date(0).toISOString() })
+      .eq("NOMBRECAJA", LOCK_SUPABASE_KEY)
+      .eq("SYNC_LOCK_BY", String(cajaId));
+  } catch {}
+}
+
+/**
  * Intenta adquirir el semáforo para sincronizar.
- * Si otra caja está sincronizando actualmente, espera su turno (Luz Roja).
+ * BUG-01 fix: ahora usa doble capa (Supabase + localStorage).
+ * Si otra PC está sincronizando actualmente, espera su turno (Luz Roja).
  */
 async function adquirirSemaforo(cajaId: string | number, nombreCaja: string): Promise<boolean> {
   const maxIntentos = 4;
-  
+
   for (let intento = 0; intento < maxIntentos; intento++) {
     try {
       const ahora = Date.now();
-      
-      // 1. Verificar bloqueo local / compartido
+
+      // --- CAPA 1: Lock en Supabase (multi-PC) ---
+      const lockSupabaseLibre = await adquirirLockSupabase(cajaId, nombreCaja);
+      if (!lockSupabaseLibre) {
+        const tiempoEspera = 1200 + Math.floor(Math.random() * 800);
+        await new Promise((r) => setTimeout(r, tiempoEspera));
+        continue;
+      }
+
+      // --- CAPA 2: Lock en localStorage (misma pestaña / mismo navegador) ---
       const rawLock = localStorage.getItem(SEMAFORO_LOCK_KEY);
       if (rawLock) {
         const lockData: SemaforoLockData = JSON.parse(rawLock);
-        // Si el bloqueo aún está vigente y pertenece a OTRA caja
         if (ahora - lockData.timestamp < LOCK_EXPIRACION_MS && lockData.cajaId !== cajaId) {
-          // Luz Roja: Esperar entre 1.2 y 2 segundos antes de volver a consultar
           const tiempoEspera = 1200 + Math.floor(Math.random() * 800);
           await new Promise((r) => setTimeout(r, tiempoEspera));
           continue;
         }
       }
 
-      // 2. Luz Verde: Tomar el semáforo
-      const nuevoLock: SemaforoLockData = {
-        cajaId,
-        nombreCaja,
-        timestamp: ahora,
-      };
+      // Luz Verde: tomar ambos locks
+      const nuevoLock: SemaforoLockData = { cajaId, nombreCaja, timestamp: ahora };
       localStorage.setItem(SEMAFORO_LOCK_KEY, JSON.stringify(nuevoLock));
       return true;
     } catch {
-      return true;
+      return true; // Si hay error, permitir proceder para no bloquear la cola
     }
   }
 
-  return true; // Tras los intentos, permitir proceder para no bloquear la cola
+  return true; // Tras los intentos, permitir proceder para no bloquear indefinidamente
 }
 
 /**
- * Libera el semáforo para que la siguiente caja pueda sincronizar.
+ * Libera ambos locks (Supabase + localStorage) para que la siguiente PC/caja pueda sincronizar.
  */
-function liberarSemaforo(cajaId: string | number) {
+async function liberarSemaforo(cajaId: string | number) {
+  // Liberar lock en Supabase
+  await liberarLockSupabase(cajaId);
+
+  // Liberar lock local
   try {
     const rawLock = localStorage.getItem(SEMAFORO_LOCK_KEY);
     if (rawLock) {
@@ -617,26 +712,34 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
           }
 
-          // 3. Descontar stock de artículos en Supabase
-          for (const it of items || []) {
-            if (it.BARRAS) {
-              const { data: artExistente } = await supabase
-                .from("ARTICULO" as any)
-                .select("IDARTICULO, STOCK")
-                .eq("CODBARRAS", it.BARRAS)
-                .maybeSingle();
+          // BUG-05 fix: actualizar el IDFACTURA temporal en IndexedDB con el ID real de Supabase
+          if (realIdFactura && numFact) {
+            actualizarIdFacturaOffline(numFact, realIdFactura).catch(() => {});
+          }
 
-              if (artExistente) {
-                const stockActual = Number((artExistente as any).STOCK) || 0;
-                const cant = Number(it.CANTIDAD) || 1;
-                const nuevoStock = Math.max(0, stockActual - cant);
-                await supabase
+          // 3. Descontar stock de artículos en Supabase
+          // BUG-03 fix: solo descontar si el stock NO fue descontado al momento de la venta
+          if (!item.datos?.stockYaDescontado) {
+            for (const it of items || []) {
+              if (it.BARRAS) {
+                const { data: artExistente } = await supabase
                   .from("ARTICULO" as any)
-                  .update({
-                    STOCK: nuevoStock,
-                    DISPONIBLE: nuevoStock > 0,
-                  })
-                  .eq("IDARTICULO", (artExistente as any).IDARTICULO);
+                  .select("IDARTICULO, STOCK")
+                  .eq("CODBARRAS", it.BARRAS)
+                  .maybeSingle();
+
+                if (artExistente) {
+                  const stockActual = Number((artExistente as any).STOCK) || 0;
+                  const cant = Number(it.CANTIDAD) || 1;
+                  const nuevoStock = Math.max(0, stockActual - cant);
+                  await supabase
+                    .from("ARTICULO" as any)
+                    .update({
+                      STOCK: nuevoStock,
+                      DISPONIBLE: nuevoStock > 0,
+                    })
+                    .eq("IDARTICULO", (artExistente as any).IDARTICULO);
+                }
               }
             }
           }
@@ -670,6 +773,28 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                 VALOR: Number(montoNetoDevuelto),
                 FECHA: fecha || new Date().toISOString().split("T")[0],
               });
+
+              // BUG-10 fix: marcar el depósito local como sincronizado para evitar doble-conteo
+              try {
+                const KEY_LOCAL_DEP = "elegance_local_depositos_entregados";
+                const rawDeps = localStorage.getItem(KEY_LOCAL_DEP);
+                if (rawDeps) {
+                  const deps: any[] = JSON.parse(rawDeps);
+                  let changed = false;
+                  for (const d of deps) {
+                    if (
+                      d._pendienteSync &&
+                      (d.NUMEROFACTURA || "").trim().toUpperCase() === String(numeroFact).trim().toUpperCase() &&
+                      Number(d.VALOR) === Number(montoNetoDevuelto)
+                    ) {
+                      d._pendienteSync = false;
+                      changed = true;
+                      break; // Solo marcar el primero pendiente que coincida
+                    }
+                  }
+                  if (changed) localStorage.setItem(KEY_LOCAL_DEP, JSON.stringify(deps));
+                }
+              } catch {}
             } catch (e) {
               console.warn("Aviso insertando depositoentregado sincronizado:", e);
             }
@@ -706,15 +831,22 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
               } catch {}
             }
           } else if (barrasArticulos && Array.isArray(barrasArticulos)) {
-            for (const barras of barrasArticulos) {
+            for (const barrasItem of barrasArticulos) {
+              // barrasItem puede ser string (solo código) o un objeto {barras, cantidad}
+              const cod = typeof barrasItem === "string" ? barrasItem : barrasItem.barras;
+              // BUG-04 fix: usar la cantidad real del item, no siempre +1
+              const cant = typeof barrasItem === "object" && barrasItem.cantidad
+                ? Number(barrasItem.cantidad) || 1
+                : 1;
+
               const { data: artRaw } = await supabase
                 .from("ARTICULO" as any)
                 .select("IDARTICULO, STOCK")
-                .eq("CODBARRAS", barras)
+                .eq("CODBARRAS", cod)
                 .maybeSingle();
               const art = artRaw as any;
               if (art) {
-                const nuevoStock = (Number(art.STOCK) || 0) + 1;
+                const nuevoStock = (Number(art.STOCK) || 0) + cant;
                 await supabase
                   .from("ARTICULO" as any)
                   .update({
@@ -760,8 +892,8 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
       }
     }
   } finally {
-    // 3. Siempre liberar el semáforo al terminar
-    liberarSemaforo(cajaId);
+    // 3. Siempre liberar el semáforo al terminar (libera tanto Supabase como localStorage)
+    await liberarSemaforo(cajaId);
   }
 
   const pendientesRestantes = await contarItemsPendientesSincronizar();
@@ -806,6 +938,9 @@ export async function probarConectividadReal(): Promise<boolean> {
 // INICIALIZADOR DE EVENTOS GLOBALES (ONLINE / OFFLINE)
 // =========================================================================
 
+// BUG-16 fix: guardar el ID del intervalo para poder limpiarlo
+let _detectorIntervalId: ReturnType<typeof setInterval> | null = null;
+
 export function inicializarDetectorOffline(): void {
   if (typeof window === "undefined" || detectorIniciado) return;
   detectorIniciado = true;
@@ -833,12 +968,9 @@ export function inicializarDetectorOffline(): void {
   const handleOnline = async () => {
     currentState.isOnline = true;
     notifyListeners();
+    // BUG-18 fix: no lanzar dos sincronizaciones en paralelo
+    // verificarEstadoInmediato ya puede disparar procesarColaSincronizacion internamente
     await verificarEstadoInmediato();
-    procesarColaSincronizacion(true).then((res) => {
-      if (res.exitosas > 0) {
-        precargarDatosOffline();
-      }
-    });
   };
 
   const handleOffline = async () => {
@@ -850,8 +982,8 @@ export function inicializarDetectorOffline(): void {
   window.addEventListener("online", handleOnline);
   window.addEventListener("offline", handleOffline);
 
-  // Verificación periódica activa cada 10 segundos
-  setInterval(verificarEstadoInmediato, 10000);
+  // BUG-16 fix: guardar ID del intervalo para cleanup posterior
+  _detectorIntervalId = setInterval(verificarEstadoInmediato, 10000);
 
   // Precarga y sincronización inmediata al abrir la aplicación
   setTimeout(async () => {
@@ -864,9 +996,24 @@ export function inicializarDetectorOffline(): void {
   }, 500);
 }
 
-// Auto-inicialización global inmediata al importar el módulo
-if (typeof window !== "undefined") {
-  inicializarDetectorOffline();
+/**
+ * BUG-16 fix: Limpia el intervalo y los event listeners del detector offline.
+ * útil en entornos con HMR (Vite dev) donde el módulo puede recargarse.
+ */
+export function destruirDetectorOffline(): void {
+  if (_detectorIntervalId !== null) {
+    clearInterval(_detectorIntervalId);
+    _detectorIntervalId = null;
+  }
+  detectorIniciado = false;
 }
 
-
+// Auto-inicialización global inmediata al importar el módulo
+if (typeof window !== "undefined") {
+  // BUG-16 fix: en entornos HMR (Vite), limpiar la instancia previa antes de crear una nueva
+  if ((window as any).__eleganceDetectorDestruir) {
+    (window as any).__eleganceDetectorDestruir();
+  }
+  inicializarDetectorOffline();
+  (window as any).__eleganceDetectorDestruir = destruirDetectorOffline;
+}

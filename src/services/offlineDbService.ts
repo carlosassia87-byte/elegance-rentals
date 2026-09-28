@@ -46,6 +46,7 @@ export interface OfflineFactura {
   CCEDULA: number;
   CCLIENTE: string;
   CTELEFONO?: string;
+  CTELEFONO1?: string;  // BUG-23 fix: campo que faltaba en la interfaz
   CDIRECCION?: string;
   FTOTALALQUILER?: number;
   FTOTALDEPOSITO?: number;
@@ -506,11 +507,108 @@ export async function consumirSiguienteNumeroOffline(prefijoDefault = "G"): Prom
           resolve(`${reserva.prefijo || prefijoDefault}${numActual}`);
         };
       } else {
-        // Fallback si no había bloque reservado previo
-        const fallbackNum = `${prefijoDefault}${Date.now().toString().slice(-5)}`;
+        // BUG-07/22 fix: abortar la transacción limpiamente antes de resolver el fallback
+        // Esto evita que la transacción IDB quede abierta indefinidamente
+        try { tx.abort(); } catch {}
+        // Fallback mejorado: timestamp (ms) + random para reducir colisiones
+        const tsFragment = Date.now().toString().slice(-4);
+        const rndFragment = Math.floor(Math.random() * 90 + 10); // 10-99
+        const fallbackNum = `${prefijoDefault}${tsFragment}${rndFragment}`;
         resolve(fallbackNum);
       }
     };
     req.onerror = () => reject(req.error);
   });
+}
+
+// =========================================================================
+// GESTIÓN DE STOCK E IDENTIFICADORES OFFLINE (BUG-05, BUG-09)
+// =========================================================================
+
+/**
+ * Descuenta el stock localmente en IndexedDB para ARTICULO offline.
+ * BUG-09 fix: evita que un artículo vendido offline siga apareciendo con stock disponible.
+ */
+export async function descontarStockArticuloOffline(
+  idArticulo?: number,
+  barras?: string,
+  cantidad = 1
+): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("articulos", "readwrite");
+    const store = tx.objectStore("articulos");
+
+    if (idArticulo) {
+      const req = store.get(idArticulo);
+      req.onsuccess = () => {
+        const art = req.result;
+        if (art) {
+          const stockActual = Number(art.STOCK) || 0;
+          const nuevoStock = Math.max(0, stockActual - cantidad);
+          store.put({
+            ...art,
+            STOCK: nuevoStock,
+            DISPONIBLE: nuevoStock > 0,
+          });
+        }
+      };
+    } else if (barras) {
+      const cleanBarras = (barras || "").trim().toUpperCase();
+      const index = store.index("by_barras");
+      const req = index.get(cleanBarras);
+      req.onsuccess = () => {
+        const art = req.result;
+        if (art) {
+          const stockActual = Number(art.STOCK) || 0;
+          const nuevoStock = Math.max(0, stockActual - cantidad);
+          store.put({
+            ...art,
+            STOCK: nuevoStock,
+            DISPONIBLE: nuevoStock > 0,
+          });
+        }
+      };
+    }
+  } catch (err) {
+    console.warn("Aviso descontando stock offline:", err);
+  }
+}
+
+/**
+ * Actualiza el IDFACTURA real devuelto por Supabase en IndexedDB.
+ * BUG-05 fix: reemplaza el Date.now() temporal por el ID real de Supabase
+ * tanto en la factura como en sus campos asociados.
+ */
+export async function actualizarIdFacturaOffline(
+  numeroFact: string,
+  realIdFactura: number
+): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(["facturas", "camposFactura"], "readwrite");
+    const factStore = tx.objectStore("facturas");
+    const camposStore = tx.objectStore("camposFactura");
+
+    const reqFact = factStore.get(numeroFact);
+    reqFact.onsuccess = () => {
+      const fact = reqFact.result;
+      if (fact) {
+        factStore.put({ ...fact, IDFACTURA: realIdFactura });
+      }
+    };
+
+    const indexCampos = camposStore.index("by_factura");
+    const reqCampos = indexCampos.getAll(numeroFact);
+    reqCampos.onsuccess = () => {
+      const campos = reqCampos.result;
+      if (campos && Array.isArray(campos)) {
+        for (const c of campos) {
+          camposStore.put({ ...c, IDFACTURA: realIdFactura });
+        }
+      }
+    };
+  } catch (err) {
+    console.warn("Aviso actualizando IDFACTURA en IndexedDB:", err);
+  }
 }

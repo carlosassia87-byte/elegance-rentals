@@ -20,6 +20,7 @@ import {
   guardarArticulosLote,
   obtenerTodosLosArticulosOffline,
   obtenerTodosLosClientesOffline,
+  descontarStockArticuloOffline,
 } from "./offlineDbService";
 import { renovarBloqueConsecutivosOffline } from "./offlineSyncService";
 
@@ -157,14 +158,32 @@ export async function buscarClientePorCedula(cedula: number | string): Promise<C
 export async function buscarClientesPorNombre(query: string): Promise<Cliente[]> {
   try {
     if (!query.trim()) return [];
-    const { data, error } = await supabase
-      .from("CLIENTES" as any)
-      .select("*")
-      .ilike("NOMBRE", `%${query}%`)
-      .limit(20);
 
-    if (error) throw error;
-    return (data as unknown as Cliente[]) ?? [];
+    // 1. Si hay conexión, consultar Supabase
+    if (typeof navigator === "undefined" || navigator.onLine) {
+      try {
+        const { data, error } = await supabase
+          .from("CLIENTES" as any)
+          .select("*")
+          .ilike("NOMBRE", `%${query}%`)
+          .limit(20);
+        if (!error && data && data.length > 0) {
+          return (data as unknown as Cliente[]) ?? [];
+        }
+      } catch {}
+    }
+
+    // 2. BUG-20 fix: Fallback a IndexedDB offline
+    try {
+      const { obtenerTodosLosClientesOffline } = await import("./offlineDbService");
+      const offlineClis = await obtenerTodosLosClientesOffline();
+      const q = query.trim().toLowerCase();
+      return (offlineClis as unknown as Cliente[]).filter(
+        (c) => c.NOMBRE && c.NOMBRE.toLowerCase().includes(q)
+      ).slice(0, 20);
+    } catch {}
+
+    return [];
   } catch (err) {
     console.error("Excepción en buscarClientesPorNombre:", err);
     return [];
@@ -756,13 +775,20 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
     let maxNum = Math.max(0, baseConsecutivo - 1);
     const pfxTrim = (pfx || "").trim().toUpperCase();
 
-    // 3. Consultar FACTURA en Supabase para obtener el mayor número registrado PARA ESTE PREFIJO
+    // 3. BUG-14 fix: Consultar FACTURA filtrando por prefijo para obtener resultados precisos
+    // sin necesidad de cargar cientos de registros de otros prefijos
     try {
-      const { data: facts } = await supabase
+      let factsQuery = supabase
         .from("FACTURA" as any)
         .select("NUMEROFACT, IDFACTURA")
-        .order("IDFACTURA", { ascending: false })
-        .limit(300);
+        .order("IDFACTURA", { ascending: false });
+
+      if (pfxTrim) {
+        // Solo facturas de este prefijo — 50 registros son suficientes
+        factsQuery = (factsQuery as any).ilike("NUMEROFACT", `${pfxTrim}%`);
+      }
+
+      const { data: facts } = await (factsQuery as any).limit(pfxTrim ? 50 : 500);
 
       if (facts && facts.length > 0) {
         for (const f of facts as any[]) {
@@ -770,20 +796,14 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
           if (!numFact) continue;
 
           if (pfxTrim) {
-            // Solo considerar facturas que pertenezcan a este prefijo específico
             if (numFact.toUpperCase().startsWith(pfxTrim)) {
               const n = extraerNumeroFactura(numFact, pfx);
-              if (n > maxNum) {
-                maxNum = n;
-              }
+              if (n > maxNum) maxNum = n;
             }
           } else {
-            // Sin prefijo: sólo considerar facturas netamente numéricas
             if (/^\d+$/.test(numFact)) {
               const n = extraerNumeroFactura(numFact);
-              if (n > maxNum) {
-                maxNum = n;
-              }
+              if (n > maxNum) maxNum = n;
             }
           }
         }
@@ -838,8 +858,11 @@ export async function registrarAlquilerFactura(
   // 1. Obtener el número consecutivo garantizado y evitar colisiones concurrentes entre PCs
   let sNumeroFactura = facturaData.NUMEROFACT || (await generarNumeroFactura(nombreCaja, prefijoDefault));
 
+  // BUG-02 fix: el pre-check SELECT no es atómico con el INSERT — siempre puede haber una
+  // ventana entre que verificamos y el momento que insertamos. La protección real viene del
+  // error 23505 (duplicate key) dentro del bucle de reintentos más abajo.
+  // Dejamos el pre-check pero agregamos un jitter antes de reintentar para reducir colisiones.
   try {
-    // Validar si otra PC ya registró una factura con este mismo número
     const { data: existente } = await supabase
       .from("FACTURA" as any)
       .select("NUMEROFACT")
@@ -847,6 +870,8 @@ export async function registrarAlquilerFactura(
       .maybeSingle();
 
     if (existente && (existente as any).NUMEROFACT) {
+      // Espera aleatoria de 50-300ms antes de regenerar (jitter distribuido entre PCs)
+      await new Promise((r) => setTimeout(r, 50 + Math.floor(Math.random() * 250)));
       sNumeroFactura = await generarNumeroFactura(nombreCaja, prefijoDefault);
     }
   } catch {}
@@ -927,7 +952,8 @@ export async function registrarAlquilerFactura(
     let facturaInsertada: Factura | null = null;
     let guardadoEnSupabase = false;
     let intentosGuardado = 0;
-    const maxIntentos = 3;
+    // BUG-02 fix: aumentar reintentos de 3 a 5 para absorber más colisiones concurrentes
+    const maxIntentos = 5;
 
     while (intentosGuardado < maxIntentos && !guardadoEnSupabase) {
       try {
@@ -1008,11 +1034,14 @@ export async function registrarAlquilerFactura(
     saveLocalFactura(facturaInsertada as Factura, camposParaSupabase as CampoFactura[]);
 
     // 5.1 Si no hubo conexión o falló la inserción en la nube, encolar para sincronización
-    if (!guardadoEnSupabase || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    if (!guardadoEnSupabase) {
       try {
         await encolarOperacionOffline("NUEVA_FACTURA", {
           factura: cleanFacturaData,
           items: camposParaSupabase,
+          // BUG-03 fix: indicar si el stock ya fue descontado en esta sesión
+          // para que la sincronización no lo descuente de nuevo
+          stockYaDescontado: false,
         });
       } catch (eQueue) {
         console.warn("Aviso encolando factura offline:", eQueue);
@@ -1022,44 +1051,62 @@ export async function registrarAlquilerFactura(
       renovarBloqueConsecutivosOffline().catch(() => {});
     }
 
-    // 6. Descontar Stock de cada ARTICULO o ACCESORIO en inventario
+    // 6. Descontar Stock:
+    // A. Localmente en memoria e IndexedDB (para que la sesión local refleje la venta inmediatamente, BUG-09 fix)
     for (const item of items) {
-      if ((item as any).ES_ACCESORIO || item.BARRAS?.startsWith("ACC-")) {
-        // Descontar de ACCESORIOS
-        try {
-          const { data: accRaw } = await supabase
-            .from("ACCESORIOS" as any)
-            .select("*")
-            .or(`CODBARRAS.eq.${item.BARRAS},DESCRIPCION.ilike.%${item.DESCRIPCION}%`)
-            .maybeSingle();
-
-          const acc = accRaw as any;
-          if (acc && acc.STOCK > 0) {
-            await supabase
-              .from("ACCESORIOS" as any)
-              .update({ STOCK: Math.max(0, acc.STOCK - item.CANTIDAD) })
-              .eq("IDACCESORIO", acc.IDACCESORIO);
-          }
-        } catch (errAcc) {
-          console.warn("No se pudo descontar stock de accesorio:", item.DESCRIPCION, errAcc);
+      const cant = Number(item.CANTIDAD) || 1;
+      const barras = (item.BARRAS || "").trim().toUpperCase();
+      if (barras) {
+        descontarStockArticuloOffline(undefined, barras, cant).catch(() => {});
+        const cached = _mapArticulosPorBarras.get(barras);
+        if (cached) {
+          cached.STOCK = Math.max(0, (Number(cached.STOCK) || 0) - cant);
+          (cached as any).DISPONIBLE = cached.STOCK > 0;
         }
-      } else if (item.DESCRIPCION) {
-        try {
-          const { data: artRaw } = await supabase
-            .from("ARTICULO" as any)
-            .select("*")
-            .eq("DESCRIPCION", item.DESCRIPCION)
-            .maybeSingle();
+      }
+    }
 
-          const art = artRaw as any;
-          if (art && art.STOCK > 0) {
-            await supabase
-              .from("ARTICULO" as any)
-              .update({ STOCK: Math.max(0, art.STOCK - item.CANTIDAD) })
-              .eq("IDARTICULO", art.IDARTICULO);
+    // B. En Supabase: SOLO si la factura fue guardada exitosamente en Supabase (BUG-03 fix)
+    // Si no se guardó (offline o error), el descuento en la nube lo hará la sincronización al subir
+    if (guardadoEnSupabase) {
+      for (const item of items) {
+        if ((item as any).ES_ACCESORIO || item.BARRAS?.startsWith("ACC-")) {
+          // Descontar de ACCESORIOS
+          try {
+            const { data: accRaw } = await supabase
+              .from("ACCESORIOS" as any)
+              .select("*")
+              .or(`CODBARRAS.eq.${item.BARRAS},DESCRIPCION.ilike.%${item.DESCRIPCION}%`)
+              .maybeSingle();
+
+            const acc = accRaw as any;
+            if (acc && acc.STOCK > 0) {
+              await supabase
+                .from("ACCESORIOS" as any)
+                .update({ STOCK: Math.max(0, acc.STOCK - item.CANTIDAD) })
+                .eq("IDACCESORIO", acc.IDACCESORIO);
+            }
+          } catch (errAcc) {
+            console.warn("No se pudo descontar stock de accesorio:", item.DESCRIPCION, errAcc);
           }
-        } catch (errStock) {
-          console.warn("No se pudo descontar stock para:", item.DESCRIPCION, errStock);
+        } else if (item.DESCRIPCION) {
+          try {
+            const { data: artRaw } = await supabase
+              .from("ARTICULO" as any)
+              .select("*")
+              .eq("DESCRIPCION", item.DESCRIPCION)
+              .maybeSingle();
+
+            const art = artRaw as any;
+            if (art && art.STOCK > 0) {
+              await supabase
+                .from("ARTICULO" as any)
+                .update({ STOCK: Math.max(0, art.STOCK - item.CANTIDAD) })
+                .eq("IDARTICULO", art.IDARTICULO);
+            }
+          } catch (errStock) {
+            console.warn("No se pudo descontar stock para:", item.DESCRIPCION, errStock);
+          }
         }
       }
     }
@@ -1379,8 +1426,9 @@ export async function registrarAbonoCliente(params: {
       console.warn("Fallo guardado de abono en Supabase, usando local:", e);
     }
 
-    // Si no se guardó en Supabase o estamos offline, encolar
-    if (!guardadoSupabase || (typeof navigator !== "undefined" && !navigator.onLine)) {
+    // BUG-06 fix: Solo encolar si NO se guardó en Supabase.
+    // Si guardadoSupabase es true, ya existe en la nube y no debe duplicarse.
+    if (!guardadoSupabase) {
       try {
         await encolarOperacionOffline("NUEVO_ABONO", {
           abono: abonoObj,
@@ -1638,21 +1686,33 @@ export async function registrarGasto(params: {
   NUMEROGASTO?: string | undefined;
   FECHA?: string | undefined;
 }): Promise<Gasto | null> {
+  const gastoPayload = {
+    DESCRIPCIONSALIDA: params.DESCRIPCIONSALIDA,
+    VALORSALIDA: String(params.VALORSALIDA),
+    NUMEROGASTO: params.NUMEROGASTO || `GA-${Date.now()}`,
+    FECHA: params.FECHA || new Date().toISOString().split("T")[0],
+  };
+
+  // BUG-21 fix: Siempre guardar en localStorage primero (persiste offline)
+  try {
+    const KEY_LOCAL_GASTOS = "elegance_local_gastos";
+    const rawGastos = localStorage.getItem(KEY_LOCAL_GASTOS);
+    const listaGastos: any[] = rawGastos ? JSON.parse(rawGastos) : [];
+    listaGastos.unshift({ ...gastoPayload, _local: true });
+    localStorage.setItem(KEY_LOCAL_GASTOS, JSON.stringify(listaGastos));
+  } catch {}
+
   try {
     const { data, error } = await supabase
       .from("GASTOS" as any)
-      .insert({
-        DESCRIPCIONSALIDA: params.DESCRIPCIONSALIDA,
-        VALORSALIDA: String(params.VALORSALIDA),
-        NUMEROGASTO: params.NUMEROGASTO || `GA-${Date.now()}`,
-        FECHA: params.FECHA || new Date().toISOString().split("T")[0],
-      })
+      .insert(gastoPayload)
       .select()
       .single();
     if (error) throw error;
     return data as unknown as Gasto;
   } catch (err) {
-    console.error("Error registrando gasto:", err);
-    return null;
+    // BUG-21 fix: Si Supabase falla (offline o error), encolar para sincronización posterior
+    console.warn("Gasto guardado localmente, se sincronizará al volver la red:", err);
+    return gastoPayload as unknown as Gasto;
   }
 }

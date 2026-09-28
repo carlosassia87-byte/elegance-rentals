@@ -84,6 +84,8 @@ export interface ComprobanteDevolucionData {
 }
 
 const KEY_LOCAL_DEPOSITOS = "elegance_local_depositos_entregados";
+// Clave compartida con posService.ts — debe ser idéntica
+const KEY_LOCAL_CAMPOS_FACTURA = "elegance_local_campos_factura";
 
 export function getLocalDepositosEntregados(): DepositoEntregado[] {
   try {
@@ -97,7 +99,8 @@ export function getLocalDepositosEntregados(): DepositoEntregado[] {
 export function saveLocalDepositoEntregado(dep: DepositoEntregado) {
   try {
     const list = getLocalDepositosEntregados();
-    list.unshift(dep);
+    // BUG-10 fix: marcar como pendiente de sincronización para evitar doble-conteo
+    list.unshift({ ...dep, _pendienteSync: true } as any);
     localStorage.setItem(KEY_LOCAL_DEPOSITOS, JSON.stringify(list));
   } catch (e) {
     console.warn("Error guardando deposito entregado local:", e);
@@ -242,11 +245,16 @@ export async function buscarFacturaParaDevolucion(
       }
     } catch {}
 
-    // Sumar locales
+    // BUG-10 fix: siempre sumar los depósitos locales que sean _pendienteSync (no sincronizados aun)
+    // para evitar mostrar más depósito disponible del real
     const localDeps = getLocalDepositosEntregados().filter(
       (d) => (d.NUMEROFACTURA || "").trim().toUpperCase() === numFact.trim().toUpperCase()
     );
-    if (localDeps.length > 0 && totalYaDevuelto === 0) {
+    const pendientesLocales = localDeps.filter((d: any) => d._pendienteSync === true);
+    if (pendientesLocales.length > 0) {
+      totalYaDevuelto += pendientesLocales.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
+    } else if (localDeps.length > 0 && totalYaDevuelto === 0) {
+      // Fallback: si no hay datos en Supabase, usar todos los locales
       totalYaDevuelto = localDeps.reduce((acc, d) => acc + (Number(d.VALOR) || 0), 0);
     }
 
@@ -511,15 +519,17 @@ export async function registrarDevolucionCompleta(
     // Invalidar caché RAM local para asegurar datos frescos
     invalidarCacheArticulos();
 
-    // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda) de forma incondicional
+    // B.2. Actualizar estado en la tabla FACTURA a "ENTREGADO" (Devuelto a tienda)
+    // BUG-19 fix: si el update de la factura falla pero el depósito sí se guardó,
+    // encolar una DEVOLUCION_TRAJE con monto 0 para que la sincronización corrija el estado
+    let facturaActualizada = false;
     try {
       if (typeof navigator === "undefined" || navigator.onLine) {
-        await supabase
+        const { error: errFact } = await supabase
           .from("FACTURA" as any)
-          .update({
-            ESTADOCLIENTE: "ENTREGADO",
-          })
+          .update({ ESTADOCLIENTE: "ENTREGADO" })
           .ilike("NUMEROFACT", params.numeroFactura.trim());
+        if (!errFact) facturaActualizada = true;
       }
     } catch (e) {
       console.warn("Error actualizando estado en FACTURA Supabase:", e);
@@ -537,6 +547,20 @@ export async function registrarDevolucionCompleta(
         });
       } catch (e) {
         console.warn("Error encolando devolucion offline:", e);
+      }
+    } else if (!facturaActualizada) {
+      // BUG-19 fix: el depósito SÍ quedó en Supabase pero el estado de la factura NO se actualizó.
+      // Encolar solo el cambio de estado (monto 0 = ya no hay reintegro pendiente, solo el estado)
+      try {
+        const { encolarOperacionOffline } = await import("./offlineDbService");
+        await encolarOperacionOffline("DEVOLUCION_TRAJE", {
+          numeroFact: params.numeroFactura,
+          itemsDevueltos: [],
+          montoNetoDevuelto: 0,
+          fecha: fechaHoy,
+        });
+      } catch (e) {
+        console.warn("Error encolando actualización de estado de factura:", e);
       }
     }
 
@@ -617,12 +641,43 @@ export interface AlquilerActivoClienteInfo {
 }
 
 function autoSanarFacturaEntregado(numFactura: string) {
-  Promise.resolve(
-    supabase
-      .from("FACTURA" as any)
-      .update({ ESTADOCLIENTE: "ENTREGADO" })
-      .ilike("NUMEROFACT", numFactura)
-  ).catch(() => {});
+  // Actualizar en Supabase solo si hay conexión
+  if (typeof navigator === "undefined" || navigator.onLine) {
+    Promise.resolve(
+      supabase
+        .from("FACTURA" as any)
+        .update({ ESTADOCLIENTE: "ENTREGADO" })
+        .ilike("NUMEROFACT", numFactura)
+    ).catch(() => {});
+  }
+
+  // Actualizar también en localStorage para mantener consistencia offline
+  try {
+    const rawLocal = localStorage.getItem("elegance_local_facturas");
+    if (rawLocal) {
+      const list: any[] = JSON.parse(rawLocal);
+      const idx = list.findIndex(
+        (f) => (f.NUMEROFACT || "").trim().toUpperCase() === numFactura.trim().toUpperCase()
+      );
+      if (idx >= 0 && list[idx]) {
+        list[idx].ESTADOCLIENTE = "ENTREGADO";
+        localStorage.setItem("elegance_local_facturas", JSON.stringify(list));
+      }
+    }
+  } catch {}
+
+  // Actualizar también en IndexedDB en segundo plano
+  import("./offlineDbService").then(({ obtenerTodasLasFacturasOffline, guardarFacturasLote }) => {
+    obtenerTodasLasFacturasOffline().then((facts) => {
+      const target = facts.find(
+        (f) => (f.NUMEROFACT || "").trim().toUpperCase() === numFactura.trim().toUpperCase()
+      );
+      if (target) {
+        target.ESTADOCLIENTE = "ENTREGADO";
+        guardarFacturasLote([target]).catch(() => {});
+      }
+    }).catch(() => {});
+  }).catch(() => {});
 }
 
 export async function consultarAlquileresActivosCliente(
@@ -865,7 +920,8 @@ export async function revertirDevolucionFactura(
     } catch {}
 
     if (camposRaw.length === 0) {
-      const rawCampos = localStorage.getItem("elegance_local_campos");
+      // BUG-15 fix: usar la misma clave que posService ("elegance_local_campos_factura")
+      const rawCampos = localStorage.getItem(KEY_LOCAL_CAMPOS_FACTURA);
       if (rawCampos) {
         const all: any[] = JSON.parse(rawCampos);
         camposRaw = all.filter((c) => c.NUMEROFACT === numClean);
@@ -924,12 +980,36 @@ export async function revertirDevolucionFactura(
     guardarEstadoPrendaOverride(numClean, "GENERAL", "GENERAL", "EN ALQUILER");
     invalidarCacheArticulos();
 
-    // 3. Eliminar el registro en depositoentregado (egreso del reintegro de fianza devuelto por error)
+    // 3. Eliminar el registro MÁS RECIENTE de depositoentregado (no todos)
+    // BUG-13 fix: no borrar toda la historia de depósitos, solo el último
     try {
-      await supabase
+      // Obtener el último registro de depósito para esta factura
+      const { data: depRows } = await supabase
         .from("depositoentregado" as any)
-        .delete()
-        .eq("NUMEROFACTURA", numClean);
+        .select("*")
+        .eq("NUMEROFACTURA", numClean)
+        .order("IDdepositoentregado", { ascending: false })
+        .limit(1);
+
+      if (depRows && depRows.length > 0) {
+        const lastDep = depRows[0] as any;
+        // Borrar por PK real (IDdepositoentregado)
+        const idKey = lastDep.IDdepositoentregado ?? null;
+        if (idKey !== null) {
+          await supabase
+            .from("depositoentregado" as any)
+            .delete()
+            .eq("IDdepositoentregado", idKey);
+        } else {
+          // Fallback: borrar por factura + valor + fecha del último registro
+          await supabase
+            .from("depositoentregado" as any)
+            .delete()
+            .eq("NUMEROFACTURA", numClean)
+            .eq("VALOR", lastDep.VALOR)
+            .eq("FECHA", lastDep.FECHA);
+        }
+      }
     } catch (eDep) {
       console.warn("Aviso eliminando registro de depositoentregado en Supabase:", eDep);
     }

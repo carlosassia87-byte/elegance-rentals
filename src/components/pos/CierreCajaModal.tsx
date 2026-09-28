@@ -157,41 +157,92 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
 
       allAbonos = Array.from(abonosMap.values());
       allAbonos.forEach((ab: any) => {
-        alqEfec += Number(ab.PAGOEFECTIVO || ab.AVALOR || 0);
-        alqTrans += Number(ab.PAGOTRANFE || 0);
+        // BUG fix: Si el abono tiene desglose explícito de pagos (efectivo vs transferencia),
+        // no usar fallback a AVALOR que provocaría duplicar la transferencia en efectivo.
+        const pEfec = ab.PAGOEFECTIVO !== undefined && ab.PAGOEFECTIVO !== null
+          ? Number(ab.PAGOEFECTIVO) || 0
+          : (ab.PAGOTRANFE ? 0 : Number(ab.AVALOR || ab.TOTAL_ABONO) || 0);
+        const pTrans = Number(ab.PAGOTRANFE || 0);
+        alqEfec += pEfec;
+        alqTrans += pTrans;
       });
 
-      // 2. Gastos de hoy
-      let gastosTotal = 0;
+      // 2. Gastos de hoy (Supabase + localStorage offline)
+      const gastosMap = new Map<string, any>();
       try {
         const { data: gastos } = await supabase
           .from("GASTOS" as any)
           .select("*")
           .eq("FECHA", fecha);
 
-        if (gastos) {
-          allGastos = gastos;
+        if (gastos && gastos.length > 0) {
           gastos.forEach((g: any) => {
-            gastosTotal += Number(g.VALORSALIDA || 0);
+            const key = String(g.IDGASTO || `${g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
+            gastosMap.set(key, g);
           });
         }
       } catch (e) {}
 
-      // 3. Depósitos devueltos
-      let depDevueltos = 0;
+      // Gastos locales (BUG-21 fix)
+      try {
+        const rawGastos = localStorage.getItem("elegance_local_gastos");
+        const localGastos = rawGastos ? JSON.parse(rawGastos) : [];
+        if (Array.isArray(localGastos)) {
+          localGastos.forEach((g: any) => {
+            if (g.FECHA === fecha) {
+              const key = String(g.IDGASTO || `${g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
+              if (!gastosMap.has(key)) {
+                gastosMap.set(key, g);
+              }
+            }
+          });
+        }
+      } catch {}
+
+      allGastos = Array.from(gastosMap.values());
+      let gastosTotal = 0;
+      allGastos.forEach((g: any) => {
+        gastosTotal += Number(g.VALORSALIDA || 0);
+      });
+
+      // 3. Depósitos devueltos (Supabase + localStorage offline)
+      const depsMap = new Map<string, any>();
       try {
         const { data: deps } = await supabase
           .from("depositoentregado" as any)
           .select("*")
-          .eq("FECHA", fecha);
+          .or(`FECHA.eq.${fecha},FECHA.ilike.${fecha}%`);
 
-        if (deps) {
-          allDeposDev = deps;
+        if (deps && deps.length > 0) {
           deps.forEach((d: any) => {
-            depDevueltos += Number(d.VALOR || 0);
+            const key = String(d.IDdepositoentregado || `${d.NUMEROFACTURA}_${d.VALOR}_${d.FECHA}`);
+            depsMap.set(key, d);
           });
         }
       } catch (e) {}
+
+      // Depósitos devueltos locales
+      try {
+        const rawDeps = localStorage.getItem("elegance_local_depositos_entregados");
+        const localDeps = rawDeps ? JSON.parse(rawDeps) : [];
+        if (Array.isArray(localDeps)) {
+          localDeps.forEach((d: any) => {
+            const dFecha = d.FECHA ? String(d.FECHA).split("T")[0] : "";
+            if (dFecha === fecha) {
+              const key = String(d.IDdepositoentregado || `${d.NUMEROFACTURA}_${d.VALOR}_${d.FECHA}`);
+              if (!depsMap.has(key)) {
+                depsMap.set(key, d);
+              }
+            }
+          });
+        }
+      } catch {}
+
+      allDeposDev = Array.from(depsMap.values());
+      let depDevueltos = 0;
+      allDeposDev.forEach((d: any) => {
+        depDevueltos += Number(d.VALOR || 0);
+      });
 
       const efectivoEnCaja = Math.max(0, alqEfec + depRecib - depDevueltos - gastosTotal);
       const transferenciasEnCaja = alqTrans;
