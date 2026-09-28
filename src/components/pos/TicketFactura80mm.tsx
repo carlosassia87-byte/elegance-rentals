@@ -381,14 +381,23 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
             margin: "6px 0",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
-            <span style={{ fontWeight: 700 }}>VALOR ALQUILER:</span>
-            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(valorAlquiler)}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
-            <span style={{ fontWeight: 700 }}>DEPÓSITO:</span>
-            <span style={{ fontWeight: 900 }}>{formatMonedaPOS(deposito)}</span>
-          </div>
+          {tipoMostrar === "VENTA" ? (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+              <span style={{ fontWeight: 700 }}>VALOR VENTA:</span>
+              <span style={{ fontWeight: 900 }}>{formatMonedaPOS(valorAlquiler)}</span>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                <span style={{ fontWeight: 700 }}>VALOR ALQUILER:</span>
+                <span style={{ fontWeight: 900 }}>{formatMonedaPOS(valorAlquiler)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                <span style={{ fontWeight: 700 }}>DEPÓSITO:</span>
+                <span style={{ fontWeight: 900 }}>{formatMonedaPOS(deposito)}</span>
+              </div>
+            </>
+          )}
           <div
             style={{
               display: "flex",
@@ -399,7 +408,9 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
               fontSize: "14.5px",
             }}
           >
-            <span style={{ fontWeight: 900 }}>TOTAL ALQ + DEP:</span>
+            <span style={{ fontWeight: 900 }}>
+              {tipoMostrar === "VENTA" ? "TOTAL VENTA:" : "TOTAL ALQ + DEP:"}
+            </span>
             <span style={{ fontWeight: 900 }}>{formatMonedaPOS(totalCalculado)}</span>
           </div>
           {(!esAbono && !ocultarDescuentoCero) || descuento > 0 ? (
@@ -455,14 +466,23 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
             color: "#000000",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-            <span>FECHA DE SALIDA DE TRAJE:</span>
-            <span style={{ fontWeight: 900 }}>{salida}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>FECHA DEVOLUCIÓN TRAJE:</span>
-            <span style={{ fontWeight: 900 }}>{devolucion}</span>
-          </div>
+          {tipoMostrar === "VENTA" ? (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+              <span>FECHA DE VENTA:</span>
+              <span style={{ fontWeight: 900 }}>{salida}</span>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                <span>FECHA DE SALIDA DE TRAJE:</span>
+                <span style={{ fontWeight: 900 }}>{salida}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>FECHA DEVOLUCIÓN TRAJE:</span>
+                <span style={{ fontWeight: 900 }}>{devolucion}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* SEGUNDA BANDA DE SEPARACIÓN */}
@@ -482,7 +502,7 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
         </div>
 
         {/* ========================================================
-            6. CONDICIONES DE SERVICIO EXACTAS
+            6. CONDICIONES DE SERVICIO / VENTA EXACTAS
         ======================================================== */}
         <div
           style={{
@@ -494,17 +514,31 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
             fontWeight: 700,
           }}
         >
-          <div style={{ fontWeight: 900, fontSize: "11.5px", marginBottom: "3px", textTransform: "uppercase" }}>
-            Condiciones del servicio:
-          </div>
-          <div style={{ marginBottom: "4px" }}>
-            • Tiempo de alquiler {diasAlquiler} días. Por devoluciones hechas después de la fecha se cobrará un
-            recargo de ${formatEnteroPOS(recargoPorDia)} por día.
-          </div>
-          <div style={{ marginBottom: "4px" }}>
-            • Favor conservar este recibo para efectuar la devolución del dinero dejado como depósito.
-          </div>
-          <div>• No se hace devolución de dinero una vez elaborado este RECIBO.</div>
+          {tipoMostrar === "VENTA" ? (
+            <>
+              <div style={{ fontWeight: 900, fontSize: "11.5px", marginBottom: "3px", textTransform: "uppercase" }}>
+                Condiciones de la venta:
+              </div>
+              <div style={{ marginBottom: "4px" }}>
+                • Venta definitiva de prendas. Verifique su prenda al momento de recibirla.
+              </div>
+              <div>• No se hace devolución de dinero una vez elaborado este RECIBO.</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontWeight: 900, fontSize: "11.5px", marginBottom: "3px", textTransform: "uppercase" }}>
+                Condiciones del servicio:
+              </div>
+              <div style={{ marginBottom: "4px" }}>
+                • Tiempo de alquiler {diasAlquiler} días. Por devoluciones hechas después de la fecha se cobrará un
+                recargo de ${formatEnteroPOS(recargoPorDia)} por día.
+              </div>
+              <div style={{ marginBottom: "4px" }}>
+                • Favor conservar este recibo para efectuar la devolución del dinero dejado como depósito.
+              </div>
+              <div>• No se hace devolución de dinero una vez elaborado este RECIBO.</div>
+            </>
+          )}
         </div>
 
         {/* ========================================================

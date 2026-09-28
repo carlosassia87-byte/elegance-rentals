@@ -1011,16 +1011,60 @@ export function PuntoDeVenta() {
     let nuevoEstadoTraje = "EN ALQUILER";
     if (operacionSeleccionada === "VENTA") {
       nuevoEstadoTraje = "VENTA";
+      // En venta directa las prendas no llevan depósito
+      setGridItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          valorDeposito: 0,
+          totalDeposito: 0,
+          totalGeneral: it.totalAlquiler,
+        }))
+      );
     } else if (operacionSeleccionada === "APARTADO") {
       // Regla de negocio: APARTADO guarda el estado como "EN BODEGA"
       nuevoEstadoTraje = "EN BODEGA";
+      setGridItems((prev) =>
+        prev.map((it) => {
+          const vDep = Number(it.articulo?.VALORDEPOSITO || 0);
+          return {
+            ...it,
+            valorDeposito: vDep,
+            totalDeposito: vDep * it.cantidad,
+            totalGeneral: it.totalAlquiler + vDep * it.cantidad,
+          };
+        })
+      );
     } else if (operacionSeleccionada === "BONO") {
       // Regla de negocio: BONO es traje prestado / $0
       nuevoEstadoTraje = "BONO";
       setCobroEfectivo("0");
       setCobroTransferencia("0");
+      setGridItems((prev) =>
+        prev.map((it) => ({
+          ...it,
+          valorAlquiler: 0,
+          totalAlquiler: 0,
+          valorDeposito: 0,
+          totalDeposito: 0,
+          totalGeneral: 0,
+        }))
+      );
     } else {
       nuevoEstadoTraje = "EN ALQUILER";
+      setGridItems((prev) =>
+        prev.map((it) => {
+          const vDep = Number(it.articulo?.VALORDEPOSITO || 0);
+          const vAlq = Number(it.articulo?.VALOR || it.valorAlquiler || 0);
+          return {
+            ...it,
+            valorAlquiler: vAlq,
+            totalAlquiler: vAlq * it.cantidad,
+            valorDeposito: vDep,
+            totalDeposito: vDep * it.cantidad,
+            totalGeneral: (vAlq + vDep) * it.cantidad,
+          };
+        })
+      );
     }
 
     setEstadoTraje(nuevoEstadoTraje);
@@ -1226,6 +1270,13 @@ export function PuntoDeVenta() {
     const cant = Math.max(1, cantidad || 1);
     const { piezas } = extraerPiezasYNombreTraje(art.DESCRIPCION || "");
 
+    const esVenta = operacionSeleccionada === "VENTA" || estadoTraje === "VENTA";
+    const esBono = operacionSeleccionada === "BONO" || estadoTraje === "BONO";
+
+    const vAlquiler = esBono ? 0 : Number(art.VALOR || 0);
+    // En venta directa o bono de cortesía no se cobra depósito/fianza
+    const vDeposito = (esVenta || esBono) ? 0 : Number(art.VALORDEPOSITO || 0);
+
     const item: ItemAlquilerCarrito = {
       idTemp: `${Date.now()}-${Math.random()}`,
       articulo: art,
@@ -1233,11 +1284,11 @@ export function PuntoDeVenta() {
       talla: art.TALLA,
       codigoBarras: art.CODBARRAS,
       cantidad: cant,
-      valorAlquiler: Number(art.VALOR),
-      totalAlquiler: Number(art.VALOR) * cant,
-      valorDeposito: Number(art.VALORDEPOSITO),
-      totalDeposito: Number(art.VALORDEPOSITO) * cant,
-      totalGeneral: (Number(art.VALOR) + Number(art.VALORDEPOSITO)) * cant,
+      valorAlquiler: vAlquiler,
+      totalAlquiler: vAlquiler * cant,
+      valorDeposito: vDeposito,
+      totalDeposito: vDeposito * cant,
+      totalGeneral: (vAlquiler + vDeposito) * cant,
       piezasIncluidas: piezas,
     };
 
@@ -4397,7 +4448,19 @@ export function PuntoDeVenta() {
           onOpenChange={setModalSeleccionAccesoriosPos}
           trajeReferencia={accesorioTrajeReferencia}
           onAgregarAlCarrito={(itemsNuevos) => {
-            setGridItems((prev) => [...prev, ...itemsNuevos]);
+            const esVenta = operacionSeleccionada === "VENTA" || estadoTraje === "VENTA";
+            const esBono = operacionSeleccionada === "BONO" || estadoTraje === "BONO";
+            const ajustados = (esVenta || esBono)
+              ? itemsNuevos.map((it) => ({
+                  ...it,
+                  valorAlquiler: esBono ? 0 : it.valorAlquiler,
+                  totalAlquiler: esBono ? 0 : it.totalAlquiler,
+                  valorDeposito: 0,
+                  totalDeposito: 0,
+                  totalGeneral: esBono ? 0 : it.totalAlquiler,
+                }))
+              : itemsNuevos;
+            setGridItems((prev) => [...prev, ...ajustados]);
           }}
           onActualizarPiezasTraje={(piezasActualizadas) => {
             if (accesorioTrajeReferencia && "idTemp" in accesorioTrajeReferencia) {
