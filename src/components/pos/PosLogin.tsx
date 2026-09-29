@@ -92,7 +92,7 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
         return;
       }
 
-      await restaurarCopiaSeguridad(backupData);
+      await restaurarCopiaSeguridad(backupData, "1234");
       toast.success("¡Sistema restaurado con éxito!", {
         description: "Inicia sesión con SUPERADMIN y la contraseña 123",
       });

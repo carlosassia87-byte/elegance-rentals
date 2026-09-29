@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Database } from "lucide-react";
 import { toast } from "sonner";
 import logoAsset from "@/assets/logo.asset.json";
+import { AsistenteRestauracionModal } from "@/components/pos/AsistenteRestauracionModal";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -27,6 +28,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [asistenteOpen, setAsistenteOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -132,9 +134,39 @@ function AuthPage() {
                 {mode === "login" ? "Crear una cuenta nueva" : "Ya tengo cuenta"}
               </Button>
             </form>
+
+            {/* Separador */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white px-3 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                  Herramientas
+                </span>
+              </div>
+            </div>
+
+            {/* Botón Asistente de Restauración */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2 border-cyan-200 text-cyan-700 hover:bg-cyan-50 hover:text-cyan-800 hover:border-cyan-300 transition-all"
+              onClick={() => setAsistenteOpen(true)}
+            >
+              <Database className="h-4 w-4" />
+              Asistente de Conexión BD y Restauración
+            </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal del Asistente de Restauración */}
+      <AsistenteRestauracionModal
+        open={asistenteOpen}
+        onOpenChange={setAsistenteOpen}
+      />
     </div>
   );
 }
+

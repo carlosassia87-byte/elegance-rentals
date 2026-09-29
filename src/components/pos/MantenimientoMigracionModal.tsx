@@ -36,6 +36,12 @@ import {
   Lock,
   Check,
   ExternalLink,
+  Settings,
+  Plug,
+  Eye,
+  EyeOff,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -84,8 +90,8 @@ export function MantenimientoMigracionModal({
   cajeroNombre = "ADMINISTRADOR",
   onDatosActualizados,
 }: MantenimientoMigracionModalProps) {
-  // Pestaña Activa: "stock_cero" | "reseteo" | "excel" | "sql" | "backup"
-  const [tabActiva, setTabActiva] = useState<"stock_cero" | "reseteo" | "excel" | "sql" | "backup">("stock_cero");
+  // Pestaña Activa: "stock_cero" | "reseteo" | "excel" | "sql" | "backup" | "conexion_bd"
+  const [tabActiva, setTabActiva] = useState<"stock_cero" | "reseteo" | "excel" | "sql" | "backup" | "conexion_bd">("stock_cero");
 
   // Estadísticas del sistema
   const [stats, setStats] = useState<EstadisticasBaseDatos>({
@@ -150,6 +156,85 @@ export function MantenimientoMigracionModal({
   const [procesandoRestauracion, setProcesandoRestauracion] = useState(false);
   const [restauracionProgresoTexto, setRestauracionProgresoTexto] = useState("");
   const backupFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados de Operación: Conexión BD
+  const [bdUrl, setBdUrl] = useState("");
+  const [bdKey, setBdKey] = useState("");
+  const [bdProjectId, setBdProjectId] = useState("");
+  const [mostrarKey, setMostrarKey] = useState(false);
+  const [probandoConexion, setProbandoConexion] = useState(false);
+  const [estadoConexion, setEstadoConexion] = useState<"idle" | "ok" | "error">("idle");
+  const [mensajeConexion, setMensajeConexion] = useState("");
+  const [guardandoConexion, setGuardandoConexion] = useState(false);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  // Cargar datos de conexión BD al abrir
+  useEffect(() => {
+    if (open) {
+      const url = import.meta.env['VITE_SUPABASE_URL'] || localStorage.getItem('custom_supabase_url') || '';
+      const key = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || localStorage.getItem('custom_supabase_key') || '';
+      const pid = import.meta.env['VITE_SUPABASE_PROJECT_ID'] || localStorage.getItem('custom_supabase_project_id') || '';
+      setBdUrl(url);
+      setBdKey(key);
+      setBdProjectId(pid);
+      setEstadoConexion('idle');
+      setMensajeConexion('');
+    }
+  }, [open]);
+
+  async function handleProbarConexion() {
+    setProbandoConexion(true);
+    setEstadoConexion('idle');
+    setMensajeConexion('Probando conexión...');
+    try {
+      const res = await fetch(`${bdUrl.replace(/\/$/, '')}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'apikey': bdKey,
+        },
+      });
+      if (res.ok || res.status === 200 || res.status === 204) {
+        setEstadoConexion('ok');
+        setMensajeConexion('¡Conexión exitosa! La base de datos está accesible y responde correctamente.');
+        toast.success('Conexión a Supabase verificada correctamente');
+      } else {
+        setEstadoConexion('error');
+        setMensajeConexion(`Error HTTP ${res.status}: ${res.statusText}. Verifica la URL y la API Key.`);
+        toast.error(`Error de conexión: HTTP ${res.status}`);
+      }
+    } catch (err: any) {
+      setEstadoConexion('error');
+      setMensajeConexion(`No se pudo conectar: ${err?.message || 'Error de red'}. Verifica que la URL sea correcta y que tengas conexión a internet.`);
+      toast.error('No se pudo conectar a la base de datos');
+    } finally {
+      setProbandoConexion(false);
+    }
+  }
+
+  function handleGuardarConexion() {
+    setGuardandoConexion(true);
+    try {
+      localStorage.setItem('custom_supabase_url', bdUrl);
+      localStorage.setItem('custom_supabase_key', bdKey);
+      localStorage.setItem('custom_supabase_project_id', bdProjectId);
+      toast.success('Credenciales guardadas en el almacenamiento local. Recarga la página para aplicar los cambios.');
+    } catch (err: any) {
+      toast.error('Error al guardar las credenciales');
+    } finally {
+      setGuardandoConexion(false);
+    }
+  }
+
+  async function handleCopiarAlPortapapeles(texto: string, campo: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(campo);
+      toast.success(`${campo} copiado al portapapeles`);
+      setTimeout(() => setCopiado(null), 2000);
+    } catch {
+      toast.error('No se pudo copiar al portapapeles');
+    }
+  }
 
   // Cargar estadísticas y configuración al abrir
   useEffect(() => {
@@ -694,6 +779,18 @@ UPDATE ARTICULO SET STOCK = 0;`
           >
             <HardDrive className="h-4 w-4 text-violet-600" />
             <span>5. Copias de Seguridad (Backup)</span>
+          </button>
+
+          <button
+            onClick={() => setTabActiva("conexion_bd")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+              tabActiva === "conexion_bd"
+                ? "border-cyan-600 text-cyan-700 bg-cyan-50/50 rounded-t-lg"
+                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-t-lg"
+            }`}
+          >
+            <Plug className="h-4 w-4 text-cyan-600" />
+            <span>6. Conexión BD</span>
           </button>
         </div>
 
@@ -1680,6 +1777,230 @@ UPDATE ARTICULO SET STOCK = 0;`
                     </table>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* --------------------------------------------------------
+              PESTAÑA 6: CONEXIÓN A BASE DE DATOS
+          -------------------------------------------------------- */}
+          {tabActiva === "conexion_bd" && (
+            <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-200">
+              {/* Header Informativo */}
+              <div className="rounded-2xl border-2 border-cyan-200 bg-cyan-50/70 p-5 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-600 text-white shrink-0 shadow-md">
+                    <Plug className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h3 className="text-sm font-black text-cyan-950 uppercase tracking-tight">
+                      Configuración de Conexión a Base de Datos (Supabase)
+                    </h3>
+                    <p className="text-xs text-cyan-900 leading-relaxed">
+                      Visualiza y gestiona las credenciales de conexión a tu base de datos Supabase. Puedes probar la conexión
+                      para verificar que todo está funcionando correctamente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estado de Conexión Actual */}
+              <div className={`rounded-2xl border-2 p-4 flex items-center gap-3 transition-all ${
+                estadoConexion === 'ok'
+                  ? 'border-emerald-300 bg-emerald-50/60'
+                  : estadoConexion === 'error'
+                  ? 'border-rose-300 bg-rose-50/60'
+                  : 'border-slate-200 bg-white'
+              }`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl shrink-0 ${
+                  estadoConexion === 'ok'
+                    ? 'bg-emerald-500 text-white'
+                    : estadoConexion === 'error'
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {estadoConexion === 'ok' ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : estadoConexion === 'error' ? (
+                    <AlertTriangle className="h-5 w-5" />
+                  ) : (
+                    <Activity className="h-5 w-5" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="text-xs font-black uppercase text-slate-700">
+                    {estadoConexion === 'ok' ? 'Conexión Activa' : estadoConexion === 'error' ? 'Error de Conexión' : 'Estado: Sin Verificar'}
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    {mensajeConexion || 'Presiona "Probar Conexión" para verificar la comunicación con la base de datos.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Formulario de Credenciales */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+                <div className="bg-slate-800 px-5 py-3 flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-cyan-400" />
+                  <span className="text-xs font-black uppercase text-white tracking-wider">Credenciales de Supabase</span>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* URL de Supabase */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-600">
+                      <Cloud className="h-3.5 w-3.5 text-cyan-600" />
+                      URL del Proyecto (SUPABASE_URL)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={bdUrl}
+                        onChange={(e) => { setBdUrl(e.target.value); setEstadoConexion('idle'); }}
+                        placeholder="https://xxxxxxxxxxxx.supabase.co"
+                        className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs font-mono text-slate-800 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarAlPortapapeles(bdUrl, 'URL')}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+                        title="Copiar URL"
+                      >
+                        {copiado === 'URL' ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* API Key */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-600">
+                      <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+                      Clave Pública / Publishable Key (anon key)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type={mostrarKey ? 'text' : 'password'}
+                          value={bdKey}
+                          onChange={(e) => { setBdKey(e.target.value); setEstadoConexion('idle'); }}
+                          placeholder="sb_publishable_xxxxxxxxxxxxxxxx"
+                          className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 pr-10 text-xs font-mono text-slate-800 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarKey(!mostrarKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          title={mostrarKey ? 'Ocultar clave' : 'Mostrar clave'}
+                        >
+                          {mostrarKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarAlPortapapeles(bdKey, 'API Key')}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+                        title="Copiar API Key"
+                      >
+                        {copiado === 'API Key' ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                      <ShieldAlert className="h-3 w-3 shrink-0" />
+                      Esta es la clave pública (anon). Nunca compartas la Service Role Key.
+                    </p>
+                  </div>
+
+                  {/* Project ID */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-600">
+                      <Database className="h-3.5 w-3.5 text-indigo-600" />
+                      ID del Proyecto (Project ID)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={bdProjectId}
+                        onChange={(e) => setBdProjectId(e.target.value)}
+                        placeholder="xxxxxxxxxxxxxxxxxxxx"
+                        className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-xs font-mono text-slate-800 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarAlPortapapeles(bdProjectId, 'Project ID')}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all shrink-0"
+                        title="Copiar Project ID"
+                      >
+                        {copiado === 'Project ID' ? <CheckCheck className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleProbarConexion}
+                  disabled={probandoConexion || !bdUrl || !bdKey}
+                  className="w-full sm:flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-cyan-600 hover:bg-cyan-700 text-white font-black text-xs uppercase px-6 py-3.5 shadow-lg shadow-cyan-600/20 hover:scale-[1.01] active:scale-98 transition-all disabled:opacity-50"
+                >
+                  {probandoConexion ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plug className="h-4 w-4" />
+                  )}
+                  <span>Probar Conexión</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGuardarConexion}
+                  disabled={guardandoConexion || !bdUrl || !bdKey}
+                  className="w-full sm:flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase px-6 py-3.5 shadow-lg shadow-slate-800/20 hover:scale-[1.01] active:scale-98 transition-all disabled:opacity-50"
+                >
+                  {guardandoConexion ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  <span>Guardar en Almacenamiento Local</span>
+                </button>
+              </div>
+
+              {/* Información Adicional */}
+              <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 space-y-3">
+                <h4 className="text-xs font-black uppercase text-slate-700 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-cyan-600" />
+                  ¿Dónde encuentro estas credenciales?
+                </h4>
+                <div className="space-y-2 text-[11px] text-slate-600 leading-relaxed">
+                  <div className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-black shrink-0 mt-0.5">1</span>
+                    <p>Ingresa al <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-cyan-600 font-bold hover:underline inline-flex items-center gap-0.5">Panel de Supabase <ExternalLink className="h-3 w-3" /></a> con tu cuenta.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-black shrink-0 mt-0.5">2</span>
+                    <p>Selecciona tu proyecto y ve a <strong>Settings → API</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-black shrink-0 mt-0.5">3</span>
+                    <p>Copia la <strong>URL</strong> del proyecto y la <strong>anon (publishable) key</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 text-[10px] font-black shrink-0 mt-0.5">4</span>
+                    <p>El <strong>Project ID</strong> se encuentra en <strong>Settings → General</strong>.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nota de Seguridad */}
+              <div className="rounded-xl bg-amber-50/80 border border-amber-200 p-3 flex items-start gap-2">
+                <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  <strong>Nota de Seguridad:</strong> Las credenciales guardadas se almacenan en el almacenamiento local del navegador.
+                  Para cambios permanentes, edita el archivo <code className="bg-amber-100 px-1 rounded text-[10px] font-mono">.env</code> en la raíz del proyecto
+                  con las variables <code className="bg-amber-100 px-1 rounded text-[10px] font-mono">VITE_SUPABASE_URL</code> y <code className="bg-amber-100 px-1 rounded text-[10px] font-mono">VITE_SUPABASE_PUBLISHABLE_KEY</code>.
+                </p>
               </div>
             </div>
           )}
