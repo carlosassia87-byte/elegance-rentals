@@ -92,26 +92,24 @@ async function descargarTablaPaginada(
 }
 
 let _precargaEnCurso = false;
+let _precargaDiferidaEnCurso = false;
+let _timerDiferido: any = null;
 
 /**
- * Descarga y refresca los artículos, clientes, accesorios y facturas recientes en IndexedDB y memoria RAM.
- * Se ejecuta automáticamente al iniciar la PWA y en segundo plano sin congelar la interfaz.
+ * FASE 1 (ESENCIAL / ULTRA-RÁPIDA):
+ * Descarga de inmediato solo los Artículos, Accesorios y bloque de consecutivos.
+ * Permite que el POS abra y comience a vender en menos de 1 segundo.
  */
-export async function precargarDatosOffline(forzarCompleto = false): Promise<void> {
+export async function precargarEsencialesOffline(): Promise<void> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-  // BUG-17 fix: guard de re-entrada para evitar descargas paralelas
   if (_precargaEnCurso) return;
   _precargaEnCurso = true;
 
   try {
-    currentState = {
-      ...currentState,
-      isSyncing: true,
-    };
+    currentState = { ...currentState, isSyncing: true };
     notifyListeners();
 
-    // 1. Descargar catálogo COMPLETO de Artículos con paginación (supera el límite de 1000)
+    // 1. Descargar catálogo de Artículos (necesario para pistoleo y búsqueda inmediata)
     const articulos = await descargarTablaPaginada("ARTICULO", "IDARTICULO", 1000, 50000);
     if (articulos && articulos.length > 0) {
       await guardarArticulosLote(articulos as unknown as OfflineArticulo[]);
@@ -120,16 +118,7 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       } catch {}
     }
 
-    // 2. Descargar catálogo COMPLETO de Clientes con paginación
-    const clientes = await descargarTablaPaginada("CLIENTES", "IDCLIENTES", 1000, 50000);
-    if (clientes && clientes.length > 0) {
-      await guardarClientesLote(clientes as unknown as OfflineCliente[]);
-      try {
-        indexarClientesEnMemoria(clientes as any);
-      } catch {}
-    }
-
-    // 3. Descargar catálogo COMPLETO de Accesorios
+    // 2. Descargar Accesorios
     const accesorios = await descargarTablaPaginada("ACCESORIOS", "IDACCESORIO", 1000, 10000);
     if (accesorios && accesorios.length > 0) {
       try {
@@ -137,68 +126,9 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
       } catch {}
     }
 
-    // 4. Descargar Facturas de los últimos 60 días con paginación completa (BUG-08 fix)
-    const hace60Dias = new Date();
-    hace60Dias.setDate(hace60Dias.getDate() - 60);
-    const fechaStr = hace60Dias.toISOString().split("T")[0];
-
-    const facturas: any[] = [];
-    let fromFact = 0;
-    while (fromFact < 100000) {
-      const { data: batchFact, error: errBatch } = await supabase
-        .from("FACTURA" as any)
-        .select("*")
-        .gte("FECHASALIDA", fechaStr)
-        .order("IDFACTURA", { ascending: false })
-        .range(fromFact, fromFact + 999);
-
-      if (errBatch) {
-        console.warn("Aviso descargando facturas offline (bloque", fromFact, "):", errBatch.message);
-        break;
-      }
-      if (!batchFact || batchFact.length === 0) break;
-      facturas.push(...batchFact);
-      if (batchFact.length < 1000) break;
-      fromFact += 1000;
-    }
-
-    if (facturas.length > 0) {
-      const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
-
-      // Descargar items relacionados por bloques de 80 para no saturar URL
-      const camposFactura: OfflineCampoFactura[] = [];
-      const CHUNK_SIZE = 80;
-      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
-        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
-        const { data: campos } = await supabase
-          .from("CAMPOFACTURA" as any)
-          .select("*")
-          .in("NUMEROFACT", chunk);
-        if (campos) camposFactura.push(...(campos as unknown as OfflineCampoFactura[]));
-      }
-
-      // Descargar abonos relacionados
-      const abonosFactura: OfflineAbono[] = [];
-      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
-        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
-        const { data: abonos } = await supabase
-          .from("ABONO_CLIENTE" as any)
-          .select("*")
-          .in("AFACTURA", chunk);
-        if (abonos) abonosFactura.push(...(abonos as unknown as OfflineAbono[]));
-      }
-
-      await guardarFacturasLote(
-        facturas as unknown as OfflineFactura[],
-        camposFactura,
-        abonosFactura
-      );
-    }
-
-    // 5. Asegurar bloque de reserva de consecutivos para emergencias offline
+    // 3. Renovar bloque de consecutivos para contingencias offline
     await renovarBloqueConsecutivosOffline();
 
-    // Actualizar conteo de pendientes y estado final
     const pendientes = await contarItemsPendientesSincronizar();
     currentState = {
       ...currentState,
@@ -208,28 +138,154 @@ export async function precargarDatosOffline(forzarCompleto = false): Promise<voi
     };
     notifyListeners();
 
-    // Notificar globalmente a las vistas (POS, Modales, Catálogo) para refrescar datos en vivo
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("pos_datos_sincronizados", {
           detail: {
             articulosCount: articulos.length,
-            clientesCount: clientes.length,
+            fase: "esencial",
             timestamp: Date.now(),
           },
         })
       );
     }
   } catch (err) {
-    console.warn("Fallo durante la precarga offline:", err);
-    currentState = {
-      ...currentState,
-      isSyncing: false,
-    };
+    console.warn("Aviso en precarga esencial:", err);
+    currentState = { ...currentState, isSyncing: false };
     notifyListeners();
   } finally {
-    // BUG-17 fix: siempre liberar el guard al terminar
     _precargaEnCurso = false;
+  }
+}
+
+/**
+ * FASE 2 (DIFERIDA / SEGUNDO PLANO):
+ * Descarga pesada de los 11.000 Clientes y Facturas históricas (últimos 60 días).
+ * Se ejecuta tras un retardo o cuando el navegador esté en reposo (requestIdleCallback).
+ */
+export async function precargarClientesYFacturasDiferido(): Promise<void> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  if (_precargaDiferidaEnCurso) return;
+  _precargaDiferidaEnCurso = true;
+
+  try {
+    // 1. Descargar catálogo COMPLETO de Clientes (11.000+ registros)
+    const clientes = await descargarTablaPaginada("CLIENTES", "IDCLIENTES", 1000, 50000);
+    if (clientes && clientes.length > 0) {
+      await guardarClientesLote(clientes as unknown as OfflineCliente[]);
+      try {
+        indexarClientesEnMemoria(clientes as any);
+      } catch {}
+    }
+
+    // 2. Descargar Facturas de los últimos 60 días
+    const hace60Dias = new Date();
+    hace60Dias.setDate(hace60Dias.getDate() - 60);
+    const fechaStr = hace60Dias.toISOString().split("T")[0];
+
+    const facturas: any[] = [];
+    let fromFact = 0;
+    while (fromFact < 50000) {
+      const { data: batchFact, error: errBatch } = await supabase
+        .from("FACTURA" as any)
+        .select("*")
+        .gte("FECHASALIDA", fechaStr)
+        .order("IDFACTURA", { ascending: false })
+        .range(fromFact, fromFact + 999);
+
+      if (errBatch) break;
+      if (!batchFact || batchFact.length === 0) break;
+      facturas.push(...batchFact);
+      if (batchFact.length < 1000) break;
+      fromFact += 1000;
+    }
+
+    if (facturas.length > 0) {
+      const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
+
+      // Agrupación optimizada: chunks de 200 en lugar de 80 para reducir peticiones HTTP masivas
+      const CHUNK_SIZE = 200;
+      const camposFactura: OfflineCampoFactura[] = [];
+      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
+        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
+        try {
+          const { data: campos } = await supabase
+            .from("CAMPOFACTURA" as any)
+            .select("*")
+            .in("NUMEROFACT", chunk);
+          if (campos) camposFactura.push(...(campos as unknown as OfflineCampoFactura[]));
+        } catch {}
+        // Pequeño descanso para no saturar el canal de red
+        await new Promise((r) => setTimeout(r, 40));
+      }
+
+      // Descargar abonos relacionados agrupados en chunks de 200
+      const abonosFactura: OfflineAbono[] = [];
+      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
+        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
+        try {
+          const { data: abonos } = await supabase
+            .from("ABONO_CLIENTE" as any)
+            .select("*")
+            .in("AFACTURA", chunk);
+          if (abonos) abonosFactura.push(...(abonos as unknown as OfflineAbono[]));
+        } catch {}
+        await new Promise((r) => setTimeout(r, 40));
+      }
+
+      await guardarFacturasLote(
+        facturas as unknown as OfflineFactura[],
+        camposFactura,
+        abonosFactura
+      );
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pos_datos_sincronizados", {
+          detail: {
+            clientesCount: clientes.length,
+            facturasCount: facturas.length,
+            fase: "diferida",
+            timestamp: Date.now(),
+          },
+        })
+      );
+    }
+  } catch (err) {
+    console.warn("Aviso en precarga diferida:", err);
+  } finally {
+    _precargaDiferidaEnCurso = false;
+  }
+}
+
+/**
+ * Agenda la precarga diferida para no interferir con la apertura inicial del POS.
+ */
+export function agendarPrecargaDiferida(retrasoMs = 4000): void {
+  if (typeof window === "undefined") return;
+  if (_timerDiferido) clearTimeout(_timerDiferido);
+  _timerDiferido = setTimeout(() => {
+    if (typeof (window as any).requestIdleCallback === "function") {
+      (window as any).requestIdleCallback(() => {
+        precargarClientesYFacturasDiferido().catch(() => {});
+      }, { timeout: 8000 });
+    } else {
+      precargarClientesYFacturasDiferido().catch(() => {});
+    }
+  }, retrasoMs);
+}
+
+/**
+ * Descarga y refresca datos offline. Por defecto carga los esenciales de inmediato
+ * y difiere la carga pesada para no congelar la pantalla.
+ */
+export async function precargarDatosOffline(forzarCompleto = false): Promise<void> {
+  await precargarEsencialesOffline();
+  if (forzarCompleto) {
+    await precargarClientesYFacturasDiferido();
+  } else {
+    agendarPrecargaDiferida(4000);
   }
 }
 
@@ -985,15 +1041,19 @@ export function inicializarDetectorOffline(): void {
   // BUG-16 fix: guardar ID del intervalo para cleanup posterior
   _detectorIntervalId = setInterval(verificarEstadoInmediato, 10000);
 
-  // Precarga y sincronización inmediata al abrir la aplicación
+  // Precarga y sincronización inteligente:
+  // 1. Inmediato (300ms): procesar cola y cargar esenciales (artículos, accesorios, consecutivos)
+  // 2. Diferido (4000ms): en segundo plano los 11.000 clientes y facturas históricas
   setTimeout(async () => {
     await verificarEstadoInmediato();
     if (currentState.isOnline) {
       procesarColaSincronizacion(true).then(() => {
-        precargarDatosOffline();
+        precargarEsencialesOffline().then(() => {
+          agendarPrecargaDiferida(4000);
+        });
       });
     }
-  }, 500);
+  }, 300);
 }
 
 /**

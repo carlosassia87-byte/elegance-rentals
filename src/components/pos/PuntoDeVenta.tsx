@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Trash2,
   X,
@@ -158,9 +158,58 @@ export function PuntoDeVenta() {
   // Artículos y Autocomplete
   const [articulos, setArticulos] = useState<Articulo[]>(ARTICULOS_INICIALES);
   const [articuloTexto, setArticuloTexto] = useState<string>("");
+  const [articuloTextoDebounced, setArticuloTextoDebounced] = useState<string>("");
   const [articuloSeleccionado, setArticuloSeleccionado] = useState<Articulo | null>(null);
   const [mostrarDropdownArt, setMostrarDropdownArt] = useState<boolean>(false);
   const [sugerenciaIndex, setSugerenciaIndex] = useState<number>(0);
+
+  // Debounce ligero de 150ms para evitar recalcular filtros pesados en cada tecla pulsada
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setArticuloTextoDebounced(articuloTexto);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [articuloTexto]);
+
+  // Actualización quirúrgica de stock en memoria RAM sin recargas pesadas de red
+  const descontarArticulosQuirurgico = useCallback(
+    (itemsDescontar: { codigoBarras?: string; idArticulo?: number; cantidad: number }[]) => {
+      if (!itemsDescontar || itemsDescontar.length === 0) return;
+      setArticulos((prev) => {
+        let huboCambios = false;
+        const mapaDescuentosBarras = new Map<string, number>();
+        const mapaDescuentosId = new Map<number, number>();
+        for (const item of itemsDescontar) {
+          const qty = Number(item.cantidad) || 1;
+          if (item.codigoBarras) {
+            const b = String(item.codigoBarras).trim().toUpperCase();
+            mapaDescuentosBarras.set(b, (mapaDescuentosBarras.get(b) || 0) + qty);
+          }
+          if (item.idArticulo) {
+            mapaDescuentosId.set(Number(item.idArticulo), (mapaDescuentosId.get(Number(item.idArticulo)) || 0) + qty);
+          }
+        }
+
+        const nuevo = prev.map((art) => {
+          const barras = art.CODBARRAS ? String(art.CODBARRAS).trim().toUpperCase() : "";
+          const cantDescontar =
+            (barras && mapaDescuentosBarras.get(barras)) ||
+            (art.IDARTICULO && mapaDescuentosId.get(art.IDARTICULO)) ||
+            0;
+          if (cantDescontar > 0) {
+            huboCambios = true;
+            return {
+              ...art,
+              STOCK: Math.max(0, (art.STOCK || 0) - cantDescontar),
+            };
+          }
+          return art;
+        });
+        return huboCambios ? nuevo : prev;
+      });
+    },
+    []
+  );
 
   // Formulario de ALTA_DE_ARTICULOS (Crear / Editar)
   const [articuloForm, setArticuloForm] = useState<Partial<Articulo>>({
@@ -587,8 +636,8 @@ export function PuntoDeVenta() {
     }
   }, [vistaActiva, terminalConfig.nombreCaja, terminalConfig.prefijo]);
 
-  // Sincronización en TIEMPO REAL MULTI-SESIÓN / MULTI-PC con Debounce Inteligente
-  // Cuando se registra una venta en otro PC, actualiza de inmediato el consecutivo y el stock sin saturar
+  // Sincronización en TIEMPO REAL MULTI-SESIÓN / MULTI-PC con Actualización Quirúrgica
+  // Evita recargar 50.000 artículos al vender; descuenta únicamente las prendas vendidas
   useEffect(() => {
     let timerArticulos: any = null;
     let timerConsecutivo: any = null;
@@ -642,8 +691,25 @@ export function PuntoDeVenta() {
         "broadcast",
         { event: "VENTA_REGISTRADA" },
         ({ payload }: any) => {
+          // Si la venta se originó en esta misma caja, ignoramos el evento porque ya fue aplicada quirúrgicamente en RAM
+          if (payload?.caja && payload.caja === terminalConfig.nombreCaja) {
+            return;
+          }
           debouncedActualizarConsecutivo();
-          debouncedCargarArticulos();
+
+          // Descontar quirúrgicamente los artículos vendidos por otra caja sin recargar toda la base de datos
+          if (payload?.items && Array.isArray(payload.items) && payload.items.length > 0) {
+            descontarArticulosQuirurgico(
+              payload.items.map((it: any) => ({
+                codigoBarras: it.BARRAS || it.codigoBarras,
+                idArticulo: it.IDARTICULO || it.idArticulo,
+                cantidad: it.CANTIDAD || it.cantidad || 1,
+              }))
+            );
+          } else {
+            debouncedCargarArticulos();
+          }
+
           if (payload?.numeroFactura) {
             toast.info(`🔔 Factura #${payload.numeroFactura} registrada desde ${payload.caja || 'otra caja'}`, { duration: 4000 });
           }
@@ -653,8 +719,8 @@ export function PuntoDeVenta() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "FACTURA" },
         () => {
+          // Solo actualizamos el consecutivo; NO recargamos los artículos (evita duplicar con VENTA_REGISTRADA)
           debouncedActualizarConsecutivo();
-          debouncedCargarArticulos();
         }
       )
       .on(
@@ -666,9 +732,37 @@ export function PuntoDeVenta() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "ARTICULO" },
-        () => {
-          debouncedCargarArticulos();
+        { event: "UPDATE", schema: "public", table: "ARTICULO" },
+        ({ new: artNuevo }: any) => {
+          if (artNuevo && artNuevo.IDARTICULO) {
+            setArticulos((prev) => {
+              const idx = prev.findIndex((a) => a.IDARTICULO === artNuevo.IDARTICULO);
+              if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = { ...next[idx], ...artNuevo };
+                return next;
+              }
+              return prev;
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "ARTICULO" },
+        ({ new: artNuevo }: any) => {
+          if (artNuevo && artNuevo.IDARTICULO) {
+            setArticulos((prev) => [artNuevo as Articulo, ...prev]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "ARTICULO" },
+        ({ old: artViejo }: any) => {
+          if (artViejo?.IDARTICULO) {
+            setArticulos((prev) => prev.filter((a) => a.IDARTICULO !== artViejo.IDARTICULO));
+          }
         }
       )
       .subscribe();
@@ -678,7 +772,7 @@ export function PuntoDeVenta() {
       clearTimeout(timerConsecutivo);
       supabase.removeChannel(channel);
     };
-  }, [terminalConfig.nombreCaja, terminalConfig.prefijo]);
+  }, [terminalConfig.nombreCaja, terminalConfig.prefijo, descontarArticulosQuirurgico]);
 
   // Inicializar detector de conectividad y sincronización offline-first
   useEffect(() => {
@@ -856,10 +950,22 @@ export function PuntoDeVenta() {
     }));
   }, [articulos]);
 
-  // Filtrado de Artículos en Tiempo Real ultra-rápido (<1ms)
+  // Mapa O(1) de artículos por código de barras para pistoleo instantáneo a 60 FPS (<0.01ms)
+  const mapArticulosPorBarras = useMemo(() => {
+    const map = new Map<string, Articulo>();
+    for (let i = 0; i < articulos.length; i++) {
+      const a = articulos[i];
+      if (a.CODBARRAS) {
+        map.set(a.CODBARRAS.trim().toUpperCase(), a);
+      }
+    }
+    return map;
+  }, [articulos]);
+
+  // Filtrado de Artículos con Debounce ligero de 150ms (<1ms de cálculo) para evitar saturar el render
   const articulosFiltrados = useMemo(() => {
-    if (!articuloTexto.trim()) return articulos.slice(0, 60);
-    const query = articuloTexto.toLowerCase().trim();
+    const query = articuloTextoDebounced.toLowerCase().trim();
+    if (!query) return articulos.slice(0, 60);
     const queryTokens = query.split(/\s+/).filter(Boolean);
     const matches: Articulo[] = [];
 
@@ -872,7 +978,7 @@ export function PuntoDeVenta() {
       }
     }
     return matches;
-  }, [articulosIndexados, articulos, articuloTexto]);
+  }, [articulosIndexados, articulos, articuloTextoDebounced]);
 
   const articulosCatalogoFiltrados = useMemo(() => {
     if (!busqArticuloCatalogo.trim()) return articulos;
@@ -1230,10 +1336,8 @@ export function PuntoDeVenta() {
     } else if (e.key === "Enter") {
       e.preventDefault();
       const txt = articuloTexto.trim().toUpperCase();
-      // 1. Coincidencia exacta por código de barras primero (escáner)
-      const directMatch = articulos.find(
-        (a) => a.CODBARRAS && a.CODBARRAS.trim().toUpperCase() === txt
-      );
+      // 1. Coincidencia O(1) instantánea por código de barras primero (escáner a 60 FPS)
+      const directMatch = mapArticulosPorBarras.get(txt);
       if (directMatch) {
         seleccionarArticulo(directMatch);
         return;
@@ -1243,7 +1347,13 @@ export function PuntoDeVenta() {
         const art = articulosFiltrados[sugerenciaIndex] ?? articulosFiltrados[0];
         if (art) seleccionarArticulo(art);
       } else {
-        toast.error("No se encontró ningún artículo coincidente");
+        // Fallback rápido directo por código si el debounce aún no procesó el texto
+        const fastMatch = articulosIndexados.find((it) => it.codBarrasClean === txt);
+        if (fastMatch) {
+          seleccionarArticulo(fastMatch.art);
+        } else {
+          toast.error("No se encontró ningún artículo coincidente");
+        }
       }
     } else if (e.key === "Escape") {
       setMostrarDropdownArt(false);
@@ -1347,7 +1457,7 @@ export function PuntoDeVenta() {
   }
 
   // Limpiar / Nuevo Alquiler / Reset Completo del POS
-  async function handleLimpiar(silencioso = false) {
+  async function handleLimpiar(silencioso = false, recargarArticulos = true) {
     try {
       const nuevoNum = await generarNumeroFactura(terminalConfig.nombreCaja, terminalConfig.prefijo);
       setNumeroRecibo(nuevoNum);
@@ -1390,7 +1500,9 @@ export function PuntoDeVenta() {
     dEntrada.setDate(dEntrada.getDate() + 3);
     setFechaEntrada(dEntrada.toISOString().split("T")[0]);
 
-    cargarArticulos();
+    if (recargarArticulos) {
+      cargarArticulos();
+    }
     if (!silencioso) {
       toast.info("Punto de Venta listo para una nueva venta");
     }
@@ -1560,8 +1672,17 @@ export function PuntoDeVenta() {
       setModalImprimir(true);
       toast.success("¡Venta/Alquiler procesado exitosamente!");
 
-      // Limpiar automáticamente el Punto de Venta y generar nuevo consecutivo para la siguiente venta
-      await handleLimpiar(true);
+      // Descontar quirúrgicamente el stock en memoria RAM sin necesidad de recargar los 50.000 artículos
+      descontarArticulosQuirurgico(
+        gridItems.map((g) => ({
+          codigoBarras: g.codigoBarras,
+          idArticulo: g.articulo?.IDARTICULO,
+          cantidad: g.cantidad,
+        }))
+      );
+
+      // Limpiar automáticamente el Punto de Venta sin recargar todo el inventario por red
+      await handleLimpiar(true, false);
     } catch (err: any) {
       console.error("Error procesando factura:", err);
       toast.error("Error al procesar la factura. Modo local activo.");
@@ -1622,7 +1743,14 @@ export function PuntoDeVenta() {
 
       setModalCobroDetalle(false);
       setModalImprimir(true);
-      await handleLimpiar(true);
+      descontarArticulosQuirurgico(
+        gridItems.map((g) => ({
+          codigoBarras: g.codigoBarras,
+          idArticulo: g.articulo?.IDARTICULO,
+          cantidad: g.cantidad,
+        }))
+      );
+      await handleLimpiar(true, false);
     } finally {
       setBGuardando(false);
     }

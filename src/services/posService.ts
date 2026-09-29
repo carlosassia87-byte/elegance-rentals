@@ -21,6 +21,9 @@ import {
   obtenerTodosLosArticulosOffline,
   obtenerTodosLosClientesOffline,
   descontarStockArticuloOffline,
+  type OfflineFactura,
+  type OfflineCampoFactura,
+  type OfflineAbono,
 } from "./offlineDbService";
 import { renovarBloqueConsecutivosOffline } from "./offlineSyncService";
 
@@ -662,6 +665,18 @@ function getLocalFacturas(): Factura[] {
 }
 
 function saveLocalFactura(factura: Factura, campos: CampoFactura[]) {
+  // 1. Guardar de forma 100% asíncrona en IndexedDB (sin bloquear la interfaz ni el hilo principal)
+  try {
+    guardarFacturasLote(
+      [factura as unknown as OfflineFactura],
+      campos as unknown as OfflineCampoFactura[]
+    ).catch((e) => console.warn("Aviso guardando factura en IndexedDB:", e));
+  } catch (e) {
+    console.warn("Aviso guardando en IndexedDB:", e);
+  }
+
+  // 2. En LocalStorage guardamos ÚNICAMENTE un buffer ligero de las últimas 15 facturas
+  // para identificadores pequeños y recuperación rápida sin saturar memoria con JSON masivo
   try {
     const facts = getLocalFacturas();
     const existingIdx = facts.findIndex((f) => f.NUMEROFACT === factura.NUMEROFACT);
@@ -670,15 +685,20 @@ function saveLocalFactura(factura: Factura, campos: CampoFactura[]) {
     } else {
       facts.unshift(factura);
     }
-    localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
+    const factsLimitadas = facts.slice(0, 15);
+    localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(factsLimitadas));
 
-    // Guardar campos
+    // Guardar solo los campos correspondientes a esas 15 facturas (máximo 60 registros)
+    const numerosFactValidos = new Set(factsLimitadas.map((f) => f.NUMEROFACT));
     const rawCampos = localStorage.getItem(KEY_LOCAL_CAMPOS);
     const allCampos: CampoFactura[] = rawCampos ? JSON.parse(rawCampos) : [];
-    const filteredCampos = allCampos.filter((c) => c.NUMEROFACT !== factura.NUMEROFACT);
-    localStorage.setItem(KEY_LOCAL_CAMPOS, JSON.stringify([...campos, ...filteredCampos]));
+    const filteredCampos = allCampos.filter(
+      (c) => c.NUMEROFACT !== factura.NUMEROFACT && numerosFactValidos.has(c.NUMEROFACT)
+    );
+    const camposLimitados = [...campos, ...filteredCampos].slice(0, 60);
+    localStorage.setItem(KEY_LOCAL_CAMPOS, JSON.stringify(camposLimitados));
   } catch (e) {
-    console.warn("No se pudo guardar factura local:", e);
+    console.warn("No se pudo guardar factura local en LocalStorage:", e);
   }
 }
 
@@ -692,12 +712,22 @@ function getLocalAbonos(): AbonoCliente[] {
 }
 
 function saveLocalAbono(abono: AbonoCliente) {
+  // 1. Guardar de forma 100% asíncrona en IndexedDB
+  try {
+    guardarFacturasLote([], [], [abono as unknown as OfflineAbono])
+      .catch((e) => console.warn("Aviso guardando abono en IndexedDB:", e));
+  } catch (e) {
+    console.warn("Aviso guardando abono en IndexedDB:", e);
+  }
+
+  // 2. Buffer ligero en LocalStorage de los últimos 20 abonos
   try {
     const abonos = getLocalAbonos();
     abonos.push(abono);
-    localStorage.setItem(KEY_LOCAL_ABONOS, JSON.stringify(abonos));
+    const abonosLimitados = abonos.slice(-20);
+    localStorage.setItem(KEY_LOCAL_ABONOS, JSON.stringify(abonosLimitados));
   } catch (e) {
-    console.warn("No se pudo guardar abono local:", e);
+    console.warn("No se pudo guardar abono local en LocalStorage:", e);
   }
 }
 
