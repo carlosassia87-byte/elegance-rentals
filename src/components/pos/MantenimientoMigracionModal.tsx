@@ -183,16 +183,36 @@ export function MantenimientoMigracionModal({
   }, [open]);
 
   async function handleProbarConexion() {
+    const cleanUrl = bdUrl.trim().replace(/\/$/, '');
+    const cleanKey = bdKey.trim();
+
+    if (!cleanUrl || !cleanKey) {
+      toast.error('Ingresa la URL y la API Key de Supabase');
+      return;
+    }
+
     setProbandoConexion(true);
     setEstadoConexion('idle');
     setMensajeConexion('Probando conexión...');
     try {
-      const res = await fetch(`${bdUrl.replace(/\/$/, '')}/rest/v1/`, {
-        method: 'HEAD',
-        headers: {
-          'apikey': bdKey,
-        },
+      const isNewKey = cleanKey.startsWith('sb_publishable_') || cleanKey.startsWith('sb_secret_');
+      const headers: Record<string, string> = { apikey: cleanKey };
+      if (!isNewKey) {
+        headers['Authorization'] = `Bearer ${cleanKey}`;
+      }
+
+      let res = await fetch(`${cleanUrl}/auth/v1/health`, {
+        method: 'GET',
+        headers,
       });
+
+      if (!res.ok) {
+        res = await fetch(`${cleanUrl}/rest/v1/CAJAS?select=IDCAJAS&limit=1`, {
+          method: 'GET',
+          headers,
+        });
+      }
+
       if (res.ok || res.status === 200 || res.status === 204) {
         setEstadoConexion('ok');
         setMensajeConexion('¡Conexión exitosa! La base de datos está accesible y responde correctamente.');

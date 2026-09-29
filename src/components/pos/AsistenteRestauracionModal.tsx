@@ -405,12 +405,25 @@ export function AsistenteRestauracionModal({
     }
   }
 
+  // Auto-cargar credenciales de entorno o localStorage al abrir
+  React.useEffect(() => {
+    if (open) {
+      const url = localStorage.getItem("custom_supabase_url") || import.meta.env["VITE_SUPABASE_URL"] || "";
+      const key = localStorage.getItem("custom_supabase_key") || import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || "";
+      if (url) setBdUrl(url);
+      if (key) setBdKey(key);
+    }
+  }, [open]);
+
   // ==========================================
   // PASO 2: PROBAR CONEXIÓN
   // ==========================================
 
   async function handleProbarConexion() {
-    if (!bdUrl.trim() || !bdKey.trim()) {
+    const cleanUrl = bdUrl.trim().replace(/\/$/, "");
+    const cleanKey = bdKey.trim();
+
+    if (!cleanUrl || !cleanKey) {
       toast.error("Ingresa la URL y la API Key de Supabase");
       return;
     }
@@ -420,18 +433,33 @@ export function AsistenteRestauracionModal({
     setMensajeConexion("Conectando con Supabase...");
 
     try {
-      const res = await fetch(`${bdUrl.replace(/\/$/, "")}/rest/v1/`, {
-        method: "HEAD",
-        headers: { apikey: bdKey },
+      const isNewKey = cleanKey.startsWith("sb_publishable_") || cleanKey.startsWith("sb_secret_");
+      const headers: Record<string, string> = { apikey: cleanKey };
+      if (!isNewKey) {
+        headers["Authorization"] = `Bearer ${cleanKey}`;
+      }
+
+      // Probar endpoint health de Auth
+      let res = await fetch(`${cleanUrl}/auth/v1/health`, {
+        method: "GET",
+        headers,
       });
+
+      // Fallback a consulta REST básica si health no responde
+      if (!res.ok) {
+        res = await fetch(`${cleanUrl}/rest/v1/CAJAS?select=IDCAJAS&limit=1`, {
+          method: "GET",
+          headers,
+        });
+      }
 
       if (res.ok || res.status === 200 || res.status === 204) {
         setEstadoConexion("ok");
         setMensajeConexion("¡Conexión exitosa! El servidor Supabase responde correctamente.");
 
         // Guardar credenciales en localStorage
-        localStorage.setItem("custom_supabase_url", bdUrl);
-        localStorage.setItem("custom_supabase_key", bdKey);
+        localStorage.setItem("custom_supabase_url", cleanUrl);
+        localStorage.setItem("custom_supabase_key", cleanKey);
         toast.success("Conexión verificada y credenciales guardadas");
       } else {
         setEstadoConexion("error");
