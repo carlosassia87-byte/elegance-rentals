@@ -153,6 +153,8 @@ export type Database = {
           NUMERACION: number | null
           PREFIJO: string | null
           RESOLUCION: string | null
+          SYNC_LOCK_AT: string | null
+          SYNC_LOCK_BY: string | null
         }
         Insert: {
           IDCAJAS?: number
@@ -160,6 +162,8 @@ export type Database = {
           NUMERACION?: number | null
           PREFIJO?: string | null
           RESOLUCION?: string | null
+          SYNC_LOCK_AT?: string | null
+          SYNC_LOCK_BY?: string | null
         }
         Update: {
           IDCAJAS?: number
@@ -167,6 +171,8 @@ export type Database = {
           NUMERACION?: number | null
           PREFIJO?: string | null
           RESOLUCION?: string | null
+          SYNC_LOCK_AT?: string | null
+          SYNC_LOCK_BY?: string | null
         }
         Relationships: []
       }
