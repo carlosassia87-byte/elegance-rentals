@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { User, KeyRound, Monitor, LogIn, ShieldCheck, Sparkles, Settings, Check, ChevronDown, UploadCloud, DatabaseZap } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { User, KeyRound, Monitor, LogIn, ShieldCheck, Sparkles, Check, Database } from "lucide-react";
 import { toast } from "sonner";
 import { loginPos, type UsuarioPos } from "@/services/authPosService";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/services/empresaCajaService";
 import logoAsset from "@/assets/logo.asset.json";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { restaurarCopiaSeguridad, type BackupData, validarEstructuraBackup } from "@/services/backupService";
+import { AsistenteRestauracionModal } from "@/components/pos/AsistenteRestauracionModal";
 
 interface PosLoginProps {
   onLoginSuccess: (usuario: UsuarioPos) => void;
@@ -26,10 +26,8 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
   const [modalConfigCaja, setModalConfigCaja] = useState(false);
   const [tempNombreEquipo, setTempNombreEquipo] = useState(terminal.nombreEquipo);
 
-  // Asistente de Restauración
-  const [modalRestaurar, setModalRestaurar] = useState(false);
-  const [restaurando, setRestaurando] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Asistente de Restauración (con conexión BD)
+  const [asistenteOpen, setAsistenteOpen] = useState(false);
 
   useEffect(() => {
     setTerminal(obtenerTerminalConfig());
@@ -77,36 +75,7 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
     }
   };
 
-  const handleCargarBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    setRestaurando(true);
-    try {
-      const text = await file.text();
-      const backupData = JSON.parse(text) as BackupData;
-      
-      const esValido = validarEstructuraBackup(backupData);
-      if (!esValido) {
-        toast.error("El archivo no tiene el formato válido de Elegance Backup.");
-        return;
-      }
-
-      await restaurarCopiaSeguridad(backupData, "1234");
-      toast.success("¡Sistema restaurado con éxito!", {
-        description: "Inicia sesión con SUPERADMIN y la contraseña 123",
-      });
-      setModalRestaurar(false);
-      setUsuarioInput("SUPERADMIN");
-      setPasswordInput("123");
-    } catch (error) {
-      console.error(error);
-      toast.error("Error al procesar el archivo. Verifica que sea un JSON válido.");
-    } finally {
-      setRestaurando(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   return (
     <div className="flex min-h-screen w-full select-none items-center justify-center bg-gradient-to-b from-white via-slate-50 to-slate-100 p-4 font-sans text-slate-800">
@@ -209,15 +178,16 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
             onClick={() => {
               const pass = window.prompt("Clave de autorización de migración:");
               if (pass === "1103098199") {
-                setModalRestaurar(true);
+                setAsistenteOpen(true);
               } else if (pass !== null) {
                 toast.error("Clave incorrecta. Acceso denegado.");
               }
             }}
-            className="text-[9px] text-slate-300 hover:text-slate-500 transition-colors cursor-pointer font-normal tracking-wide"
-            title="Solo usar en caso de migración a servidor nuevo"
+            className="text-[10px] text-slate-400 hover:text-cyan-600 transition-colors cursor-pointer font-medium tracking-wide flex items-center gap-1"
+            title="Configurar conexión a BD y restaurar backup"
           >
-            Asistente de Restauración
+            <Database className="h-3 w-3" />
+            Asistente de Conexión BD y Restauración
           </button>
         </div>
       </div>
@@ -282,64 +252,11 @@ export function PosLogin({ onLoginSuccess }: PosLoginProps) {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DE ASISTENTE DE RESTAURACIÓN */}
-      <Dialog open={modalRestaurar} onOpenChange={setModalRestaurar}>
-        <DialogContent className="max-w-md bg-white p-6 border border-slate-200 shadow-2xl rounded-2xl">
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-200">
-            <div className="p-2 bg-blue-100 rounded-xl">
-              <DatabaseZap className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-lg text-slate-900 tracking-tight">Restauración de Sistema</h3>
-              <p className="text-xs text-slate-500 font-medium">Migra todos tus datos a este servidor en 1 clic</p>
-            </div>
-          </div>
-
-          <div className="py-5 space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
-              <Sparkles className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-900">
-                <p className="font-bold mb-1">Carga tu archivo de Backup (.json)</p>
-                <p className="text-xs leading-relaxed opacity-90">
-                  El sistema reconstruirá tu inventario, clientes y facturas. Tus usuarios anteriores no se exportan por seguridad, 
-                  pero podrás entrar inmediatamente con el super usuario maestro:
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-mono bg-white p-2 rounded border border-amber-200">
-                  <div><strong>User:</strong> SUPERADMIN</div>
-                  <div><strong>Pass:</strong> 123</div>
-                </div>
-              </div>
-            </div>
-
-            <input
-              type="file"
-              accept=".json"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleCargarBackup}
-            />
-
-            <button
-              type="button"
-              disabled={restaurando}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-600/20"
-            >
-              {restaurando ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Restaurando base de datos...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-5 w-5" />
-                  <span>Seleccionar archivo JSON y Restaurar</span>
-                </>
-              )}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* ASISTENTE DE CONEXIÓN BD Y RESTAURACIÓN */}
+      <AsistenteRestauracionModal
+        open={asistenteOpen}
+        onOpenChange={setAsistenteOpen}
+      />
     </div>
   );
 }
