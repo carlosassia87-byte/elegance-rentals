@@ -26,6 +26,16 @@ import {
   Info,
   Play,
   RotateCcw,
+  Folder,
+  FolderCheck,
+  HardDrive,
+  Cloud,
+  ShieldCheck,
+  KeyRound,
+  History,
+  Lock,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -48,6 +58,18 @@ import {
   descargarPlantillaTabla,
   importarLoteTabla,
 } from "@/services/importacionTablasService";
+import {
+  generarCopiaSeguridadCompleta,
+  guardarBackupLocalConFileSystem,
+  descargarBackupArchivo,
+  subirBackupAGoogleDriveOStorage,
+  validarEstructuraBackup,
+  restaurarCopiaSeguridad,
+  obtenerHistorialBackups,
+  obtenerDirectorioHandle,
+  type BackupData,
+  type HistorialBackupItem,
+} from "@/services/backupService";
 
 interface MantenimientoMigracionModalProps {
   open: boolean;
@@ -62,8 +84,8 @@ export function MantenimientoMigracionModal({
   cajeroNombre = "ADMINISTRADOR",
   onDatosActualizados,
 }: MantenimientoMigracionModalProps) {
-  // Pestaña Activa: "stock_cero" | "reseteo" | "excel" | "sql"
-  const [tabActiva, setTabActiva] = useState<"stock_cero" | "reseteo" | "excel" | "sql">("stock_cero");
+  // Pestaña Activa: "stock_cero" | "reseteo" | "excel" | "sql" | "backup"
+  const [tabActiva, setTabActiva] = useState<"stock_cero" | "reseteo" | "excel" | "sql" | "backup">("stock_cero");
 
   // Estadísticas del sistema
   const [stats, setStats] = useState<EstadisticasBaseDatos>({
@@ -115,12 +137,56 @@ export function MantenimientoMigracionModal({
   const [resultadoSql, setResultadoSql] = useState<ResultadoEjecucionSql | null>(null);
   const sqlFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cargar estadísticas al abrir
+  // Estados de Operación: Copias de Seguridad (Backup & File System API)
+  const [carpetaLocalNombre, setCarpetaLocalNombre] = useState<string | null>(null);
+  const [procesandoBackup, setProcesandoBackup] = useState(false);
+  const [backupProgresoTexto, setBackupProgresoTexto] = useState("");
+  const [historialBackups, setHistorialBackups] = useState<HistorialBackupItem[]>([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [archivoRestaurar, setArchivoRestaurar] = useState<File | null>(null);
+  const [backupParaRestaurar, setBackupParaRestaurar] = useState<BackupData | null>(null);
+  const [metadataRestaurar, setMetadataRestaurar] = useState<any | null>(null);
+  const [pinAdminBackup, setPinAdminBackup] = useState("");
+  const [procesandoRestauracion, setProcesandoRestauracion] = useState(false);
+  const [restauracionProgresoTexto, setRestauracionProgresoTexto] = useState("");
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cargar estadísticas y configuración al abrir
   useEffect(() => {
     if (open) {
       cargarEstadisticas();
+      verificarCarpetaLocal();
+      cargarHistorial();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (tabActiva === "backup") {
+      verificarCarpetaLocal();
+      cargarHistorial();
+    }
+  }, [tabActiva]);
+
+  async function verificarCarpetaLocal() {
+    try {
+      const handle = await obtenerDirectorioHandle();
+      if (handle) {
+        setCarpetaLocalNombre(handle.name);
+      }
+    } catch {}
+  }
+
+  async function cargarHistorial() {
+    setCargandoHistorial(true);
+    try {
+      const data = await obtenerHistorialBackups();
+      setHistorialBackups(data);
+    } catch (err) {
+      console.warn("Aviso cargando historial de backups:", err);
+    } finally {
+      setCargandoHistorial(false);
+    }
+  }
 
   async function cargarEstadisticas() {
     setCargandoStats(true);
@@ -341,6 +407,146 @@ UPDATE ARTICULO SET STOCK = 0;`
     }
   }
 
+  // =========================================================
+  // OPERACIONES DE COPIAS DE SEGURIDAD (BACKUP & RESTORE)
+  // =========================================================
+  async function handleGuardarBackupLocal(forzarSeleccion = false) {
+    setProcesandoBackup(true);
+    setBackupProgresoTexto("Iniciando extracción completa de la base de datos...");
+    try {
+      const backup = await generarCopiaSeguridadCompleta(cajeroNombre, (tabla, p, t) => {
+        setBackupProgresoTexto(`Extrayendo ${tabla}: ${p} / ${t || "..."} filas`);
+      });
+
+      setBackupProgresoTexto("Escribiendo archivo de seguridad en la carpeta...");
+      const res = await guardarBackupLocalConFileSystem(backup, forzarSeleccion);
+      if (res.ok) {
+        if (res.carpeta) setCarpetaLocalNombre(res.carpeta);
+        toast.success(`Copia guardada con éxito en ${res.carpeta || "carpeta local"}: ${res.nombreArchivo}`);
+        await cargarHistorial();
+      } else {
+        toast.error(`Error guardando backup: ${res.error}`);
+      }
+    } catch (err: any) {
+      toast.error(`Error durante el backup: ${err?.message || "Desconocido"}`);
+    } finally {
+      setProcesandoBackup(false);
+      setBackupProgresoTexto("");
+    }
+  }
+
+  async function handleDescargarBackupDirecto() {
+    setProcesandoBackup(true);
+    setBackupProgresoTexto("Generando copia de seguridad para descarga...");
+    try {
+      const backup = await generarCopiaSeguridadCompleta(cajeroNombre, (tabla, p, t) => {
+        setBackupProgresoTexto(`Extrayendo ${tabla}: ${p} / ${t || "..."} filas`);
+      });
+      const nombre = descargarBackupArchivo(backup);
+      toast.success(`Archivo descargado: ${nombre}`);
+      await cargarHistorial();
+    } catch (err: any) {
+      toast.error(`Error al descargar: ${err?.message || "Desconocido"}`);
+    } finally {
+      setProcesandoBackup(false);
+      setBackupProgresoTexto("");
+    }
+  }
+
+  async function handleSubirCloudVault() {
+    setProcesandoBackup(true);
+    setBackupProgresoTexto("Generando copia para la Bóveda Privada / Google Drive...");
+    try {
+      const backup = await generarCopiaSeguridadCompleta(cajeroNombre, (tabla, p, t) => {
+        setBackupProgresoTexto(`Extrayendo ${tabla}: ${p} / ${t || "..."} filas`);
+      });
+      setBackupProgresoTexto("Sincronizando con la nube...");
+      const res = await subirBackupAGoogleDriveOStorage(backup, "cloud_vault");
+      if (res.ok) {
+        toast.success(res.mensaje || "Copia sincronizada exitosamente en la nube");
+        await cargarHistorial();
+      } else {
+        toast.error(`Error en nube: ${res.error}`);
+      }
+    } catch (err: any) {
+      toast.error(`Error en nube: ${err?.message || "Desconocido"}`);
+    } finally {
+      setProcesandoBackup(false);
+      setBackupProgresoTexto("");
+    }
+  }
+
+  function handleSeleccionarArchivoBackup(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setArchivoRestaurar(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const raw = ev.target?.result as string;
+        const parsed = JSON.parse(raw);
+        const validacion = validarEstructuraBackup(parsed);
+        if (!validacion.valido) {
+          toast.error(validacion.error || "El archivo de copia de seguridad no es válido");
+          setBackupParaRestaurar(null);
+          setMetadataRestaurar(null);
+          return;
+        }
+        setBackupParaRestaurar(parsed);
+        setMetadataRestaurar(validacion.metadata);
+        toast.success(`Backup validado: ${validacion.metadata?.totalRegistros} registros en ${validacion.metadata?.totalTablas} tablas.`);
+      } catch {
+        toast.error("El archivo seleccionado no es un JSON válido");
+        setBackupParaRestaurar(null);
+        setMetadataRestaurar(null);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleEjecutarRestauracion() {
+    if (!backupParaRestaurar) {
+      toast.error("Selecciona primero un archivo de backup válido");
+      return;
+    }
+    if (!pinAdminBackup.trim()) {
+      toast.error("Debes ingresar el PIN de Administrador para autorizar la restauración");
+      return;
+    }
+
+    setProcesandoRestauracion(true);
+    setRestauracionProgresoTexto("Iniciando restauración autorizada...");
+    try {
+      const res = await restaurarCopiaSeguridad(
+        backupParaRestaurar,
+        pinAdminBackup,
+        (tabla, p, t) => {
+          setRestauracionProgresoTexto(`Restaurando ${tabla}: ${p} / ${t}`);
+        }
+      );
+
+      if (res.ok) {
+        toast.success(res.mensaje);
+        setPinAdminBackup("");
+        setBackupParaRestaurar(null);
+        setArchivoRestaurar(null);
+        setMetadataRestaurar(null);
+        if (backupFileInputRef.current) backupFileInputRef.current.value = "";
+        await cargarEstadisticas();
+        await cargarHistorial();
+        onDatosActualizados?.();
+      } else {
+        toast.error(res.mensaje);
+      }
+    } catch (err: any) {
+      toast.error(`Error crítico en restauración: ${err?.message || "Desconocido"}`);
+    } finally {
+      setProcesandoRestauracion(false);
+      setRestauracionProgresoTexto("");
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="fixed left-1/2 top-1/2 z-50 flex h-[92vh] w-[95vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white p-0 shadow-2xl border border-slate-200 overflow-hidden font-sans select-none">
@@ -476,6 +682,18 @@ UPDATE ARTICULO SET STOCK = 0;`
           >
             <Terminal className="h-4 w-4 text-blue-600" />
             <span>4. Migración por Script SQL</span>
+          </button>
+
+          <button
+            onClick={() => setTabActiva("backup")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+              tabActiva === "backup"
+                ? "border-violet-600 text-violet-700 bg-violet-50/50 rounded-t-lg"
+                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-t-lg"
+            }`}
+          >
+            <HardDrive className="h-4 w-4 text-violet-600" />
+            <span>5. Copias de Seguridad (Backup)</span>
           </button>
         </div>
 
@@ -1146,6 +1364,323 @@ UPDATE ARTICULO SET STOCK = 0;`
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* --------------------------------------------------------
+              PESTAÑA 5: COPIAS DE SEGURIDAD (BACKUP INTEGRAL & CLOUD)
+          -------------------------------------------------------- */}
+          {tabActiva === "backup" && (
+            <div className="space-y-6">
+              {/* Tarjeta de Encabezado y Resumen */}
+              <div className="rounded-2xl border border-violet-200 bg-linear-to-r from-violet-50/80 via-white to-indigo-50/80 p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white shadow-md shadow-violet-600/30">
+                      <HardDrive className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase text-slate-900 tracking-tight">
+                        Sistema Integral de Copias de Seguridad
+                      </h3>
+                      <p className="text-xs text-slate-600 max-w-2xl mt-0.5">
+                        Exporta y resguarda de forma segura los 11 módulos del negocio (artículos, clientes, facturas, abonos, gastos, cajas y configuración) en tu disco local (C:\ o USB) y en la nube.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGuardarBackupLocal(true)}
+                      className="flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-2xs"
+                    >
+                      <Folder className="h-3.5 w-3.5 text-amber-600" />
+                      <span>{carpetaLocalNombre ? "Cambiar Carpeta" : "Configurar Carpeta"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-tarjetas de estado de almacenamiento */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 pt-3 border-t border-violet-100 text-xs">
+                  <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-violet-100/80">
+                    <FolderCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-700 block">Carpeta Física en tu PC:</span>
+                      <span className="font-mono text-[11px] text-slate-500 truncate block">
+                        {carpetaLocalNombre ? `Carpeta vinculada: ${carpetaLocalNombre}` : "No configurada aún (se abrirá el selector al respaldar)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 rounded-xl bg-white/80 p-2.5 border border-violet-100/80">
+                    <Cloud className="h-4 w-4 text-indigo-600 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-700 block">Bóveda Cloud & Google Drive:</span>
+                      <span className="text-[11px] text-slate-500 truncate block">
+                        Sincronización en la nube y endpoint nocturno automático (/api/public/cron-backup)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botonera de Acciones de Generación de Backup */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleGuardarBackupLocal(false)}
+                  disabled={procesandoBackup}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-linear-to-b from-violet-600 to-indigo-700 hover:from-violet-700 hover:to-indigo-800 text-white p-4 shadow-lg shadow-violet-600/25 transition-all text-center disabled:opacity-50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    {procesandoBackup ? <Loader2 className="h-5 w-5 animate-spin" /> : <HardDrive className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider block">1. Guardar en Carpeta Local</span>
+                    <span className="text-[11px] text-violet-200 font-medium block mt-0.5">Guardado directo con 1 Clic (File System API)</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDescargarBackupDirecto}
+                  disabled={procesandoBackup}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 p-4 shadow-sm transition-all text-center disabled:opacity-50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                    <Download className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider block">2. Descarga Directa JSON</span>
+                    <span className="text-[11px] text-slate-500 font-medium block mt-0.5">Descarga clásica para cualquier navegador</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSubirCloudVault}
+                  disabled={procesandoBackup}
+                  className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white border border-indigo-200 hover:bg-indigo-50/50 text-indigo-950 p-4 shadow-sm transition-all text-center disabled:opacity-50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                    <Cloud className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider block">3. Bóveda Cloud & Drive</span>
+                    <span className="text-[11px] text-indigo-600/80 font-medium block mt-0.5">Resguardo seguro en la nube</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Barra de progreso de extracción */}
+              {procesandoBackup && (
+                <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-violet-600 animate-spin shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-violet-900 block">Generando Copia de Seguridad</span>
+                      <span className="text-xs text-violet-700 font-medium">{backupProgresoTexto || "Extrayendo registros..."}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECCIÓN: RESTAURACIÓN DE COPIAS DE SEGURIDAD (PROTEGIDA CON PIN) */}
+              <div className="rounded-2xl border border-amber-300 bg-amber-50/40 p-5 shadow-xs space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md shadow-amber-500/20 shrink-0">
+                    <ShieldAlert className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-black uppercase text-amber-950 tracking-wider">
+                        Restauración de Base de Datos
+                      </h4>
+                      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-black text-amber-900 uppercase">
+                        Protegido por PIN
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-900/80 mt-0.5">
+                      Restaura la información a partir de un archivo JSON generado previamente. Requiere autorización explícita mediante PIN de Administrador.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* Selector de Archivo de Backup */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Seleccionar Archivo de Respaldo (.json):
+                    </label>
+                    <input
+                      ref={backupFileInputRef}
+                      type="file"
+                      accept=".json"
+                      onChange={handleSeleccionarArchivoBackup}
+                      disabled={procesandoRestauracion}
+                      className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-amber-600 file:text-white hover:file:bg-amber-700 file:cursor-pointer cursor-pointer border border-amber-200 rounded-xl bg-white p-1"
+                    />
+                  </div>
+
+                  {/* Input de PIN de Administrador */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      PIN de Administrador (Autorización):
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        placeholder="Ingresa PIN (ej. 1234)"
+                        value={pinAdminBackup}
+                        onChange={(e) => setPinAdminBackup(e.target.value)}
+                        disabled={procesandoRestauracion}
+                        className="h-9 w-full rounded-xl border border-amber-300 bg-white pl-9 pr-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 shadow-2xs"
+                      />
+                      <KeyRound className="h-4 w-4 text-amber-600 absolute left-3 top-2.5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Previsualización del archivo cargado */}
+                {metadataRestaurar && (
+                  <div className="rounded-xl border border-amber-200 bg-white p-3 text-xs space-y-2">
+                    <div className="flex items-center justify-between font-bold text-slate-800 border-b border-slate-100 pb-1.5">
+                      <div className="flex items-center gap-1.5 text-emerald-700">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Archivo Válido: {archivoRestaurar?.name}</span>
+                      </div>
+                      <span className="text-slate-500 text-[11px]">{metadataRestaurar.fechaLegible}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-500 block">Total Tablas:</span>
+                        <span className="font-bold text-slate-900">{metadataRestaurar.totalTablas}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Total Registros:</span>
+                        <span className="font-bold text-slate-900">{metadataRestaurar.totalRegistros}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Sistema:</span>
+                        <span className="font-bold text-slate-900">{metadataRestaurar.sistema}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Checksum:</span>
+                        <span className="font-mono text-[10px] text-slate-600 truncate block">
+                          {metadataRestaurar.checksum?.slice(0, 12)}...
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleEjecutarRestauracion}
+                        disabled={procesandoRestauracion || !pinAdminBackup.trim()}
+                        className="flex items-center justify-center gap-2 w-full rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs uppercase py-2.5 shadow-md shadow-amber-600/20 disabled:opacity-40 transition-all"
+                      >
+                        {procesandoRestauracion ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>{restauracionProgresoTexto || "Restaurando base de datos..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Ejecutar Restauración en la Base de Datos</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECCIÓN: TABLA DE HISTORIAL Y AUDITORÍA DE BACKUPS */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-violet-600" />
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">
+                      Auditoría e Historial de Copias de Seguridad
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={cargarHistorial}
+                    disabled={cargandoHistorial}
+                    className="flex items-center gap-1 text-[11px] font-bold text-violet-700 hover:text-violet-900"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${cargandoHistorial ? "animate-spin" : ""}`} />
+                    <span>Actualizar Historial</span>
+                  </button>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl">
+                  {historialBackups.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      No se han registrado copias de seguridad aún. Genera una copia manual o programa el cron nocturno.
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-100">
+                        <tr>
+                          <th className="px-3.5 py-2">Fecha / Hora</th>
+                          <th className="px-3.5 py-2">Tipo</th>
+                          <th className="px-3.5 py-2">Archivo</th>
+                          <th className="px-3.5 py-2">Tamaño</th>
+                          <th className="px-3.5 py-2">Registros</th>
+                          <th className="px-3.5 py-2">Estado</th>
+                          <th className="px-3.5 py-2">Usuario</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                        {historialBackups.map((h, idx) => {
+                          const fDate = new Date(h.fecha).toLocaleString("es-CO", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          });
+                          const sizeKb = h.tamano_bytes > 0 ? `${(h.tamano_bytes / 1024).toFixed(1)} KB` : "N/A";
+                          return (
+                            <tr key={h.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="px-3.5 py-2 whitespace-nowrap text-[11px] text-slate-600">{fDate}</td>
+                              <td className="px-3.5 py-2">
+                                <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold ${
+                                  h.tipo === "MANUAL_LOCAL"
+                                    ? "bg-violet-100 text-violet-800"
+                                    : h.tipo === "CRON_AUTO"
+                                    ? "bg-indigo-100 text-indigo-800"
+                                    : h.tipo === "GOOGLE_DRIVE" || h.tipo === "CLOUD_VAULT"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}>
+                                  {h.tipo}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2 font-mono text-[11px] text-slate-800 truncate max-w-44" title={h.nombre_archivo}>
+                                {h.nombre_archivo}
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-500">{sizeKb}</td>
+                              <td className="px-3.5 py-2 font-bold text-slate-900">{h.total_registros}</td>
+                              <td className="px-3.5 py-2">
+                                <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${
+                                  h.estado === "EXITOSO" ? "text-emerald-600" : "text-rose-600"
+                                }`}>
+                                  {h.estado === "EXITOSO" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                                  {h.estado}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2 text-[11px] text-slate-500">{h.usuario_ejecutor}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
