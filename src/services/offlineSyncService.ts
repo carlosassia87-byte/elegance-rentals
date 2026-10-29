@@ -178,121 +178,42 @@ export async function precargarClientesYFacturasDiferido(): Promise<void> {
       } catch {}
     }
 
-    // 2. Descargar Facturas (últimos 60 días o últimas existentes)
-    const hace60Dias = new Date();
-    hace60Dias.setDate(hace60Dias.getDate() - 60);
-    const fechaStr = hace60Dias.toISOString().split("T")[0];
+    // 2. Descargar catálogo COMPLETO de Facturas históricas (hasta 50.000)
+    const facturas = await descargarTablaPaginada("FACTURA", "IDFACTURA", 1000, 50000);
 
-    const facturas: any[] = [];
-    let fromFact = 0;
-    while (fromFact < 50000) {
-      const { data: batchFact, error: errBatch } = await supabase
-        .from("FACTURA" as any)
-        .select("*")
-        .gte("FECHASALIDA", fechaStr)
-        .order("IDFACTURA", { ascending: false })
-        .range(fromFact, fromFact + 999);
+    // 3. Descargar catálogo COMPLETO de CAMPOFACTURA (todas las prendas de todas las facturas)
+    const camposFactura: OfflineCampoFactura[] = await descargarTablaPaginada("CAMPOFACTURA", "AUTOMATIC", 1000, 50000);
 
-      if (errBatch) break;
-      if (!batchFact || batchFact.length === 0) break;
-      facturas.push(...batchFact);
-      if (batchFact.length < 1000) break;
-      fromFact += 1000;
-    }
+    // 4. Descargar catálogo COMPLETO de Abonos a clientes
+    const abonosFactura: OfflineAbono[] = await descargarTablaPaginada("ABONO_CLIENTE", "IDABONO_CLIENTE", 1000, 50000);
 
-    // Fallback: Si no hay facturas en los últimos 60 días (o formato de fecha distinto), traer las más recientes
-    if (facturas.length === 0) {
-      try {
-        const { data: facturasRecientes } = await supabase
-          .from("FACTURA" as any)
-          .select("*")
-          .order("IDFACTURA", { ascending: false })
-          .limit(500);
-        if (facturasRecientes && facturasRecientes.length > 0) {
-          facturas.push(...facturasRecientes);
-        }
-      } catch (errFallback) {
-        console.warn("Aviso obteniendo facturas recientes:", errFallback);
-      }
-    }
+    // 5. Guardar el 100% de los datos en IndexedDB local
+    await guardarFacturasLote(
+      facturas as unknown as OfflineFactura[],
+      camposFactura,
+      abonosFactura
+    );
 
-    const camposFactura: OfflineCampoFactura[] = [];
+    // 6. Respaldar en LocalStorage únicamente el buffer más reciente para lectura síncrona sin superar el límite de 5 MB
+    try {
+      const facturasDesc = [...facturas].sort((a: any, b: any) => (Number(b.IDFACTURA) || 0) - (Number(a.IDFACTURA) || 0));
+      const factsLim = facturasDesc.slice(0, 20);
+      localStorage.setItem("elegance_local_facturas", JSON.stringify(factsLim));
 
-    if (facturas.length > 0) {
-      const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
-
-      // Agrupación optimizada: chunks de 200 en lugar de 80 para reducir peticiones HTTP masivas
-      const CHUNK_SIZE = 200;
-      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
-        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
-        try {
-          const { data: campos } = await supabase
-            .from("CAMPOFACTURA" as any)
-            .select("*")
-            .in("NUMEROFACT", chunk);
-          if (campos) camposFactura.push(...(campos as unknown as OfflineCampoFactura[]));
-        } catch {}
-        // Pequeño descanso para no saturar el canal de red
-        await new Promise((r) => setTimeout(r, 40));
+      const numsValidos = new Set(factsLim.map((f: any) => f.NUMEROFACT).filter(Boolean));
+      const camposParaLocal = camposFactura.filter((c: any) => numsValidos.has(c.NUMEROFACT)).slice(0, 80);
+      if (camposParaLocal.length > 0) {
+        localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposParaLocal));
+      } else if (camposFactura.length > 0) {
+        localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposFactura.slice(-80)));
       }
 
-      // Descargar abonos relacionados agrupados en chunks de 200
-      const abonosFactura: OfflineAbono[] = [];
-      for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
-        const chunk = numFacts.slice(i, i + CHUNK_SIZE);
-        try {
-          const { data: abonos } = await supabase
-            .from("ABONO_CLIENTE" as any)
-            .select("*")
-            .in("AFACTURA", chunk);
-          if (abonos) abonosFactura.push(...(abonos as unknown as OfflineAbono[]));
-        } catch {}
-        await new Promise((r) => setTimeout(r, 40));
+      if (abonosFactura.length > 0) {
+        const abonosLim = abonosFactura.filter((a: any) => numsValidos.has(a.AFACTURA)).slice(0, 40);
+        localStorage.setItem("elegance_local_abonos", JSON.stringify(abonosLim));
       }
-
-      // Guardar en IndexedDB
-      await guardarFacturasLote(
-        facturas as unknown as OfflineFactura[],
-        camposFactura,
-        abonosFactura
-      );
-
-      // Respaldar en LocalStorage las últimas facturas y campos para lectura síncrona inmediata
-      try {
-        const factsLim = facturas.slice(0, 15);
-        localStorage.setItem("elegance_local_facturas", JSON.stringify(factsLim));
-
-        const numsValidos = new Set(factsLim.map((f) => f.NUMEROFACT));
-        const camposLim = camposFactura.filter((c) => numsValidos.has(c.NUMEROFACT)).slice(0, 60);
-        if (camposLim.length > 0) {
-          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposLim));
-        } else if (camposFactura.length > 0) {
-          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposFactura.slice(0, 60)));
-        }
-
-        if (abonosFactura.length > 0) {
-          const abonosLim = abonosFactura.filter((a) => numsValidos.has(a.AFACTURA)).slice(0, 30);
-          localStorage.setItem("elegance_local_abonos", JSON.stringify(abonosLim));
-        }
-      } catch (eStorage) {
-        console.warn("Aviso guardando facturas en LocalStorage:", eStorage);
-      }
-    } else {
-      // Si no hay facturas en tabla FACTURA, intentar descargar directamente de CAMPOFACTURA si existe
-      try {
-        const { data: directCampos } = await supabase
-          .from("CAMPOFACTURA" as any)
-          .select("*")
-          .order("AUTOMATIC", { ascending: false })
-          .limit(200);
-        if (directCampos && directCampos.length > 0) {
-          camposFactura.push(...(directCampos as unknown as OfflineCampoFactura[]));
-          await guardarFacturasLote([], camposFactura);
-          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposFactura.slice(0, 60)));
-        }
-      } catch (errDirect) {
-        console.warn("Aviso consultando CAMPOFACTURA directo:", errDirect);
-      }
+    } catch (eStorage) {
+      console.warn("Aviso guardando buffer ligero en LocalStorage:", eStorage);
     }
 
     if (typeof window !== "undefined") {
