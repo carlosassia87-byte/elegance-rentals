@@ -178,7 +178,7 @@ export async function precargarClientesYFacturasDiferido(): Promise<void> {
       } catch {}
     }
 
-    // 2. Descargar Facturas de los últimos 60 días
+    // 2. Descargar Facturas (últimos 60 días o últimas existentes)
     const hace60Dias = new Date();
     hace60Dias.setDate(hace60Dias.getDate() - 60);
     const fechaStr = hace60Dias.toISOString().split("T")[0];
@@ -200,12 +200,29 @@ export async function precargarClientesYFacturasDiferido(): Promise<void> {
       fromFact += 1000;
     }
 
+    // Fallback: Si no hay facturas en los últimos 60 días (o formato de fecha distinto), traer las más recientes
+    if (facturas.length === 0) {
+      try {
+        const { data: facturasRecientes } = await supabase
+          .from("FACTURA" as any)
+          .select("*")
+          .order("IDFACTURA", { ascending: false })
+          .limit(500);
+        if (facturasRecientes && facturasRecientes.length > 0) {
+          facturas.push(...facturasRecientes);
+        }
+      } catch (errFallback) {
+        console.warn("Aviso obteniendo facturas recientes:", errFallback);
+      }
+    }
+
+    const camposFactura: OfflineCampoFactura[] = [];
+
     if (facturas.length > 0) {
       const numFacts = facturas.map((f) => f.NUMEROFACT).filter(Boolean);
 
       // Agrupación optimizada: chunks de 200 en lugar de 80 para reducir peticiones HTTP masivas
       const CHUNK_SIZE = 200;
-      const camposFactura: OfflineCampoFactura[] = [];
       for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
         const chunk = numFacts.slice(i, i + CHUNK_SIZE);
         try {
@@ -233,11 +250,49 @@ export async function precargarClientesYFacturasDiferido(): Promise<void> {
         await new Promise((r) => setTimeout(r, 40));
       }
 
+      // Guardar en IndexedDB
       await guardarFacturasLote(
         facturas as unknown as OfflineFactura[],
         camposFactura,
         abonosFactura
       );
+
+      // Respaldar en LocalStorage las últimas facturas y campos para lectura síncrona inmediata
+      try {
+        const factsLim = facturas.slice(0, 15);
+        localStorage.setItem("elegance_local_facturas", JSON.stringify(factsLim));
+
+        const numsValidos = new Set(factsLim.map((f) => f.NUMEROFACT));
+        const camposLim = camposFactura.filter((c) => numsValidos.has(c.NUMEROFACT)).slice(0, 60);
+        if (camposLim.length > 0) {
+          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposLim));
+        } else if (camposFactura.length > 0) {
+          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposFactura.slice(0, 60)));
+        }
+
+        if (abonosFactura.length > 0) {
+          const abonosLim = abonosFactura.filter((a) => numsValidos.has(a.AFACTURA)).slice(0, 30);
+          localStorage.setItem("elegance_local_abonos", JSON.stringify(abonosLim));
+        }
+      } catch (eStorage) {
+        console.warn("Aviso guardando facturas en LocalStorage:", eStorage);
+      }
+    } else {
+      // Si no hay facturas en tabla FACTURA, intentar descargar directamente de CAMPOFACTURA si existe
+      try {
+        const { data: directCampos } = await supabase
+          .from("CAMPOFACTURA" as any)
+          .select("*")
+          .order("AUTOMATIC", { ascending: false })
+          .limit(200);
+        if (directCampos && directCampos.length > 0) {
+          camposFactura.push(...(directCampos as unknown as OfflineCampoFactura[]));
+          await guardarFacturasLote([], camposFactura);
+          localStorage.setItem("elegance_local_campos_factura", JSON.stringify(camposFactura.slice(0, 60)));
+        }
+      } catch (errDirect) {
+        console.warn("Aviso consultando CAMPOFACTURA directo:", errDirect);
+      }
     }
 
     if (typeof window !== "undefined") {

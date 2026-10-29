@@ -64,7 +64,8 @@ export interface OfflineFactura {
 }
 
 export interface OfflineCampoFactura {
-  IDCAMPOSFACTURA: number;
+  IDCAMPOSFACTURA?: number | string;
+  AUTOMATIC?: number | string;
   NUMEROFACT: string;
   BARRAS: string;
   DESCRIPCION: string;
@@ -242,8 +243,20 @@ export async function guardarFacturasLote(
 
     if (campos && campos.length > 0) {
       const storeCampos = tx.objectStore("camposFactura");
-      for (const c of campos) {
-        if (c && c.IDCAMPOSFACTURA) storeCampos.put(c);
+      for (let i = 0; i < campos.length; i++) {
+        const c = campos[i];
+        if (!c) continue;
+        const id =
+          c.IDCAMPOSFACTURA ||
+          (c as any).AUTOMATIC ||
+          (c as any).IDCAMPOFACTURA ||
+          `${c.NUMEROFACT || "F"}_${c.BARRAS || "0"}_${i}`;
+        const itemToStore: any = {
+          ...c,
+          IDCAMPOSFACTURA: id,
+          AUTOMATIC: (c as any).AUTOMATIC || id,
+        };
+        storeCampos.put(itemToStore);
       }
     }
 
