@@ -894,7 +894,7 @@ export async function cambiarEstadoFacturaABodega(
       const rawOv = localStorage.getItem("elegance_estados_prendas_override");
       const overrides = rawOv ? JSON.parse(rawOv) : {};
 
-      const rawCampos = localStorage.getItem("elegance_local_campos");
+      const rawCampos = localStorage.getItem("elegance_local_campos_factura") || localStorage.getItem("elegance_local_campos");
       const allCampos: any[] = rawCampos ? JSON.parse(rawCampos) : [];
       const itemsFact = allCampos.filter((c: any) => c.NUMEROFACT === numClean);
 
