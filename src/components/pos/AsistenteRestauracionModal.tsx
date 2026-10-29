@@ -28,6 +28,7 @@ import {
   Layers,
   Copy,
   CheckCheck,
+  Download,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import { createClient } from "@supabase/supabase-js";
 interface AsistenteRestauracionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRestauracionExitosa?: () => void;
 }
 
 interface BackupMetadata {
@@ -65,264 +67,368 @@ type PasoAsistente = 1 | 2 | 3 | 4;
 // SQL PARA INICIALIZAR LA BD
 // ==========================================
 
-const SQL_SCHEMA_PRINCIPAL = `
--- Extensiones
+const SQL_SCHEMA_PRINCIPAL = `-- ==============================================================================
+-- SCRIPT COMPLETO DE BASE DE DATOS: PUNTO DE VENTA Y ALQUILER DE VESTIDOS
+-- Compatible con PostgreSQL y Supabase
+-- ==============================================================================
+
+-- 1. EXTENSIONES BÁSICAS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Tabla numero_de_serie
-CREATE TABLE IF NOT EXISTS "numero_de_serie" (
-    "IDnumero_de_serie" SERIAL8 PRIMARY KEY,
-    "SERIE" VARCHAR(50) UNIQUE
+-- 2. TABLA: EMPRESA_CONFIG
+CREATE TABLE IF NOT EXISTS "EMPRESA_CONFIG" (
+    "ID" SERIAL8 PRIMARY KEY,
+    "NOMBRE_COMERCIAL" VARCHAR(200) DEFAULT 'ELEGANCE RENTALS',
+    "RAZON_SOCIAL" VARCHAR(200) DEFAULT 'ELEGANCE RENTALS S.A.S.',
+    "NIT" VARCHAR(50) DEFAULT '900.123.456-7',
+    "DIRECCION" VARCHAR(255) DEFAULT 'Calle Principal # 10 - 25',
+    "CIUDAD" VARCHAR(100) DEFAULT 'Cali, Colombia',
+    "TELEFONO1" VARCHAR(50) DEFAULT '315 123 4567',
+    "TELEFONO2" VARCHAR(50) DEFAULT '',
+    "EMAIL" VARCHAR(100) DEFAULT 'contacto@elegancerentals.com',
+    "REGIMEN" VARCHAR(100) DEFAULT 'Régimen Simplificado / No Responsable de IVA',
+    "MENSAJE_PIE" TEXT DEFAULT '¡Gracias por su preferencia! Conserve este recibo para la devolución de su prenda y depósito.',
+    "TERMINOS" TEXT DEFAULT 'El traje debe ser devuelto en la fecha pactada en perfecto estado. Todo retraso causará cobro adicional por día.',
+    "LOGO_URL" TEXT,
+    "MONEDA" VARCHAR(10) DEFAULT 'COP',
+    "SIMBOLO_MONEDA" VARCHAR(10) DEFAULT '$',
+    "DIAS_ALQUILER" INTEGER DEFAULT 3,
+    "updated_at" TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla clientesregistrados
-CREATE TABLE IF NOT EXISTS "clientesregistrados" (
-    "IDEmpresa" SERIAL8 PRIMARY KEY,
-    "RAZOSOCIAL" VARCHAR(50),
-    "ENOMBRE" VARCHAR(50),
-    "NIT" VARCHAR(50),
-    "ETIPO" VARCHAR(50),
-    "EDIRECCION" VARCHAR(50),
-    "ETELEFONO" VARCHAR(50) DEFAULT '0',
-    "EMAIL" VARCHAR(50),
-    "WEB" VARCHAR(50),
-    "SERIE" VARCHAR(50) UNIQUE,
-    "LOGO" BYTEA,
-    "IDnumero_de_serie" BIGINT DEFAULT 0,
-    "MENSAJE" VARCHAR(50)
-);
-
--- Tabla Empresa
-CREATE TABLE IF NOT EXISTS "Empresa" (
-    "IDEmpresa" SERIAL8 PRIMARY KEY,
-    "RAZOSOCIAL" VARCHAR(50),
-    "ENOMBRE" VARCHAR(50),
-    "NIT" VARCHAR(50),
-    "ETIPO" VARCHAR(50),
-    "EDIRECCION" VARCHAR(50),
-    "ETELEFONO" VARCHAR(50) DEFAULT '0',
-    "EMAIL" VARCHAR(50),
-    "WEB" VARCHAR(50),
-    "SERIE" VARCHAR(50),
-    "LOGO" BYTEA,
-    "MENSAJE" VARCHAR(50)
-);
-
--- Tabla CAJAS
+-- 3. TABLA: CAJAS
 CREATE TABLE IF NOT EXISTS "CAJAS" (
     "IDCAJAS" SERIAL8 PRIMARY KEY,
     "NOMBRECAJA" VARCHAR(50) UNIQUE,
-    "RESOLUCION" VARCHAR(50),
+    "RESOLUCION" VARCHAR(50) DEFAULT '1366x768',
     "NUMERACION" INTEGER DEFAULT 0,
-    "PREFIJO" VARCHAR(50)
+    "PREFIJO" VARCHAR(50) DEFAULT 'G',
+    "SYNC_LOCK_AT" TIMESTAMPTZ,
+    "SYNC_LOCK_BY" TEXT
 );
 
--- Tabla CLIENTES
+-- 4. TABLA: LOGIN (USUARIOS Y CAJEROS)
+CREATE TABLE IF NOT EXISTS "LOGIN" (
+    "IDLOGIN" SERIAL8 PRIMARY KEY,
+    "INOMBRE" VARCHAR(100),
+    "IAPELLIDO" VARCHAR(100),
+    "ILOGIN" INTEGER UNIQUE DEFAULT 0,
+    "PASSWORD" VARCHAR(100),
+    "TIPO" BOOL DEFAULT false,
+    "ACCESOALMENU" BOOL DEFAULT true
+);
+
+-- 5. TABLA: CLIENTES
 CREATE TABLE IF NOT EXISTS "CLIENTES" (
     "IDCLIENTES" SERIAL8 PRIMARY KEY,
     "CEDULA" BIGINT DEFAULT 0,
-    "DIRECCION" VARCHAR(50),
+    "DIRECCION" VARCHAR(255),
     "TELEFONO" VARCHAR(50) DEFAULT '0',
     "TELEFONO2" VARCHAR(50),
-    "EMPRESA" VARCHAR(50),
-    "DIRECCIONEMP" VARCHAR(50),
-    "NOMBRE" VARCHAR(50),
-    "SALDO" INTEGER DEFAULT 0,
+    "EMPRESA" VARCHAR(255),
+    "DIRECCIONEMP" VARCHAR(255),
+    "NOMBRE" VARCHAR(255),
+    "SALDO" NUMERIC(24,6) DEFAULT 0,
     "NOTA" VARCHAR(2000)
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_CLIENTES_CEDULA" ON "CLIENTES" ("CEDULA");
+CREATE INDEX IF NOT EXISTS "WDIDX_CLIENTES_NOMBRE" ON "CLIENTES" ("NOMBRE");
 
--- Tabla ESTADO_CLI
-CREATE TABLE IF NOT EXISTS "ESTADO_CLI" (
-    "IDESTADO_CLI" SERIAL8 PRIMARY KEY,
-    "ESTADOCLI" VARCHAR(50) NOT NULL DEFAULT '0'
-);
-
--- Tabla ESTADO_TRAJE
-CREATE TABLE IF NOT EXISTS "ESTADO_TRAJE" (
-    "IDESTADO_TRAJE" SERIAL8 PRIMARY KEY,
-    "ESTADO_TRAJE" SMALLINT DEFAULT 0
-);
-
--- Tabla F_PAGO
-CREATE TABLE IF NOT EXISTS "F_PAGO" (
-    "FDEPAGO" VARCHAR(50) DEFAULT '0',
-    "IDESTADCLI" SERIAL8 PRIMARY KEY
-);
-
--- Tabla OTRAS_F_PAGO
-CREATE TABLE IF NOT EXISTS "OTRAS_F_PAGO" (
-    "IDOTRA_F_PAGO" SERIAL8 PRIMARY KEY,
-    "OTRAS_F_PAGO" VARCHAR(50)
-);
-
--- Tabla contraseñas
-CREATE TABLE IF NOT EXISTS "contraseñas" (
-    "IDcontraseñas" SERIAL8 PRIMARY KEY,
-    "BORRADO" VARCHAR(50) DEFAULT '0',
-    "CONFIGURACIONES" VARCHAR(50) DEFAULT '0',
-    "PERMISOS" VARCHAR(50) DEFAULT '0'
-);
-
--- Tabla LOGIN
-CREATE TABLE IF NOT EXISTS "LOGIN" (
-    "IDLOGIN" SERIAL8 PRIMARY KEY,
-    "INOMBRE" VARCHAR(50),
-    "IAPELLIDO" VARCHAR(50),
-    "ILOGIN" INTEGER UNIQUE DEFAULT 0,
-    "PASSWORD" VARCHAR(50),
-    "TIPO" BOOL DEFAULT false,
-    "ACCESOALMENU" BOOL DEFAULT false
-);
-
--- Tabla gastos
-CREATE TABLE IF NOT EXISTS "gastos" (
-    "IDgastos" SERIAL8 PRIMARY KEY,
-    "DESCRIPCIONSALIDA" VARCHAR(50),
-    "FECHA" DATE,
-    "VALORSALIDA" VARCHAR(50),
-    "NUMEROGASTO" VARCHAR(50) UNIQUE
-);
-
--- Tabla CAMPOFACTURA
-CREATE TABLE IF NOT EXISTS "CAMPOFACTURA" (
-    "AUTOMATIC" SERIAL8 PRIMARY KEY,
-    "DESCRIPCION" VARCHAR(300),
-    "CANTIDAD" NUMERIC(24,6) DEFAULT 0,
-    "VALOR" NUMERIC(24,6) DEFAULT 0,
-    "TOTAL" NUMERIC(24,6) DEFAULT 0,
-    "BARRAS" VARCHAR(50) DEFAULT '0',
-    "NUMEROFACT" VARCHAR(50),
-    "IDFACTURA" BIGINT DEFAULT 0,
-    "VALORDEPOSITO" NUMERIC(24,6) DEFAULT 0,
-    "TOTALALQUILER" NUMERIC(24,6) DEFAULT 0,
-    "TOTALDEPOSITO" NUMERIC(24,6) DEFAULT 0
-);
-
--- Tabla ARTICULO
+-- 6. TABLA: ARTICULO (TRAJES Y VESTIDOS)
 CREATE TABLE IF NOT EXISTS "ARTICULO" (
     "IDARTICULO" SERIAL8 PRIMARY KEY,
-    "DESCRIPCION" VARCHAR(150),
+    "DESCRIPCION" VARCHAR(300),
     "TALLA" VARCHAR(50),
     "STOCK" INTEGER DEFAULT 0,
     "VALOR" NUMERIC(24,6) DEFAULT 0,
     "CODBARRAS" VARCHAR(50),
     "IDCAMPOFACTURA" BIGINT DEFAULT 0,
-    "VALORDEPOSITO" NUMERIC(24,6) DEFAULT 0
+    "VALORDEPOSITO" NUMERIC(24,6) DEFAULT 0,
+    "IMAGEN_URL" TEXT,
+    "DISPONIBLE" BOOLEAN DEFAULT true,
+    "CATEGORIA" VARCHAR(100) DEFAULT 'GENERAL',
+    "DESTACADO" BOOLEAN DEFAULT false,
+    "DESCRIPCION_WEB" TEXT
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_ARTICULO_DESCRIPCION" ON "ARTICULO" ("DESCRIPCION");
+CREATE INDEX IF NOT EXISTS "WDIDX_ARTICULO_CODBARRAS" ON "ARTICULO" ("CODBARRAS");
+CREATE INDEX IF NOT EXISTS "WDIDX_ARTICULO_DISPONIBLE" ON "ARTICULO" ("DISPONIBLE");
+CREATE INDEX IF NOT EXISTS "WDIDX_ARTICULO_CATEGORIA" ON "ARTICULO" ("CATEGORIA");
 
--- Tabla FACTURA
+-- 7. TABLA: FACTURA (CABECERA DE ALQUILERES)
 CREATE TABLE IF NOT EXISTS "FACTURA" (
     "IDFACTURA" SERIAL8 PRIMARY KEY,
     "NUMEROFACT" VARCHAR(50) UNIQUE DEFAULT '0',
-    "FECHASALIDA" DATE,
-    "FECHAENTRADA" DATE,
+    "FECHASALIDA" VARCHAR(50),
+    "FECHAENTRADA" VARCHAR(50),
     "FTOTALDEPOSITO" NUMERIC(24,6) DEFAULT 0,
     "FTOTALVENTADEPOSITO" NUMERIC(24,6) DEFAULT 0,
-    "FORMAPAGO" VARCHAR(50) DEFAULT '0',
-    "MODO" VARCHAR(50),
-    "VENDEDOR" VARCHAR(50),
-    "CCLIENTE" VARCHAR(50),
+    "FORMAPAGO" VARCHAR(100) DEFAULT 'EFECTIVO',
+    "MODO" VARCHAR(100) DEFAULT 'ALQUILER',
+    "VENDEDOR" VARCHAR(100) DEFAULT 'ADMINISTRADOR',
+    "CCLIENTE" VARCHAR(255) DEFAULT 'GENERAL',
     "CAMBIOS" NUMERIC(24,6) DEFAULT 0,
     "PAGACON" NUMERIC(24,6) DEFAULT 0,
     "AUTOMATIC" BIGINT DEFAULT 0,
     "IDFCLIENTES" BIGINT DEFAULT 0,
-    "ESTADOCLIENTE" VARCHAR(50) DEFAULT '0',
+    "ESTADOCLIENTE" VARCHAR(100) DEFAULT 'EN ALQUILER',
     "IDF_PAGO" BIGINT DEFAULT 0,
-    "CDIRECCION" VARCHAR(50),
-    "CTELEFONO" VARCHAR(50),
-    "CTELEFONO1" VARCHAR(50),
-    "CEMPRESA" VARCHAR(50),
-    "CCEDULA" VARCHAR(50),
-    "GASTOS" VARCHAR(50),
+    "CDIRECCION" VARCHAR(255) DEFAULT '',
+    "CTELEFONO" VARCHAR(50) DEFAULT '',
+    "CTELEFONO1" VARCHAR(50) DEFAULT '',
+    "CEMPRESA" VARCHAR(255) DEFAULT '',
+    "CCEDULA" VARCHAR(50) DEFAULT '',
+    "GASTOS" VARCHAR(255) DEFAULT '',
     "PAGOCONEFECTIVO" NUMERIC(24,6) DEFAULT 0,
     "PAGOCONTRANFERENCIA" NUMERIC(24,6) DEFAULT 0,
     "FTOTALALQUILER" NUMERIC(24,6) DEFAULT 0,
-    "FPAGOTRANS" VARCHAR(50),
+    "FPAGOTRANS" VARCHAR(255) DEFAULT '',
     "DESCUENTO" NUMERIC(24,6) DEFAULT 0,
     "P_SALDO_EFECTIVO" NUMERIC(24,6) DEFAULT 0,
     "P_SALDO_TRANFERENCIA" NUMERIC(24,6) DEFAULT 0,
     "TOTAL_SALDO" NUMERIC(24,6) DEFAULT 0,
-    "FECHA_RECIBO" DATE,
+    "FECHA_RECIBO" VARCHAR(50),
     "SALDOA_BONADO" NUMERIC(24,6) DEFAULT 0,
-    "FECHAINGRESO" DATE
+    "FECHAINGRESO" VARCHAR(50)
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_FACTURA_NUMEROFACT" ON "FACTURA" ("NUMEROFACT");
+CREATE INDEX IF NOT EXISTS "WDIDX_FACTURA_CCEDULA" ON "FACTURA" ("CCEDULA");
 
--- Tabla ABONO_CLIENTE
+-- 8. TABLA: CAMPOFACTURA (DETALLE DE ÍTEMS)
+CREATE TABLE IF NOT EXISTS "CAMPOFACTURA" (
+    "AUTOMATIC" SERIAL8 PRIMARY KEY,
+    "DESCRIPCION" VARCHAR(500),
+    "CANTIDAD" NUMERIC(24,6) DEFAULT 0,
+    "VALOR" NUMERIC(24,6) DEFAULT 0,
+    "TOTAL" NUMERIC(24,6) DEFAULT 0,
+    "BARRAS" VARCHAR(100) DEFAULT '0',
+    "NUMEROFACT" VARCHAR(50),
+    "IDFACTURA" BIGINT DEFAULT 0,
+    "VALORDEPOSITO" NUMERIC(24,6) DEFAULT 0,
+    "TOTALALQUILER" NUMERIC(24,6) DEFAULT 0,
+    "TOTALDEPOSITO" NUMERIC(24,6) DEFAULT 0,
+    "PIEZAS_INCLUIDAS" VARCHAR(1000)
+);
+CREATE INDEX IF NOT EXISTS "WDIDX_CAMPOFACTURA_IDFACTURA" ON "CAMPOFACTURA" ("IDFACTURA");
+CREATE INDEX IF NOT EXISTS "WDIDX_CAMPOFACTURA_NUMEROFACT" ON "CAMPOFACTURA" ("NUMEROFACT");
+
+-- 9. TABLA: ABONO_CLIENTE (PAGOS Y ABONOS)
 CREATE TABLE IF NOT EXISTS "ABONO_CLIENTE" (
     "IDABONO_CLIENTE" SERIAL8 PRIMARY KEY,
     "NUMEROABONO" VARCHAR(50),
-    "ACLIENTE" VARCHAR(50),
+    "ACLIENTE" VARCHAR(255),
     "AFACTURA" VARCHAR(50),
     "PAGOEFECTIVO" NUMERIC(24,6) DEFAULT 0,
     "PAGOTRANFE" NUMERIC(24,6) DEFAULT 0,
-    "FECHAABONO" DATE,
+    "FECHAABONO" VARCHAR(50),
     "SALDOANTERIOR" NUMERIC(24,6) DEFAULT 0,
     "SALDODEBER" NUMERIC(24,6) DEFAULT 0,
     "TOTAL_ABONO" NUMERIC(24,6) DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_ABONO_AFACTURA" ON "ABONO_CLIENTE" ("AFACTURA");
 
--- Tabla depositoentregado
+-- 10. TABLA: depositoentregado (DEVOLUCIÓN DE FIANZAS)
 CREATE TABLE IF NOT EXISTS "depositoentregado" (
     "IDdepositoentregado" SERIAL8 PRIMARY KEY,
     "NUMEROFACTURA" VARCHAR(50),
-    "VALOR" INTEGER DEFAULT 0,
-    "FECHA" DATE
-);
-
--- Tabla ACCESORIOS
-CREATE TABLE IF NOT EXISTS "ACCESORIOS" (
-    "IDACCESORIOS" SERIAL8 PRIMARY KEY,
-    "DESCRIPCION" VARCHAR(300),
-    "TALLA" VARCHAR(50),
-    "STOCK" INTEGER DEFAULT 0,
     "VALOR" NUMERIC(24,6) DEFAULT 0,
-    "CODBARRAS" VARCHAR(50),
-    "VALORDEPOSITO" NUMERIC(24,6) DEFAULT 0
+    "FECHA" VARCHAR(50)
 );
 
--- Tabla MOVIMIENTOS_INVENTARIO
+-- 11. TABLA: gastos (SALIDAS DE CAJA)
+CREATE TABLE IF NOT EXISTS "gastos" (
+    "IDgastos" SERIAL8 PRIMARY KEY,
+    "DESCRIPCIONSALIDA" VARCHAR(255),
+    "FECHA" VARCHAR(50),
+    "VALORSALIDA" VARCHAR(50),
+    "NUMEROGASTO" VARCHAR(50) UNIQUE
+);
+
+-- 12. TABLA: MOVIMIENTOS_INVENTARIO (KARDEX)
 CREATE TABLE IF NOT EXISTS "MOVIMIENTOS_INVENTARIO" (
     "IDMOVIMIENTO" SERIAL8 PRIMARY KEY,
-    "TIPO" VARCHAR(50),
-    "IDARTICULO" BIGINT,
-    "CODBARRAS" VARCHAR(50),
+    "FECHA" TIMESTAMPTZ DEFAULT NOW(),
+    "IDARTICULO" BIGINT REFERENCES "ARTICULO"("IDARTICULO") ON DELETE SET NULL,
+    "CODBARRAS" VARCHAR(100),
     "DESCRIPCION" VARCHAR(300),
+    "TALLA" VARCHAR(50),
+    "TIPO_MOVIMIENTO" VARCHAR(50),
     "CANTIDAD" INTEGER DEFAULT 0,
     "STOCK_ANTERIOR" INTEGER DEFAULT 0,
     "STOCK_NUEVO" INTEGER DEFAULT 0,
     "MOTIVO" VARCHAR(500),
-    "USUARIO" VARCHAR(100),
-    "FECHA" TIMESTAMPTZ DEFAULT NOW()
+    "USUARIO" VARCHAR(100) DEFAULT 'ADMINISTRADOR',
+    "NOTAS" TEXT
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_MOV_INV_FECHA" ON "MOVIMIENTOS_INVENTARIO" ("FECHA");
+CREATE INDEX IF NOT EXISTS "WDIDX_MOV_INV_CODBARRAS" ON "MOVIMIENTOS_INVENTARIO" ("CODBARRAS");
+CREATE INDEX IF NOT EXISTS "WDIDX_MOV_INV_TIPO" ON "MOVIMIENTOS_INVENTARIO" ("TIPO_MOVIMIENTO");
 
--- Tabla EMPRESA_CONFIG
-CREATE TABLE IF NOT EXISTS "EMPRESA_CONFIG" (
-    "id" SERIAL8 PRIMARY KEY,
-    "clave" VARCHAR(100) UNIQUE,
-    "valor" TEXT,
-    "updated_at" TIMESTAMPTZ DEFAULT NOW()
+-- 13. TABLA: ACCESORIOS (CATÁLOGO DE COMPLEMENTOS)
+CREATE TABLE IF NOT EXISTS "ACCESORIOS" (
+    "IDACCESORIO" SERIAL8 PRIMARY KEY,
+    "CODBARRAS" VARCHAR(100) UNIQUE,
+    "DESCRIPCION" VARCHAR(300) NOT NULL,
+    "CATEGORIA" VARCHAR(100) DEFAULT 'GENERAL',
+    "TALLA" VARCHAR(50) DEFAULT 'U',
+    "STOCK" NUMERIC(10,2) DEFAULT 0,
+    "VALOR" NUMERIC(14,2) DEFAULT 0,
+    "VALORDEPOSITO" NUMERIC(14,2) DEFAULT 0,
+    "IDARTICULO_PADRE" INT8,
+    "NOTAS" TEXT,
+    "ACTIVO" BOOLEAN DEFAULT TRUE,
+    "FECHACREACION" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS "WDIDX_ACCESORIOS_CODBARRAS" ON "ACCESORIOS" ("CODBARRAS");
+CREATE INDEX IF NOT EXISTS "WDIDX_ACCESORIOS_CATEGORIA" ON "ACCESORIOS" ("CATEGORIA");
 
--- Tabla historial_backups
+-- 14. TABLA: historial_backups
 CREATE TABLE IF NOT EXISTS "historial_backups" (
     "id" SERIAL8 PRIMARY KEY,
     "fecha" TIMESTAMPTZ DEFAULT NOW(),
-    "tipo" VARCHAR(50),
-    "nombre_archivo" VARCHAR(255),
+    "tipo" VARCHAR(50) NOT NULL DEFAULT 'MANUAL_LOCAL',
+    "nombre_archivo" VARCHAR(255) NOT NULL,
     "tamano_bytes" BIGINT DEFAULT 0,
     "total_tablas" INTEGER DEFAULT 0,
     "total_registros" INTEGER DEFAULT 0,
     "detalles" JSONB DEFAULT '{}',
-    "estado" VARCHAR(20) DEFAULT 'EXITOSO',
+    "estado" VARCHAR(50) DEFAULT 'EXITOSO',
     "mensaje_error" TEXT,
-    "usuario_ejecutor" VARCHAR(100) DEFAULT 'SISTEMA'
+    "usuario_ejecutor" VARCHAR(100) DEFAULT 'ADMINISTRADOR',
+    "created_at" TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS "idx_historial_backups_fecha" ON "historial_backups" ("fecha" DESC);
+CREATE INDEX IF NOT EXISTS "idx_historial_backups_tipo" ON "historial_backups" ("tipo");
+
+-- 15. TABLAS AUXILIARES Y COMPATIBILIDAD
+CREATE TABLE IF NOT EXISTS "numero_de_serie" (
+    "IDnumero_de_serie" SERIAL8 PRIMARY KEY,
+    "SERIE" VARCHAR(50) UNIQUE
 );
 
--- PERMISOS
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+CREATE TABLE IF NOT EXISTS "clientesregistrados" (
+    "IDEmpresa" SERIAL8 PRIMARY KEY,
+    "RAZOSOCIAL" VARCHAR(100),
+    "ENOMBRE" VARCHAR(100),
+    "NIT" VARCHAR(50),
+    "ETIPO" VARCHAR(50),
+    "EDIRECCION" VARCHAR(100),
+    "ETELEFONO" VARCHAR(50) DEFAULT '0',
+    "EMAIL" VARCHAR(100),
+    "WEB" VARCHAR(100),
+    "SERIE" VARCHAR(50) UNIQUE,
+    "LOGO" BYTEA,
+    "IDnumero_de_serie" BIGINT DEFAULT 0,
+    "MENSAJE" VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS "Empresa" (
+    "IDEmpresa" SERIAL8 PRIMARY KEY,
+    "RAZOSOCIAL" VARCHAR(100),
+    "ENOMBRE" VARCHAR(100),
+    "NIT" VARCHAR(50),
+    "ETIPO" VARCHAR(50),
+    "EDIRECCION" VARCHAR(100),
+    "ETELEFONO" VARCHAR(50) DEFAULT '0',
+    "EMAIL" VARCHAR(100),
+    "WEB" VARCHAR(100),
+    "SERIE" VARCHAR(50),
+    "LOGO" BYTEA,
+    "MENSAJE" VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS "ESTADO_CLI" (
+    "IDESTADO_CLI" SERIAL8 PRIMARY KEY,
+    "ESTADOCLI" VARCHAR(50) NOT NULL DEFAULT '0'
+);
+
+CREATE TABLE IF NOT EXISTS "ESTADO_TRAJE" (
+    "IDESTADO_TRAJE" SERIAL8 PRIMARY KEY,
+    "ESTADO_TRAJE" SMALLINT DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS "F_PAGO" (
+    "FDEPAGO" VARCHAR(50) DEFAULT '0',
+    "IDESTADCLI" SERIAL8 PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS "OTRAS_F_PAGO" (
+    "IDOTRA_F_PAGO" SERIAL8 PRIMARY KEY,
+    "OTRAS_F_PAGO" VARCHAR(50)
+);
+
+-- 16. DATOS INICIALES POR DEFECTO (SEEDS)
+INSERT INTO "CAJAS" ("IDCAJAS", "NOMBRECAJA", "NUMERACION", "PREFIJO", "RESOLUCION")
+VALUES
+    (1, 'SERVIDOR', 100, 'G', '1366x768'),
+    (2, 'CAJA 2', 50, 'POS2-', '1366x768'),
+    (3, 'CAJA 3', 10, 'POS3-', '1366x768')
+ON CONFLICT ("NOMBRECAJA") DO NOTHING;
+
+INSERT INTO "LOGIN" ("IDLOGIN", "INOMBRE", "IAPELLIDO", "ILOGIN", "PASSWORD", "TIPO", "ACCESOALMENU")
+VALUES
+    (1, 'ADMINISTRADOR', 'PRINCIPAL', 101, '1234', true, true),
+    (2, 'CAJERO 1', 'MOSTRADOR', 102, '1234', false, true)
+ON CONFLICT ("ILOGIN") DO NOTHING;
+
+INSERT INTO "EMPRESA_CONFIG" ("ID", "NOMBRE_COMERCIAL", "RAZON_SOCIAL", "NIT", "DIRECCION", "CIUDAD", "TELEFONO1", "TELEFONO2", "EMAIL", "REGIMEN", "MENSAJE_PIE", "TERMINOS", "MONEDA", "SIMBOLO_MONEDA", "DIAS_ALQUILER")
+VALUES
+    (1, 'ELEGANCE RENTALS', 'ELEGANCE RENTALS S.A.S.', '900.123.456-7', 'Calle Principal # 10 - 25', 'Cali, Colombia', '315 123 4567', '', 'contacto@elegancerentals.com', 'Régimen Simplificado / No Responsable de IVA', '¡Gracias por su preferencia! Conserve este recibo para la devolución de su prenda y depósito.', 'El traje debe ser devuelto en la fecha pactada en perfecto estado.', 'COP', '$', 3)
+ON CONFLICT ("ID") DO NOTHING;
+
+-- 17. POLÍTICAS DE ACCESO (ROW LEVEL SECURITY) Y PERMISOS
+DO $$ 
+DECLARE
+    tbl text;
+    tables text[] := ARRAY[
+        'FACTURA',
+        'CAMPOFACTURA',
+        'CLIENTES',
+        'ARTICULO',
+        'CAJAS',
+        'ABONO_CLIENTE',
+        'depositoentregado',
+        'gastos',
+        'MOVIMIENTOS_INVENTARIO',
+        'EMPRESA_CONFIG',
+        'LOGIN',
+        'ACCESORIOS',
+        'historial_backups',
+        'clientesregistrados',
+        'numero_de_serie',
+        'Empresa',
+        'ESTADO_CLI',
+        'ESTADO_TRAJE',
+        'F_PAGO',
+        'OTRAS_F_PAGO'
+    ];
+BEGIN
+    FOREACH tbl IN ARRAY tables LOOP
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl AND table_schema = 'public') THEN
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
+            EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', 'policy_pos_full_' || tbl, tbl);
+            EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);', 'policy_pos_full_' || tbl, tbl);
+        END IF;
+    END LOOP;
+END $$;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+
+-- 18. SUSCRIPCIÓN EN TIEMPO REAL (REALTIME)
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE "FACTURA";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "CAJAS";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ARTICULO";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ABONO_CLIENTE";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ACCESORIOS";
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
 `;
 
 // ==========================================
@@ -332,6 +438,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 export function AsistenteRestauracionModal({
   open,
   onOpenChange,
+  onRestauracionExitosa,
 }: AsistenteRestauracionModalProps) {
   // Paso activo del asistente
   const [paso, setPaso] = useState<PasoAsistente>(1);
@@ -398,10 +505,27 @@ export function AsistenteRestauracionModal({
     try {
       await navigator.clipboard.writeText(texto);
       setCopiado(campo);
-      toast.success(`${campo} copiado`);
-      setTimeout(() => setCopiado(null), 2000);
+      toast.success(`${campo} copiado al portapapeles`);
+      setTimeout(() => setCopiado(null), 2500);
     } catch {
-      toast.error("No se pudo copiar");
+      toast.error("No se pudo copiar automáticamente. Puedes seleccionar el texto abajo y copiarlo.");
+    }
+  }
+
+  function handleDescargarSql() {
+    try {
+      const blob = new Blob([SQL_SCHEMA_PRINCIPAL], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "script_completo_pos_supabase.sql";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Script SQL completo descargado");
+    } catch {
+      toast.error("No se pudo descargar el archivo SQL");
     }
   }
 
@@ -476,20 +600,18 @@ export function AsistenteRestauracionModal({
   }
 
   // ==========================================
-  // PASO 3: INICIALIZAR BD (CREAR TABLAS)
+  // PASO 3: INICIALIZAR BD (VERIFICAR TABLAS)
   // ==========================================
 
   async function handleInicializarBD() {
     setInicializandoBD(true);
     setEstadoInicializacion("idle");
-    setMensajeInicializacion("Creando tablas y estructura de la base de datos...");
+    setMensajeInicializacion("Verificando tablas y estructura en Supabase...");
     setTablasCreadas([]);
 
     try {
       const client = crearClienteSupabase();
 
-      // Ejecutar el SQL via rpc si existe, o probar creación individual de tablas
-      // Intentamos insertar datos de prueba y verificar que existan las tablas
       const tablasPrincipales = [
         "ARTICULO",
         "CLIENTES",
@@ -502,6 +624,7 @@ export function AsistenteRestauracionModal({
         "MOVIMIENTOS_INVENTARIO",
         "CAJAS",
         "EMPRESA_CONFIG",
+        "LOGIN",
       ];
 
       const tablasVerificadas: string[] = [];
@@ -526,9 +649,9 @@ export function AsistenteRestauracionModal({
       if (tablasVerificadas.length >= tablasPrincipales.length * 0.7) {
         setEstadoInicializacion("ok");
         setMensajeInicializacion(
-          `¡Base de datos verificada! ${tablasVerificadas.length} de ${tablasPrincipales.length} tablas están accesibles.${
+          `¡Base de datos verificada! ${tablasVerificadas.length} de ${tablasPrincipales.length} tablas están listas y accesibles.${
             tablasConError.length > 0
-              ? ` (${tablasConError.length} tablas no encontradas: ${tablasConError.join(", ")} — se crearán durante la restauración)`
+              ? ` (${tablasConError.length} tablas no encontradas: ${tablasConError.join(", ")})`
               : ""
           }`
         );
@@ -536,15 +659,15 @@ export function AsistenteRestauracionModal({
       } else if (tablasVerificadas.length > 0) {
         setEstadoInicializacion("ok");
         setMensajeInicializacion(
-          `Base de datos parcialmente configurada: ${tablasVerificadas.length} tablas accesibles. Las tablas faltantes (${tablasConError.join(", ")}) deben crearse ejecutando las migraciones SQL desde el panel de Supabase.`
+          `Base de datos parcialmente configurada: ${tablasVerificadas.length} tablas accesibles. Para crear las faltantes (${tablasConError.join(", ")}), ejecuta el script SQL completo en el SQL Editor de Supabase.`
         );
         toast.warning("Base de datos parcialmente configurada");
       } else {
         setEstadoInicializacion("error");
         setMensajeInicializacion(
-          "No se encontraron tablas en la base de datos. Necesitas ejecutar las migraciones SQL desde el panel de Supabase (SQL Editor) para crear la estructura. Puedes copiar el script SQL que aparece abajo."
+          "No se encontraron tablas en la base de datos de Supabase. Para crearlas, copia o descarga el script SQL completo que aparece abajo, ejecútalo en el SQL Editor de Supabase y luego haz clic en 'Verificar' nuevamente."
         );
-        toast.error("La base de datos está vacía. Es necesario crear las tablas primero.");
+        toast.error("La base de datos está vacía. Es necesario ejecutar el script SQL en Supabase.");
       }
     } catch (err: any) {
       setEstadoInicializacion("error");
@@ -717,7 +840,7 @@ export function AsistenteRestauracionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed left-1/2 top-1/2 z-50 flex h-[92vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white p-0 shadow-2xl border border-slate-200 overflow-hidden font-sans select-none">
+      <DialogContent className="fixed left-1/2 top-1/2 z-[70] flex h-[92vh] w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white p-0 shadow-2xl border border-slate-200 overflow-hidden font-sans select-none">
         {/* HEADER */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-slate-900 px-6 py-4 text-white">
           <div className="flex items-center gap-3">
@@ -1081,28 +1204,46 @@ export function AsistenteRestauracionModal({
               {/* Script SQL para copiar si las tablas no existen */}
               {estadoInicializacion === "error" && (
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-                  <div className="bg-slate-800 px-4 py-2.5 flex items-center justify-between">
+                  <div className="bg-slate-800 px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-xs font-black uppercase text-white flex items-center gap-2">
                       <Settings className="h-3.5 w-3.5 text-indigo-400" />
-                      Script SQL — Copiar y ejecutar en SQL Editor de Supabase
+                      Script SQL Completo (Todas las Tablas de la BD)
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopiar(SQL_SCHEMA_PRINCIPAL, "SQL")}
-                      className="flex items-center gap-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-1 text-[10px] font-bold text-white transition-all"
-                    >
-                      {copiado === "SQL" ? <CheckCheck className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                      {copiado === "SQL" ? "¡Copiado!" : "Copiar Script"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDescargarSql}
+                        className="flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1 text-[10px] font-bold text-white transition-all shadow-xs"
+                      >
+                        <Download className="h-3 w-3" />
+                        Descargar .sql
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiar(SQL_SCHEMA_PRINCIPAL, "SQL Completo")}
+                        className="flex items-center gap-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-1 text-[10px] font-bold text-white transition-all"
+                      >
+                        {copiado === "SQL Completo" ? <CheckCheck className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                        {copiado === "SQL Completo" ? "¡Copiado!" : "Copiar Script Completo"}
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-3 max-h-40 overflow-y-auto">
-                    <pre className="text-[10px] font-mono text-slate-600 whitespace-pre-wrap leading-relaxed">
-                      {SQL_SCHEMA_PRINCIPAL.slice(0, 800)}...
+                  <div className="p-3 max-h-56 overflow-y-auto bg-slate-900 border-b border-slate-800">
+                    <pre className="text-[10px] font-mono text-emerald-400 whitespace-pre leading-relaxed select-all">
+                      {SQL_SCHEMA_PRINCIPAL.trim()}
                     </pre>
                   </div>
-                  <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 text-[11px] text-amber-800 flex items-start gap-2">
-                    <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
-                    <span>Copia este script, ve al <strong>SQL Editor</strong> de tu proyecto en Supabase y ejecútalo. Luego vuelve aquí y presiona "Verificar" de nuevo.</span>
+                  <div className="px-4 py-3 bg-amber-50 text-[11px] text-amber-900 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2 font-bold text-amber-950">
+                      <Info className="h-4 w-4 shrink-0 text-amber-600" />
+                      <span>Instrucciones para crear la base de datos en Supabase:</span>
+                    </div>
+                    <ol className="list-decimal pl-5 space-y-1 text-slate-700">
+                      <li>Haz clic arriba en <strong>&quot;Copiar Script Completo&quot;</strong> (o <strong>&quot;Descargar .sql&quot;</strong>).</li>
+                      <li>Abre el panel de tu proyecto en Supabase y entra a la sección <strong>SQL Editor</strong> en el menú izquierdo.</li>
+                      <li>Crea una nueva consulta (<strong>&quot;New query&quot;</strong>), pega el script y pulsa <strong>RUN</strong> (Ejecutar).</li>
+                      <li>Regresa aquí y haz clic en el botón azul <strong>&quot;Verificar Tablas de la Base de Datos&quot;</strong>.</li>
+                    </ol>
                   </div>
                 </div>
               )}
@@ -1312,7 +1453,10 @@ export function AsistenteRestauracionModal({
           ) : (
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                onRestauracionExitosa?.();
+                onOpenChange(false);
+              }}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 transition-all shadow-sm"
             >
               <Check className="h-4 w-4" />

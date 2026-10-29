@@ -35,6 +35,7 @@ import {
   Crown,
   Globe,
   ExternalLink,
+  Rocket,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { UsuarioPos } from "@/services/authPosService";
@@ -110,6 +111,7 @@ export function MenuPrincipal({
     // Si es un módulo administrativo crítico y el usuario es CAJERO, solicitar autorización PIN
     const esModuloCritico =
       modulo === "mantenimiento_migracion" ||
+      modulo === "asistente_restauracion" ||
       modulo === "config_cajas" ||
       modulo === "config_empresa" ||
       modulo === "gestion_usuarios";
@@ -511,20 +513,44 @@ export function MenuPrincipal({
             )}
 
             {(permisos.gestionUsuarios || usuario.rol === "ADMIN" || usuario.rol === "SUPER ADMIN") && (
-              <button
-                type="button"
-                onClick={() => handleAccionConPermiso("mantenimiento_migracion", true, "Mantenimiento & Migración")}
-                className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-amber-900 hover:bg-amber-50 transition-all group cursor-pointer ${
-                  sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
-                }`}
-                title="Poner inventario en 0, reseteo del sistema y migración masiva por Excel / SQL"
-              >
-                <div className="flex items-center gap-3">
-                  <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 shrink-0 transition-colors" />
-                  {sidebarExpandido && <span className="font-extrabold text-amber-950">Mantenimiento & Migración</span>}
-                </div>
-                {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-amber-600" />}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleAccionConPermiso("mantenimiento_migracion", true, "Mantenimiento & Migración")}
+                  className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-amber-900 hover:bg-amber-50 transition-all group cursor-pointer ${
+                    sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
+                  }`}
+                  title="Poner inventario en 0, reseteo del sistema y migración masiva por Excel / SQL"
+                >
+                  <div className="flex items-center gap-3">
+                    <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 shrink-0 transition-colors" />
+                    {sidebarExpandido && <span className="font-extrabold text-amber-950">Mantenimiento & Migración</span>}
+                  </div>
+                  {sidebarExpandido && <ChevronRight className="h-3.5 w-3.5 text-amber-600" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAccionConPermiso("asistente_restauracion", true, "Asistente de Restauración & BD")}
+                  className={`flex w-full items-center rounded-xl py-2.5 font-bold text-sm text-cyan-900 hover:bg-cyan-50 transition-all group cursor-pointer mt-1 ${
+                    sidebarExpandido ? "justify-between px-3.5" : "justify-center px-0"
+                  }`}
+                  title="Asistente de 4 Pasos: Credenciales Supabase, Script SQL Completo y Restauración JSON"
+                >
+                  <div className="flex items-center gap-3">
+                    <Rocket className="h-5 w-5 text-cyan-600 group-hover:scale-110 shrink-0 transition-transform" />
+                    {sidebarExpandido && (
+                      <div className="flex flex-col text-left">
+                        <span className="font-extrabold text-cyan-950 text-xs">Asistente Restauración & BD</span>
+                        <span className="text-[10px] text-cyan-700 font-semibold -mt-0.5">Conexión & Script SQL</span>
+                      </div>
+                    )}
+                  </div>
+                  {sidebarExpandido && (
+                    <span className="text-[9px] bg-cyan-600 text-white px-1.5 py-0.5 rounded font-black uppercase">Wizard</span>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </nav>

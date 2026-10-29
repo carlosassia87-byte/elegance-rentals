@@ -96,6 +96,7 @@ import { InventarioStockModal } from "./InventarioStockModal";
 import { ReimpresionFacturasModal } from "./ReimpresionFacturasModal";
 import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
 import { MantenimientoMigracionModal } from "./MantenimientoMigracionModal";
+import { AsistenteRestauracionModal } from "./AsistenteRestauracionModal";
 import { GestionAccesoriosModal } from "./GestionAccesoriosModal";
 import { SeleccionAccesoriosPosModal } from "./SeleccionAccesoriosPosModal";
 import { extraerPiezasYNombreTraje } from "@/services/accesoriosService";
@@ -328,6 +329,7 @@ export function PuntoDeVenta() {
   const [modalReimpresionFacturas, setModalReimpresionFacturas] = useState(false);
   const [modalAlertasRetrasos, setModalAlertasRetrasos] = useState(false);
   const [modalMantenimiento, setModalMantenimiento] = useState(false);
+  const [modalAsistenteRestauracion, setModalAsistenteRestauracion] = useState(false);
   const [modalAccesoriosGestion, setModalAccesoriosGestion] = useState(false);
   const [modalSeleccionAccesoriosPos, setModalSeleccionAccesoriosPos] = useState(false);
   const [accesorioTrajeReferencia, setAccesorioTrajeReferencia] = useState<Articulo | ItemAlquilerCarrito | null>(null);
@@ -925,6 +927,9 @@ export function PuntoDeVenta() {
         break;
       case "mantenimiento_migracion":
         ejecutarAccionProtegida(() => setModalMantenimiento(true), "Mantenimiento y Migración de Base de Datos");
+        break;
+      case "asistente_restauracion":
+        ejecutarAccionProtegida(() => setModalAsistenteRestauracion(true), "Asistente de Restauración y Conexión BD");
         break;
       case "accesorios":
         setModalAccesoriosGestion(true);
@@ -4684,6 +4689,19 @@ export function PuntoDeVenta() {
           cajeroNombre={usuarioActivo?.nombre || cajero}
           onDatosActualizados={() => {
             cargarArticulos();
+          }}
+        />
+      )}
+
+      {/* =========================================================
+          MODAL: ASISTENTE DE RESTAURACIÓN & CONEXIÓN BD (4 PASOS)
+      ========================================================= */}
+      {modalAsistenteRestauracion && (
+        <AsistenteRestauracionModal
+          open={modalAsistenteRestauracion}
+          onOpenChange={setModalAsistenteRestauracion}
+          onRestauracionExitosa={() => {
+            cargarArticulos(true);
           }}
         />
       )}

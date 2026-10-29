@@ -228,6 +228,26 @@ CREATE INDEX IF NOT EXISTS "WDIDX_ACCESORIOS_CODBARRAS" ON "ACCESORIOS" ("CODBAR
 CREATE INDEX IF NOT EXISTS "WDIDX_ACCESORIOS_CATEGORIA" ON "ACCESORIOS" ("CATEGORIA");
 
 -- ==============================================================================
+-- 11.C. TABLA: historial_backups (Auditoría de Copias de Seguridad)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS "historial_backups" (
+    "id" SERIAL8 PRIMARY KEY,
+    "fecha" TIMESTAMPTZ DEFAULT NOW(),
+    "tipo" VARCHAR(50) NOT NULL DEFAULT 'MANUAL_LOCAL',
+    "nombre_archivo" VARCHAR(255) NOT NULL,
+    "tamano_bytes" BIGINT DEFAULT 0,
+    "total_tablas" INTEGER DEFAULT 0,
+    "total_registros" INTEGER DEFAULT 0,
+    "detalles" JSONB DEFAULT '{}',
+    "estado" VARCHAR(50) DEFAULT 'EXITOSO',
+    "mensaje_error" TEXT,
+    "usuario_ejecutor" VARCHAR(100) DEFAULT 'ADMINISTRADOR',
+    "created_at" TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS "idx_historial_backups_fecha" ON "historial_backups" ("fecha" DESC);
+CREATE INDEX IF NOT EXISTS "idx_historial_backups_tipo" ON "historial_backups" ("tipo");
+
+-- ==============================================================================
 -- 12. DATOS INICIALES POR DEFECTO (SEEDS)
 -- ==============================================================================
 
@@ -265,10 +285,50 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- ==============================================================================
--- 13. PERMISOS Y ROLES EN SUPABASE (Acceso público y autenticado)
+-- 13. POLÍTICAS DE SEGURIDAD (RLS) Y PRIVILEGIOS DE ACCESO EN SUPABASE
 -- ==============================================================================
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+DO $$ 
+DECLARE
+    tbl text;
+    tables text[] := ARRAY[
+        'FACTURA',
+        'CAMPOFACTURA',
+        'CLIENTES',
+        'ARTICULO',
+        'CAJAS',
+        'ABONO_CLIENTE',
+        'depositoentregado',
+        'gastos',
+        'MOVIMIENTOS_INVENTARIO',
+        'EMPRESA_CONFIG',
+        'LOGIN',
+        'ACCESORIOS',
+        'historial_backups'
+    ];
+BEGIN
+    FOREACH tbl IN ARRAY tables LOOP
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl AND table_schema = 'public') THEN
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
+            EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', 'policy_pos_full_' || tbl, tbl);
+            EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);', 'policy_pos_full_' || tbl, tbl);
+        END IF;
+    END LOOP;
+END $$;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+
+-- 14. TIEMPO REAL (REALTIME)
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE "FACTURA";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "CAJAS";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ARTICULO";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ABONO_CLIENTE";
+    ALTER PUBLICATION supabase_realtime ADD TABLE "ACCESORIOS";
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
+

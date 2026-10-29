@@ -27,6 +27,7 @@ import {
   Crown,
   Globe,
   RefreshCw,
+  Rocket,
 } from "lucide-react";
 import type { TerminalConfig, EmpresaConfig } from "@/services/empresaCajaService";
 import type { UsuarioPos, PermisosUsuario } from "@/services/authPosService";
@@ -381,17 +382,34 @@ export function SidebarMenu({
             )}
 
             {(permisos.gestionUsuarios || usuario?.rol === "ADMIN" || usuario?.rol === "SUPER ADMIN") && (
-              <button
-                type="button"
-                onClick={() => handleItemClick("mantenimiento_migracion")}
-                className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-black text-sm text-amber-950 bg-amber-50/70 hover:bg-amber-100 hover:text-amber-950 transition-all group border border-amber-200/60 cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 transition-colors" />
-                  <span>Mantenimiento & Migración</span>
-                </div>
-                <ChevronRight className="h-4 w-4 text-amber-600" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleItemClick("mantenimiento_migracion")}
+                  className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-black text-sm text-amber-950 bg-amber-50/70 hover:bg-amber-100 hover:text-amber-950 transition-all group border border-amber-200/60 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <Database className="h-5 w-5 text-amber-600 group-hover:text-amber-800 transition-colors" />
+                    <span>Mantenimiento & Migración</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-amber-600" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleItemClick("asistente_restauracion")}
+                  className="flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-black text-sm text-cyan-950 bg-cyan-50/70 hover:bg-cyan-100 hover:text-cyan-950 transition-all group border border-cyan-200/70 cursor-pointer mt-1"
+                >
+                  <div className="flex items-center gap-3">
+                    <Rocket className="h-5 w-5 text-cyan-600 group-hover:scale-110 transition-transform" />
+                    <div className="flex flex-col">
+                      <span>Asistente Restauración & BD</span>
+                      <span className="text-[10px] text-cyan-700 font-semibold -mt-0.5">Conexión, Script SQL y JSON</span>
+                    </div>
+                  </div>
+                  <span className="text-[9px] bg-cyan-600 text-white px-1.5 py-0.5 rounded font-black uppercase">Wizard</span>
+                </button>
+              </>
             )}
 
             {/* BOTÓN FORZAR ACTUALIZACIÓN / LIMPIAR CACHÉ PWA */}

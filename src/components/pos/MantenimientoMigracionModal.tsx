@@ -42,9 +42,11 @@ import {
   EyeOff,
   Copy,
   CheckCheck,
+  Rocket,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { AsistenteRestauracionModal } from "./AsistenteRestauracionModal";
 import {
   obtenerEstadisticasBaseDatos,
   ponerTodoElInventarioEnCero,
@@ -92,6 +94,7 @@ export function MantenimientoMigracionModal({
 }: MantenimientoMigracionModalProps) {
   // Pestaña Activa: "stock_cero" | "reseteo" | "excel" | "sql" | "backup" | "conexion_bd"
   const [tabActiva, setTabActiva] = useState<"stock_cero" | "reseteo" | "excel" | "sql" | "backup" | "conexion_bd">("stock_cero");
+  const [modalAsistente, setModalAsistente] = useState(false);
 
   // Estadísticas del sistema
   const [stats, setStats] = useState<EstadisticasBaseDatos>({
@@ -653,8 +656,9 @@ UPDATE ARTICULO SET STOCK = 0;`
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed left-1/2 top-1/2 z-50 flex h-[92vh] w-[95vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white p-0 shadow-2xl border border-slate-200 overflow-hidden font-sans select-none">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="fixed left-1/2 top-1/2 z-50 flex h-[92vh] w-[95vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white p-0 shadow-2xl border border-slate-200 overflow-hidden font-sans select-none">
         
         {/* =========================================================
             1. HEADER DEL MODAL
@@ -1603,6 +1607,36 @@ UPDATE ARTICULO SET STOCK = 0;`
                 </div>
               )}
 
+              {/* BANNER: ASISTENTE INTERACTIVO DE RESTAURACIÓN & SCRIPT SQL */}
+              <div className="rounded-2xl border-2 border-cyan-400 bg-gradient-to-r from-slate-900 via-slate-800 to-cyan-950 p-5 text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shrink-0">
+                    <Rocket className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black uppercase tracking-wider text-cyan-200">
+                        Asistente de Restauración & Script SQL (4 Pasos)
+                      </h4>
+                      <span className="rounded-full bg-cyan-400/20 px-2.5 py-0.5 text-[10px] font-black uppercase text-cyan-300 border border-cyan-400/30">
+                        Recomendado
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1 max-w-xl">
+                      Asistente interactivo guiado para conectar un nuevo proyecto Supabase, descargar/copiar el script SQL maestro completo (18 tablas) e importar tu respaldo JSON sin complicaciones.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalAsistente(true)}
+                  className="w-full md:w-auto px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg hover:shadow-cyan-500/30 transition-all shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Rocket className="h-4 w-4" />
+                  <span>Abrir Asistente 4 Pasos</span>
+                </button>
+              </div>
+
               {/* SECCIÓN: RESTAURACIÓN DE COPIAS DE SEGURIDAD (PROTEGIDA CON PIN) */}
               <div className="rounded-2xl border border-amber-300 bg-amber-50/40 p-5 shadow-xs space-y-4">
                 <div className="flex items-start gap-3">
@@ -1822,6 +1856,31 @@ UPDATE ARTICULO SET STOCK = 0;`
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* ACCESO AL ASISTENTE DE 4 PASOS */}
+              <div className="rounded-2xl border-2 border-indigo-300 bg-indigo-50/80 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shrink-0 shadow-sm">
+                    <Rocket className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-indigo-950 tracking-wider">
+                      ¿Creando una nueva BD o cambiando de cuenta Supabase?
+                    </h4>
+                    <p className="text-[11px] text-indigo-900/80">
+                      El Asistente Paso a Paso te guía para probar credenciales, generar el script SQL completo de 18 secciones y restaurar todos los registros.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalAsistente(true)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-sm transition-all shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Rocket className="h-4 w-4" />
+                  <span>Abrir Asistente 4 Pasos</span>
+                </button>
               </div>
 
               {/* Estado de Conexión Actual */}
@@ -2047,5 +2106,18 @@ UPDATE ARTICULO SET STOCK = 0;`
 
       </DialogContent>
     </Dialog>
+
+    {modalAsistente && (
+      <AsistenteRestauracionModal
+        open={modalAsistente}
+        onOpenChange={setModalAsistente}
+        onRestauracionExitosa={() => {
+          cargarEstadisticas();
+          cargarHistorial();
+          onDatosActualizados?.();
+        }}
+      />
+    )}
+  </>
   );
 }
