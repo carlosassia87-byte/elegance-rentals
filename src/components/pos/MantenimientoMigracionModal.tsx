@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { resetSupabaseClient } from "@/integrations/supabase/client";
 import { AsistenteRestauracionModal } from "./AsistenteRestauracionModal";
 import {
   obtenerEstadisticasBaseDatos,
@@ -174,9 +175,9 @@ export function MantenimientoMigracionModal({
   // Cargar datos de conexión BD al abrir
   useEffect(() => {
     if (open) {
-      const url = import.meta.env['VITE_SUPABASE_URL'] || localStorage.getItem('custom_supabase_url') || '';
-      const key = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || localStorage.getItem('custom_supabase_key') || '';
-      const pid = import.meta.env['VITE_SUPABASE_PROJECT_ID'] || localStorage.getItem('custom_supabase_project_id') || '';
+      const url = localStorage.getItem('custom_supabase_url') || import.meta.env['VITE_SUPABASE_URL'] || '';
+      const key = localStorage.getItem('custom_supabase_key') || import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || '';
+      const pid = localStorage.getItem('custom_supabase_project_id') || import.meta.env['VITE_SUPABASE_PROJECT_ID'] || '';
       setBdUrl(url);
       setBdKey(key);
       setBdProjectId(pid);
@@ -237,15 +238,33 @@ export function MantenimientoMigracionModal({
   function handleGuardarConexion() {
     setGuardandoConexion(true);
     try {
-      localStorage.setItem('custom_supabase_url', bdUrl);
-      localStorage.setItem('custom_supabase_key', bdKey);
-      localStorage.setItem('custom_supabase_project_id', bdProjectId);
-      toast.success('Credenciales guardadas en el almacenamiento local. Recarga la página para aplicar los cambios.');
+      const cleanUrl = bdUrl.trim().replace(/\/$/, '');
+      const cleanKey = bdKey.trim();
+      const cleanPid = bdProjectId.trim();
+      localStorage.setItem('custom_supabase_url', cleanUrl);
+      localStorage.setItem('custom_supabase_key', cleanKey);
+      localStorage.setItem('custom_supabase_project_id', cleanPid);
+      resetSupabaseClient();
+      toast.success('¡Credenciales guardadas en el almacenamiento local! La aplicación ahora usará esta base de datos.');
     } catch (err: any) {
       toast.error('Error al guardar las credenciales');
     } finally {
       setGuardandoConexion(false);
     }
+  }
+
+  function handleRestablecerDefecto() {
+    localStorage.removeItem('custom_supabase_url');
+    localStorage.removeItem('custom_supabase_key');
+    localStorage.removeItem('custom_supabase_project_id');
+    const defaultUrl = import.meta.env['VITE_SUPABASE_URL'] || '';
+    const defaultKey = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || '';
+    const defaultPid = import.meta.env['VITE_SUPABASE_PROJECT_ID'] || '';
+    setBdUrl(defaultUrl);
+    setBdKey(defaultKey);
+    setBdProjectId(defaultPid);
+    resetSupabaseClient();
+    toast.info('Credenciales restablecidas a los valores predeterminados de entorno.');
   }
 
   async function handleCopiarAlPortapapeles(texto: string, campo: string) {
@@ -2045,6 +2064,17 @@ UPDATE ARTICULO SET STOCK = 0;`
                   <span>Guardar en Almacenamiento Local</span>
                 </button>
               </div>
+
+              {typeof window !== "undefined" && localStorage.getItem("custom_supabase_url") && (
+                <button
+                  type="button"
+                  onClick={handleRestablecerDefecto}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs py-2 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Restablecer credenciales predeterminadas del sistema (.env)</span>
+                </button>
+              )}
 
               {/* Información Adicional */}
               <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 space-y-3">

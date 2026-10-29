@@ -33,6 +33,7 @@ import {
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { createClient } from "@supabase/supabase-js";
+import { resetSupabaseClient } from "@/integrations/supabase/client";
 
 // ==========================================
 // TIPOS E INTERFACES
@@ -584,6 +585,7 @@ export function AsistenteRestauracionModal({
         // Guardar credenciales en localStorage
         localStorage.setItem("custom_supabase_url", cleanUrl);
         localStorage.setItem("custom_supabase_key", cleanKey);
+        resetSupabaseClient();
         toast.success("Conexión verificada y credenciales guardadas");
       } else {
         setEstadoConexion("error");
@@ -806,6 +808,7 @@ export function AsistenteRestauracionModal({
         // Guardar las credenciales en .env format para el usuario
         localStorage.setItem("custom_supabase_url", bdUrl);
         localStorage.setItem("custom_supabase_key", bdKey);
+        resetSupabaseClient();
       } else {
         setEstadoRestauracion("error");
         setProgresoRestauracion("No se pudieron restaurar registros. Verifica que las tablas existan en la BD.");
