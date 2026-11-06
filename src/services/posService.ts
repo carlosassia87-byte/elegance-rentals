@@ -919,6 +919,186 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
   }
 }
 
+/**
+ * Inserta una factura garantizando todos los campos obligatorios y auto-recuperándose
+ * si la secuencia de PostgreSQL (FACTURA_pkey / IDFACTURA) está desincronizada.
+ */
+export async function insertarFacturaSegura(
+  facturaData: Record<string, any>
+): Promise<{ data: Factura | null; error: any }> {
+  try {
+    const truncate = (val: any, maxLen = 50) =>
+      val !== null && val !== undefined ? String(val).trim().slice(0, maxLen) : "";
+
+    const modo = truncate(facturaData.MODO || "ALQUILER", 50);
+    let estadoCliente = truncate(facturaData.ESTADOCLIENTE || "", 50);
+    if (!estadoCliente) {
+      const m = modo.toUpperCase();
+      estadoCliente = m === "VENTA" ? "VENTA" : m === "APARTADO" ? "EN BODEGA" : "EN ALQUILER";
+    }
+
+    const clean: Record<string, any> = {
+      NUMEROFACT: truncate(facturaData.NUMEROFACT || "F-0", 50),
+      FECHASALIDA: facturaData.FECHASALIDA
+        ? String(facturaData.FECHASALIDA).split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      FECHAENTRADA: facturaData.FECHAENTRADA
+        ? String(facturaData.FECHAENTRADA).split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      FTOTALDEPOSITO: Number(facturaData.FTOTALDEPOSITO) || 0,
+      FTOTALVENTADEPOSITO: Number(facturaData.FTOTALVENTADEPOSITO) || 0,
+      FORMAPAGO: truncate(facturaData.FORMAPAGO || "EFECTIVO", 50),
+      MODO: modo,
+      VENDEDOR: truncate(facturaData.VENDEDOR || "ADMINISTRADOR", 50),
+      CCLIENTE: truncate((facturaData.CCLIENTE || "CLIENTE GENERAL").toUpperCase(), 50),
+      CAMBIOS: Number(facturaData.CAMBIOS) || 0,
+      PAGACON: Number(facturaData.PAGACON) || 0,
+      AUTOMATIC: Math.floor(Number(facturaData.AUTOMATIC) || 0),
+      IDFCLIENTES: Math.floor(Number(facturaData.IDFCLIENTES) || 0),
+      ESTADOCLIENTE: estadoCliente,
+      IDF_PAGO: Math.floor(Number(facturaData.IDF_PAGO) || 0),
+      CDIRECCION: truncate(facturaData.CDIRECCION || "", 50),
+      CTELEFONO: truncate(facturaData.CTELEFONO || "", 50),
+      CTELEFONO1: truncate(facturaData.CTELEFONO1 || "", 50),
+      CEMPRESA: truncate(facturaData.CEMPRESA || "", 50),
+      CCEDULA: truncate(String(facturaData.CCEDULA || "0"), 50),
+      GASTOS: truncate(facturaData.GASTOS || "", 50),
+      PAGOCONEFECTIVO: Number(facturaData.PAGOCONEFECTIVO) || 0,
+      PAGOCONTRANFERENCIA: Number(facturaData.PAGOCONTRANFERENCIA) || 0,
+      FTOTALALQUILER: Number(facturaData.FTOTALALQUILER) || 0,
+      FPAGOTRANS: truncate(facturaData.FPAGOTRANS || "", 50),
+      DESCUENTO: Number(facturaData.DESCUENTO) || 0,
+      P_SALDO_EFECTIVO: Number(facturaData.P_SALDO_EFECTIVO) || 0,
+      P_SALDO_TRANFERENCIA: Number(facturaData.P_SALDO_TRANFERENCIA) || 0,
+      TOTAL_SALDO: Number(facturaData.TOTAL_SALDO) || 0,
+      FECHA_RECIBO: facturaData.FECHA_RECIBO
+        ? String(facturaData.FECHA_RECIBO).split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      SALDOA_BONADO: Number(facturaData.SALDOA_BONADO) || 0,
+      FECHAINGRESO: facturaData.FECHAINGRESO
+        ? String(facturaData.FECHAINGRESO).split("T")[0]
+        : new Date().toISOString().split("T")[0],
+    };
+
+    if (facturaData.IDFACTURA && Number(facturaData.IDFACTURA) > 0) {
+      clean.IDFACTURA = Number(facturaData.IDFACTURA);
+    }
+
+    // 1. Intento inicial de inserción
+    let { data, error } = await supabase
+      .from("FACTURA" as any)
+      .insert(clean)
+      .select()
+      .single();
+
+    // 2. Si falló por desincronización de secuencia en la clave primaria FACTURA_pkey
+    if (
+      error &&
+      (error.code === "23505" ||
+        error.message?.includes("FACTURA_pkey") ||
+        (error.message?.includes("duplicate key") && !error.message?.includes("NUMEROFACT")))
+    ) {
+      console.warn("⚠️ [FACTURA] Desincronización de secuencia FACTURA_pkey detectada. Calculando MAX(IDFACTURA) + 1...");
+      const { data: maxRows } = await supabase
+        .from("FACTURA" as any)
+        .select("IDFACTURA")
+        .order("IDFACTURA", { ascending: false })
+        .limit(1);
+
+      const maxId = Number((maxRows as any[])?.[0]?.IDFACTURA) || 0;
+      const resRetry = await supabase
+        .from("FACTURA" as any)
+        .insert({ ...clean, IDFACTURA: maxId + 1 })
+        .select()
+        .single();
+
+      if (!resRetry.error && resRetry.data) {
+        data = resRetry.data;
+        error = null;
+      } else {
+        error = resRetry.error;
+      }
+    }
+
+    return { data: (data as unknown as Factura) || null, error };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * Inserta campos de factura garantizando integridad de datos y auto-recuperándose
+ * si la secuencia de PostgreSQL (CAMPOFACTURA_pkey / AUTOMATIC) está desincronizada.
+ */
+export async function insertarCamposFacturaSeguro(
+  items: any[]
+): Promise<{ data: any; error: any }> {
+  try {
+    if (!items || items.length === 0) return { data: [], error: null };
+
+    const truncate = (val: any, maxLen = 50) =>
+      val !== null && val !== undefined ? String(val).trim().slice(0, maxLen) : "";
+
+    const cleanItems = items.map((item) => ({
+      DESCRIPCION: truncate(item.DESCRIPCION || "PRENDA DE VESTIR / TRAJE", 300),
+      CANTIDAD: Math.max(1, Number(item.CANTIDAD) || 1),
+      VALOR: Number(item.VALOR) || 0,
+      TOTAL: Number(item.TOTAL) || 0,
+      BARRAS: truncate(item.BARRAS || "0", 50),
+      NUMEROFACT: truncate(item.NUMEROFACT || "", 50),
+      IDFACTURA: Math.floor(Number(item.IDFACTURA) || 0),
+      VALORDEPOSITO: Number(item.VALORDEPOSITO) || 0,
+      TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
+      TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
+      ES_ACCESORIO: Boolean((item as any).ES_ACCESORIO),
+      ID_TRAJE_PADRE: truncate((item as any).ID_TRAJE_PADRE || "", 50),
+      PIEZAS_INCLUIDAS: truncate((item as any).PIEZAS_INCLUIDAS || "", 500),
+    }));
+
+    let { data, error } = await supabase
+      .from("CAMPOFACTURA" as any)
+      .insert(cleanItems)
+      .select();
+
+    // Si falló por desincronización de secuencia en CAMPOFACTURA_pkey (columna AUTOMATIC)
+    if (
+      error &&
+      (error.code === "23505" ||
+        error.message?.includes("CAMPOFACTURA_pkey") ||
+        error.message?.includes("duplicate key"))
+    ) {
+      console.warn("⚠️ [CAMPOFACTURA] Desincronización de secuencia CAMPOFACTURA_pkey detectada. Calculando MAX(AUTOMATIC) + 1...");
+      const { data: maxRows } = await supabase
+        .from("CAMPOFACTURA" as any)
+        .select("AUTOMATIC")
+        .order("AUTOMATIC", { ascending: false })
+        .limit(1);
+
+      let maxAuto = Number((maxRows as any[])?.[0]?.AUTOMATIC) || 0;
+      const itemsConAuto = cleanItems.map((it) => {
+        maxAuto += 1;
+        return { ...it, AUTOMATIC: maxAuto };
+      });
+
+      const resRetry = await supabase
+        .from("CAMPOFACTURA" as any)
+        .insert(itemsConAuto)
+        .select();
+
+      if (!resRetry.error && resRetry.data) {
+        data = resRetry.data;
+        error = null;
+      } else {
+        error = resRetry.error;
+      }
+    }
+
+    return { data, error };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}
+
 export async function registrarAlquilerFactura(
   facturaData: Omit<Factura, "IDFACTURA">,
   items: Omit<CampoFactura, "AUTOMATIC" | "IDFACTURA">[],
@@ -1028,19 +1208,19 @@ export async function registrarAlquilerFactura(
     while (intentosGuardado < maxIntentos && !guardadoEnSupabase) {
       try {
         cleanFacturaData["NUMEROFACT"] = sNumeroFactura;
-        const { data: facturaRaw, error: errorFactura } = await supabase
-          .from("FACTURA" as any)
-          .insert(cleanFacturaData)
-          .select()
-          .single();
+        const { data: facturaRaw, error: errorFactura } = await insertarFacturaSegura(cleanFacturaData);
 
         if (!errorFactura && facturaRaw) {
           facturaInsertada = facturaRaw as unknown as Factura;
           guardadoEnSupabase = true;
           break;
         } else if (errorFactura) {
-          // Si hubo colisión de concurrencia con otra PC (código 23505 / duplicate key en NUMEROFACT)
-          if (errorFactura.code === "23505" || errorFactura.message?.includes("duplicate key") || errorFactura.message?.includes("NUMEROFACT")) {
+          // Si hubo colisión de concurrencia con otra PC (duplicate key en NUMEROFACT)
+          if (
+            errorFactura.message?.includes("FACTURA_NUMEROFACT_key") ||
+            errorFactura.message?.includes("NUMEROFACT") ||
+            errorFactura.code === "23505"
+          ) {
             console.warn(`[POS Concurrencia] Colisión detectada en factura ${sNumeroFactura}. Reintentando con siguiente número...`);
             sNumeroFactura = await generarNumeroFactura(nombreCaja, prefijoDefault);
             intentosGuardado++;
@@ -1064,10 +1244,10 @@ export async function registrarAlquilerFactura(
       } as Factura;
     }
 
-    // 4. Insertar los ítems en CAMPOFACTURA en Supabase (sin AUTOMATIC para permitir auto-serial de PostgreSQL)
+    // 4. Insertar los ítems en CAMPOFACTURA en Supabase de forma segura (auto-recuperable ante desincronización)
     const camposParaSupabase = items.map((item) => ({
-      DESCRIPCION: truncate(item.DESCRIPCION || "", 300),
-      CANTIDAD: Number(item.CANTIDAD) || 1,
+      DESCRIPCION: truncate(item.DESCRIPCION || "PRENDA DE VESTIR / TRAJE", 300),
+      CANTIDAD: Math.max(1, Number(item.CANTIDAD) || 1),
       VALOR: Number(item.VALOR) || 0,
       TOTAL: Number(item.TOTAL) || 0,
       BARRAS: truncate(item.BARRAS || "0", 50),
@@ -1082,9 +1262,7 @@ export async function registrarAlquilerFactura(
     }));
 
     try {
-      const { error: errCampos } = await supabase
-        .from("CAMPOFACTURA" as any)
-        .insert(camposParaSupabase);
+      const { error: errCampos } = await insertarCamposFacturaSeguro(camposParaSupabase);
       if (errCampos) {
         console.error("Error insertando CAMPOFACTURA en Supabase:", errCampos.message);
       }

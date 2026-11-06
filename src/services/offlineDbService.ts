@@ -263,7 +263,10 @@ export async function guardarFacturasLote(
     if (abonos && abonos.length > 0) {
       const storeAbonos = tx.objectStore("abonos");
       for (const a of abonos) {
-        if (a && a.IDABONO_CLIENTE) storeAbonos.put(a);
+        if (a) {
+          if (!a.IDABONO_CLIENTE) (a as any).IDABONO_CLIENTE = Date.now();
+          storeAbonos.put(a);
+        }
       }
     }
 

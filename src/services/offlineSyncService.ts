@@ -22,7 +22,13 @@ import {
   SyncQueueItem,
   actualizarIdFacturaOffline,
 } from "./offlineDbService";
-import { indexarArticulosEnMemoria, indexarClientesEnMemoria, generarNumeroFactura } from "./posService";
+import {
+  indexarArticulosEnMemoria,
+  indexarClientesEnMemoria,
+  generarNumeroFactura,
+  insertarFacturaSegura,
+  insertarCamposFacturaSeguro,
+} from "./posService";
 import { saveLocalAccesorios } from "./accesoriosService";
 import { insertarDepositoEntregadoSeguro } from "./devolucionesService";
 
@@ -550,20 +556,35 @@ function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
     if (!COLUMNAS_FACTURA.has(key) || val === undefined) continue;
 
     if (VARCHAR_50_FACTURA.has(key)) {
-      clean[key] = val !== null ? String(val).trim().slice(0, 50) : null;
+      clean[key] = val !== null ? String(val).trim().slice(0, 50) : "";
     } else if (NUMERIC_FACTURA.has(key)) {
       clean[key] = val !== null ? Number(val) || 0 : 0;
     } else if (BIGINT_FACTURA.has(key)) {
       clean[key] = val !== null ? Math.floor(Number(val) || 0) : 0;
     } else if (key.startsWith("FECHA")) {
-      clean[key] = val ? String(val).split("T")[0] : null;
+      clean[key] = val ? String(val).split("T")[0] : new Date().toISOString().split("T")[0];
     } else {
       clean[key] = val;
     }
   }
-  if (!clean["NUMEROFACT"] && factura.NUMEROFACT) {
-    clean["NUMEROFACT"] = String(factura.NUMEROFACT).trim().slice(0, 50);
+
+  // Garantías estrictas de campos obligatorios
+  clean["NUMEROFACT"] = clean["NUMEROFACT"] || String(factura.NUMEROFACT || "F-0").trim().slice(0, 50);
+  clean["CCLIENTE"] = clean["CCLIENTE"] || "CLIENTE GENERAL";
+  clean["CCEDULA"] = clean["CCEDULA"] || "0";
+  clean["FORMAPAGO"] = clean["FORMAPAGO"] || "EFECTIVO";
+  clean["MODO"] = clean["MODO"] || "ALQUILER";
+  clean["VENDEDOR"] = clean["VENDEDOR"] || "ADMINISTRADOR";
+  clean["FECHASALIDA"] = clean["FECHASALIDA"] || new Date().toISOString().split("T")[0];
+  clean["FECHAENTRADA"] = clean["FECHAENTRADA"] || new Date().toISOString().split("T")[0];
+  clean["FECHA_RECIBO"] = clean["FECHA_RECIBO"] || new Date().toISOString().split("T")[0];
+  clean["FECHAINGRESO"] = clean["FECHAINGRESO"] || new Date().toISOString().split("T")[0];
+
+  if (!clean["ESTADOCLIENTE"]) {
+    const modoUpper = String(clean["MODO"]).toUpperCase();
+    clean["ESTADOCLIENTE"] = modoUpper === "VENTA" ? "VENTA" : modoUpper === "APARTADO" ? "EN BODEGA" : "EN ALQUILER";
   }
+
   return clean;
 }
 
@@ -592,7 +613,7 @@ function sanitizarItemCampoFactura(item: any): Record<string, any> {
     if (!COLUMNAS_CAMPOFACTURA.has(key) || val === undefined) continue;
 
     if (key === "DESCRIPCION") {
-      clean[key] = val !== null ? String(val).trim().slice(0, 300) : "";
+      clean[key] = val !== null ? String(val).trim().slice(0, 300) : "PRENDA DE VESTIR / TRAJE";
     } else if (key === "PIEZAS_INCLUIDAS") {
       clean[key] = val !== null ? String(val).trim().slice(0, 500) : "";
     } else if (VARCHAR_50_CAMPOFACTURA.has(key)) {
@@ -607,6 +628,11 @@ function sanitizarItemCampoFactura(item: any): Record<string, any> {
       clean[key] = val;
     }
   }
+
+  clean["DESCRIPCION"] = clean["DESCRIPCION"] || "PRENDA DE VESTIR / TRAJE";
+  clean["CANTIDAD"] = Math.max(1, Number(clean["CANTIDAD"]) || 1);
+  clean["BARRAS"] = clean["BARRAS"] || "0";
+
   return clean;
 }
 
@@ -721,26 +747,17 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
               cleanFactura["NUMEROFACT"] = nuevoNum;
               delete cleanFactura["IDFACTURA"];
 
-              const { data: factCreada, error: errFact } = await supabase
-                .from("FACTURA" as any)
-                .insert(cleanFactura)
-                .select("IDFACTURA")
-                .maybeSingle();
-
-              if (!errFact && factCreada) {
+              const { data: factCreada, error: errFact } = await insertarFacturaSegura(cleanFactura);
+              if (errFact) throw errFact;
+              if (factCreada) {
                 realIdFactura = Number((factCreada as any).IDFACTURA);
               }
             }
           } else {
             delete cleanFactura["IDFACTURA"];
-            const { data: factCreada, error: errFact } = await supabase
-              .from("FACTURA" as any)
-              .insert(cleanFactura)
-              .select("IDFACTURA")
-              .maybeSingle();
-
+            const { data: factCreada, error: errFact } = await insertarFacturaSegura(cleanFactura);
             if (errFact && errFact.code !== "23505") throw errFact;
-            if (factCreada && (factCreada as any).IDFACTURA) {
+            if (factCreada) {
               realIdFactura = Number((factCreada as any).IDFACTURA);
             }
           }
@@ -771,9 +788,7 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                 .eq("NUMEROFACT", numFact);
             }
 
-            const { error: errItems } = await supabase
-              .from("CAMPOFACTURA" as any)
-              .insert(cleanItems);
+            const { error: errItems } = await insertarCamposFacturaSeguro(cleanItems);
             if (errItems) console.warn("Aviso items sincronizados:", errItems.message);
           }
 
@@ -811,19 +826,40 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
         } else if (item.tipo === "NUEVO_ABONO") {
           const { abono, facturaNumero, nuevoSaldo } = item.datos;
 
-          const { error: errAbono } = await supabase
+          const cleanAbono = { ...abono };
+          delete cleanAbono.IDABONO_CLIENTE; // permitir auto-generación de PostgreSQL
+          let { error: errAbono } = await supabase
             .from("ABONO_CLIENTE" as any)
-            .insert(abono);
+            .insert(cleanAbono);
 
-          if (errAbono) throw errAbono;
+          // Si falla por desincronización de secuencia en ABONO_CLIENTE_pkey
+          if (
+            errAbono &&
+            (errAbono.code === "23505" ||
+              errAbono.message?.includes("ABONO_CLIENTE_pkey") ||
+              errAbono.message?.includes("duplicate key"))
+          ) {
+            const { data: maxRows } = await supabase
+              .from("ABONO_CLIENTE" as any)
+              .select("IDABONO_CLIENTE")
+              .order("IDABONO_CLIENTE", { ascending: false })
+              .limit(1);
+
+            const maxId = Number((maxRows as any[])?.[0]?.IDABONO_CLIENTE) || 0;
+            const resRetry = await supabase
+              .from("ABONO_CLIENTE" as any)
+              .insert({ ...cleanAbono, IDABONO_CLIENTE: maxId + 1 });
+            if (resRetry.error) throw resRetry.error;
+          } else if (errAbono) {
+            throw errAbono;
+          }
 
           // Actualizar saldo de la factura respetando el ESTADOCLIENTE (no sobreescribir bodega/alquiler)
           if (facturaNumero && nuevoSaldo !== undefined) {
             await supabase
               .from("FACTURA" as any)
               .update({
-                TOTAL_SALDO: Number(nuevoSaldo) || 0,
-                ESTADO: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
+                TOTAL_SALDO: Math.max(0, Number(nuevoSaldo) || 0),
               })
               .eq("NUMEROFACT", facturaNumero);
           }
@@ -949,9 +985,28 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
                 .update(cleanCli)
                 .eq("IDCLIENTES", (existenteCli as any).IDCLIENTES);
             } else {
-              await supabase
+              delete cleanCli["IDCLIENTES"];
+              let { error: errCli } = await supabase
                 .from("CLIENTES" as any)
                 .insert(cleanCli);
+
+              if (
+                errCli &&
+                (errCli.code === "23505" ||
+                  errCli.message?.includes("CLIENTES_pkey") ||
+                  errCli.message?.includes("duplicate key"))
+              ) {
+                const { data: maxRows } = await supabase
+                  .from("CLIENTES" as any)
+                  .select("IDCLIENTES")
+                  .order("IDCLIENTES", { ascending: false })
+                  .limit(1);
+
+                const maxId = Number((maxRows as any[])?.[0]?.IDCLIENTES) || 0;
+                await supabase
+                  .from("CLIENTES" as any)
+                  .insert({ ...cleanCli, IDCLIENTES: maxId + 1 });
+              }
             }
           }
         }
