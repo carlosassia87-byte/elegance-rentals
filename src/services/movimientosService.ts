@@ -171,8 +171,10 @@ export async function consultarMovimientos(
           tipo = "APARTADO / ABONO";
         }
 
-        operacionesMap.set(numFact, {
-          idFactura: Number(f.IDFACTURA),
+        const idFact = Number(f.IDFACTURA) || Date.now();
+        const keyUnica = `${numFact}_${idFact}`;
+        operacionesMap.set(keyUnica, {
+          idFactura: idFact,
           numeroFact: numFact,
           fechaSalida: f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0],
           fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || f.FECHASALIDA || "",
@@ -231,7 +233,9 @@ export async function consultarMovimientos(
 
       if (!coincideFecha) continue;
 
-      if (!operacionesMap.has(numFact)) {
+      const idFact = Number(f.IDFACTURA) || Date.now();
+        const keyUnica = `${numFact}_${idFact}`;
+        if (!operacionesMap.has(keyUnica)) {
         const alq = Number(f.FTOTALALQUILER || 0);
         const dep = Number(f.FTOTALDEPOSITO || 0);
         let totalVenta = Number(f.FTOTALVENTADEPOSITO || 0);
@@ -287,8 +291,8 @@ export async function consultarMovimientos(
           });
         }
 
-        operacionesMap.set(numFact, {
-          idFactura: Number(f.IDFACTURA) || Date.now(),
+        operacionesMap.set(keyUnica, {
+          idFactura: idFact,
           numeroFact: numFact,
           fechaSalida,
           fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || fechaSalida,
@@ -332,7 +336,9 @@ export async function consultarMovimientos(
 
         if (!coincideFecha) continue;
 
-        if (!operacionesMap.has(numFact)) {
+        const idFact = Number(f.IDFACTURA) || Date.now();
+        const keyUnica = `${numFact}_${idFact}`;
+        if (!operacionesMap.has(keyUnica)) {
           const alq = Number(f.FTOTALALQUILER || 0);
           const dep = Number(f.FTOTALDEPOSITO || 0);
           let totalVenta = Number(f.FTOTALVENTADEPOSITO || 0);
@@ -365,8 +371,8 @@ export async function consultarMovimientos(
             tipo = "APARTADO / ABONO";
           }
 
-          operacionesMap.set(numFact, {
-            idFactura: Number(f.IDFACTURA) || Date.now(),
+          operacionesMap.set(keyUnica, {
+            idFactura: idFact,
             numeroFact: numFact,
             fechaSalida,
             fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || fechaSalida,

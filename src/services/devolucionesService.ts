@@ -307,9 +307,10 @@ export async function buscarFacturaParaDevolucion(
     } catch {}
 
     const totalDepFactura = Number(factura.FTOTALDEPOSITO || 0);
+    // Una factura solo se considera ya devuelta si explícitamente tiene DEVUELTO A TIENDA en override
+    // o si la fianza/depósito ya fue devuelta en depositoentregado (totalYaDevuelto >= totalDepFactura > 0).
+    // OJO: "ENTREGADO" en la BD significa que el traje fue entregado AL CLIENTE, por ende sigue en su poder.
     const facturaYaDevuelta =
-      estadoCli === "ENTREGADO" ||
-      estadoCli === "DEVUELTO" ||
       estadoCli === "DEVUELTO A TIENDA" ||
       (totalDepFactura > 0 && totalYaDevuelto >= totalDepFactura);
 
@@ -318,14 +319,23 @@ export async function buscarFacturaParaDevolucion(
       const desc = c.DESCRIPCION || "PRENDA";
       const keyOv = `${numFact}_${cod || desc}`;
       const ov = overrides[keyOv];
-      let estadoActual: EstadoPrenda = ov ? ov.estado : (facturaYaDevuelta ? "ENTREGADO" : "EN ALQUILER");
-      if (facturaYaDevuelta && !ov) {
-        estadoActual = "ENTREGADO";
+      
+      let estadoActual: EstadoPrenda = "EN ALQUILER";
+      if (ov) {
+        estadoActual = ov.estado;
+      } else if (facturaYaDevuelta) {
+        estadoActual = "DEVUELTO A TIENDA";
+      } else if (estadoCli === "ENTREGADO" || estadoCli === "EN ALQUILER" || factura.MODO === "ALQUILER") {
+        estadoActual = "EN ALQUILER";
+      } else if (estadoCli === "EN BODEGA" || factura.MODO === "APARTADO") {
+        estadoActual = "EN BODEGA";
       }
+
       if (esAnulada) {
         estadoActual = "ANULADO";
       }
-      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA" || estadoActual === "ENTREGADO" || esAnulada;
+      
+      const yaDevuelto = estadoActual === "DEVUELTO A TIENDA" || esAnulada;
 
       return {
         id: c.AUTOMATIC || `${numFact}-${idx}`,
@@ -337,6 +347,7 @@ export async function buscarFacturaParaDevolucion(
         valorDeposito: Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0),
         total: Number(c.TOTAL || 0),
         estadoActual,
+        // Viene marcado por defecto para devolver si no ha sido devuelto aún a tienda
         seleccionadoParaDevolver: esAnulada ? false : !yaDevuelto,
         condicionPrenda: "BUENO",
       };

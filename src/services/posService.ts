@@ -768,7 +768,7 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
     let baseConsecutivo = 0;
     let cajaEncontrada = false;
 
-    // 1. Consultar CAJAS para nombreCaja en Supabase
+    // 1. Consultar CAJAS para nombreCaja en Supabase (Multi-Caja estricto)
     try {
       const { data: cajaRaw, error: errCaja } = await supabase
         .from("CAJAS" as any)
@@ -802,11 +802,10 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
       }
     } catch {}
 
-    let maxNum = Math.max(0, baseConsecutivo - 1);
+    let maxNum = Math.max(0, baseConsecutivo);
     const pfxTrim = (pfx || "").trim().toUpperCase();
 
-    // 3. BUG-14 fix: Consultar FACTURA filtrando por prefijo para obtener resultados precisos
-    // sin necesidad de cargar cientos de registros de otros prefijos
+    // 3. Consultar FACTURA en Supabase buscando los números más altos para ESTE PREFIJO
     try {
       let factsQuery = supabase
         .from("FACTURA" as any)
@@ -814,11 +813,10 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
         .order("IDFACTURA", { ascending: false });
 
       if (pfxTrim) {
-        // Solo facturas de este prefijo — 50 registros son suficientes
         factsQuery = (factsQuery as any).ilike("NUMEROFACT", `${pfxTrim}%`);
       }
 
-      const { data: facts } = await (factsQuery as any).limit(pfxTrim ? 50 : 500);
+      const { data: facts } = await (factsQuery as any).limit(300);
 
       if (facts && facts.length > 0) {
         for (const f of facts as any[]) {
@@ -852,26 +850,68 @@ export async function generarNumeroFactura(nombreCaja = "SERVIDOR", prefijoDefau
         if (pfxTrim) {
           if (numFact.toUpperCase().startsWith(pfxTrim)) {
             const n = extraerNumeroFactura(numFact, pfx);
-            if (n > maxNum) {
-              maxNum = n;
-            }
+            if (n > maxNum) maxNum = n;
           }
         } else {
           if (/^\d+$/.test(numFact)) {
             const n = extraerNumeroFactura(numFact);
-            if (n > maxNum) {
-              maxNum = n;
-            }
+            if (n > maxNum) maxNum = n;
           }
         }
       }
     } catch {}
 
-    const sigNumero = maxNum + 1;
-    if (pfx && pfx.trim()) {
-      return `${pfx.trim()}${sigNumero}`;
+    // 5. Consultar también IndexedDB offline para evitar re-usar números emitidos offline
+    try {
+      const { obtenerTodasLasFacturasOffline } = await import("./offlineDbService");
+      const offlineFacts = await obtenerTodasLasFacturasOffline();
+      for (const f of offlineFacts) {
+        const numFact = String(f.NUMEROFACT || "").trim();
+        if (!numFact) continue;
+
+        if (pfxTrim) {
+          if (numFact.toUpperCase().startsWith(pfxTrim)) {
+            const n = extraerNumeroFactura(numFact, pfx);
+            if (n > maxNum) maxNum = n;
+          }
+        } else {
+          if (/^\d+$/.test(numFact)) {
+            const n = extraerNumeroFactura(numFact);
+            if (n > maxNum) maxNum = n;
+          }
+        }
+      }
+    } catch {}
+
+    // 6. Anti-duplicados estricto: Verificamos en Supabase que el candidato no exista
+    let candidato = maxNum + 1;
+    let existe = true;
+    let intentosVerif = 0;
+
+    while (existe && intentosVerif < 25) {
+      const candidatoStr = (pfx && pfx.trim()) ? `${pfx.trim()}${candidato}` : String(candidato).padStart(6, "0");
+      try {
+        const { data: factExistente } = await supabase
+          .from("FACTURA" as any)
+          .select("NUMEROFACT")
+          .eq("NUMEROFACT", candidatoStr)
+          .maybeSingle();
+
+        if (factExistente && (factExistente as any).NUMEROFACT) {
+          candidato++;
+          intentosVerif++;
+        } else {
+          existe = false;
+        }
+      } catch {
+        existe = false;
+      }
     }
-    return String(sigNumero).padStart(6, "0");
+
+    if (pfx && pfx.trim()) {
+      return `${pfx.trim()}${candidato}`;
+    }
+    return String(candidato).padStart(6, "0");
   } catch {
     const localFacts = getLocalFacturas();
     const sig = localFacts.length + 1;
