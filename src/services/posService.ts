@@ -21,6 +21,7 @@ import {
   obtenerTodosLosArticulosOffline,
   obtenerTodosLosClientesOffline,
   descontarStockArticuloOffline,
+  actualizarSaldoFacturaOffline,
   type OfflineFactura,
   type OfflineCampoFactura,
   type OfflineAbono,
@@ -1639,65 +1640,116 @@ export async function registrarAbonoCliente(params: {
   fecha?: string | undefined;
 }): Promise<AbonoCliente | null> {
   try {
+    const numFact = (params.numeroFactura || "").trim();
     const numeroAbono = `AB-${Date.now().toString().slice(-4)}`;
     const fecha = params.fecha || new Date().toISOString().split("T")[0];
+    const totalAbono = Number(params.totalAbono) || 0;
+    const nuevoSaldo = Math.max(0, Number(params.saldoDeber) || 0);
 
-    const abonoObj: AbonoCliente = {
+    let abonoObj: AbonoCliente = {
       NUMEROABONO: numeroAbono,
-      ACLIENTE: params.cliente,
-      AFACTURA: params.numeroFactura,
-      PAGOEFECTIVO: params.pagoEfectivo,
-      PAGOTRANFE: params.pagoTransferencia,
+      ACLIENTE: (params.cliente || "CLIENTE GENERAL").trim().toUpperCase(),
+      AFACTURA: numFact,
+      PAGOEFECTIVO: Number(params.pagoEfectivo) || 0,
+      PAGOTRANFE: Number(params.pagoTransferencia) || 0,
       FECHAABONO: fecha,
-      SALDOANTERIOR: params.saldoAnterior,
-      SALDODEBER: params.saldoDeber,
-      TOTAL_ABONO: params.totalAbono,
+      SALDOANTERIOR: Number(params.saldoAnterior) || 0,
+      SALDODEBER: nuevoSaldo,
+      TOTAL_ABONO: totalAbono,
     };
 
     let guardadoSupabase = false;
     try {
-      const { data: abono, error: errAbono } = await supabase
+      let { data: abono, error: errAbono } = await supabase
         .from("ABONO_CLIENTE" as any)
         .insert(abonoObj)
         .select()
         .single();
 
+      // Si falla por desincronización de secuencia en ABONO_CLIENTE_pkey
+      if (
+        errAbono &&
+        (errAbono.code === "23505" ||
+          errAbono.message?.includes("ABONO_CLIENTE_pkey") ||
+          errAbono.message?.includes("duplicate key"))
+      ) {
+        console.warn("⚠️ [ABONO_CLIENTE] Desincronización de secuencia detectada. Calculando MAX(IDABONO_CLIENTE) + 1...");
+        const { data: maxRows } = await supabase
+          .from("ABONO_CLIENTE" as any)
+          .select("IDABONO_CLIENTE")
+          .order("IDABONO_CLIENTE", { ascending: false })
+          .limit(1);
+
+        const maxId = Number((maxRows as any[])?.[0]?.IDABONO_CLIENTE) || 0;
+        const resRetry = await supabase
+          .from("ABONO_CLIENTE" as any)
+          .insert({ ...abonoObj, IDABONO_CLIENTE: maxId + 1 })
+          .select()
+          .single();
+
+        if (!resRetry.error && resRetry.data) {
+          abono = resRetry.data;
+          errAbono = null;
+        }
+      }
+
       if (!errAbono && abono) {
         guardadoSupabase = true;
-        // Actualizar FACTURA en Supabase
+        abonoObj = abono as unknown as AbonoCliente;
+
+        // Actualizar FACTURA en Supabase (solo TOTAL_SALDO, columna ESTADO no existe)
         await supabase
           .from("FACTURA" as any)
-          .update({ TOTAL_SALDO: params.saldoDeber })
-          .eq("NUMEROFACT", params.numeroFactura);
+          .update({ TOTAL_SALDO: nuevoSaldo })
+          .eq("NUMEROFACT", numFact);
       }
     } catch (e) {
       console.warn("Fallo guardado de abono en Supabase, usando local:", e);
     }
 
+    if (!abonoObj.IDABONO_CLIENTE) {
+      abonoObj.IDABONO_CLIENTE = Date.now();
+    }
+
+    // Guardar en IndexedDB (offline-first)
+    try {
+      await guardarFacturasLote([], undefined, [abonoObj as any]);
+      await actualizarSaldoFacturaOffline(numFact, nuevoSaldo);
+    } catch (eDb) {
+      console.warn("Aviso guardando abono en IndexedDB:", eDb);
+    }
+
+    // Guardar en respaldo local (localStorage)
+    saveLocalAbono(abonoObj);
+
+    // Actualizar factura local en localStorage
+    const facts = getLocalFacturas();
+    const factIdx = facts.findIndex((f) => f.NUMEROFACT === numFact);
+    if (factIdx >= 0 && facts[factIdx]) {
+      facts[factIdx]!.TOTAL_SALDO = nuevoSaldo;
+      localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
+    }
+
     // BUG-06 fix: Solo encolar si NO se guardó en Supabase.
-    // Si guardadoSupabase es true, ya existe en la nube y no debe duplicarse.
     if (!guardadoSupabase) {
       try {
         await encolarOperacionOffline("NUEVO_ABONO", {
           abono: abonoObj,
-          facturaNumero: params.numeroFactura,
-          nuevoSaldo: params.saldoDeber,
+          facturaNumero: numFact,
+          nuevoSaldo: nuevoSaldo,
         });
       } catch (eQueue) {
         console.warn("Aviso encolando abono offline:", eQueue);
       }
     }
 
-    // Guardar en respaldo local
-    saveLocalAbono(abonoObj);
-
-    // Actualizar factura local
-    const facts = getLocalFacturas();
-    const factIdx = facts.findIndex((f) => f.NUMEROFACT === params.numeroFactura);
-    if (factIdx >= 0 && facts[factIdx]) {
-      facts[factIdx]!.TOTAL_SALDO = params.saldoDeber;
-      localStorage.setItem(KEY_LOCAL_FACTURAS, JSON.stringify(facts));
-    }
+    // Notificar a otras terminales en tiempo real (<50ms)
+    emitirEventoRealtime("ABONO_REGISTRADO", {
+      numeroFactura: numFact,
+      numeroAbono: abonoObj.NUMEROABONO,
+      totalAbono: totalAbono,
+      nuevoSaldo: nuevoSaldo,
+    });
 
     return abonoObj;
   } catch (err) {

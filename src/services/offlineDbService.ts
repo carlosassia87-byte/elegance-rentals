@@ -628,3 +628,27 @@ export async function actualizarIdFacturaOffline(
     console.warn("Aviso actualizando IDFACTURA en IndexedDB:", err);
   }
 }
+
+/**
+ * Actualiza el TOTAL_SALDO de una factura en IndexedDB (offline).
+ */
+export async function actualizarSaldoFacturaOffline(
+  numeroFact: string,
+  nuevoSaldo: number
+): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("facturas", "readwrite");
+    const factStore = tx.objectStore("facturas");
+
+    const reqFact = factStore.get(numeroFact);
+    reqFact.onsuccess = () => {
+      const fact = reqFact.result;
+      if (fact) {
+        factStore.put({ ...fact, TOTAL_SALDO: Math.max(0, nuevoSaldo) });
+      }
+    };
+  } catch (err) {
+    console.warn("Aviso actualizando saldo factura en IndexedDB:", err);
+  }
+}
