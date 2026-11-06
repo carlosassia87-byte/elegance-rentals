@@ -123,8 +123,16 @@ export function DevolucionTrajesModal({
   }, [items]);
 
   const totalDepositoSeleccionado = useMemo(() => {
-    return itemsSeleccionados.reduce((acc, it) => acc + (it.valorDeposito * it.cantidad), 0);
-  }, [itemsSeleccionados]);
+    // Si la factura tiene prendas registradas en CAMPOFACTURA
+    if (items.length > 0) {
+      return itemsSeleccionados.reduce((acc, it) => acc + (it.valorDeposito * it.cantidad), 0);
+    }
+    // Si la factura NO tiene trajes registrados (items.length === 0) pero tiene depósito en garantía
+    if (detalle && detalle.depositoDisponible > 0) {
+      return detalle.depositoDisponible;
+    }
+    return 0;
+  }, [items, itemsSeleccionados, detalle]);
 
   // Cálculo de retraso de 3 días y recargo de $15.000 / día
   const infoRetraso = useMemo(() => {
@@ -156,8 +164,12 @@ export function DevolucionTrajesModal({
   // Confirmar y procesar la devolución
   const handleConfirmarDevolucion = async () => {
     if (!detalle) return;
-    if (itemsSeleccionados.length === 0) {
+    if (items.length > 0 && itemsSeleccionados.length === 0) {
       toast.error("Selecciona al menos una prenda para devolver");
+      return;
+    }
+    if (montoNetoReintegrar <= 0 && detalle.totalDepositoOriginal > 0 && penalidadNum === 0) {
+      toast.error("No hay monto de depósito para devolver");
       return;
     }
 
@@ -487,6 +499,20 @@ export function DevolucionTrajesModal({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
+                      {items.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="p-4 text-center bg-teal-50/50">
+                            <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                              <span className="text-xs font-black text-teal-900 uppercase">
+                                ℹ️ Factura sin prendas asociadas en el sistema
+                              </span>
+                              <span className="text-[11px] text-slate-600 font-medium">
+                                El cliente tiene un saldo en garantía de <strong>${detalle.depositoDisponible.toLocaleString("es-CO")}</strong>. Puedes confirmar el reintegro directamente en la liquidación inferior.
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {items.map((item, idx) => {
                         const yaDevuelto = item.estadoActual === "DEVUELTO A TIENDA";
 
@@ -693,7 +719,7 @@ export function DevolucionTrajesModal({
 
                       <button
                         type="button"
-                        disabled={procesando || itemsSeleccionados.length === 0 || detalle.esAnulada}
+                        disabled={procesando || (items.length > 0 && itemsSeleccionados.length === 0) || (items.length === 0 && montoNetoReintegrar <= 0) || detalle.esAnulada}
                         onClick={handleConfirmarDevolucion}
                         className="mt-4 w-full h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-all active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
