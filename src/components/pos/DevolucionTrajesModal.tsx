@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Sparkles,
   Ban,
+  Info,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -102,11 +103,22 @@ export function DevolucionTrajesModal({
     }
   };
 
+  // Detección estricta si la factura o sus prendas están EN BODEGA (Apartado en tienda)
+  const esEnBodega = useMemo(() => {
+    if (!detalle) return false;
+    const ec = (detalle.factura.ESTADOCLIENTE || "").trim().toUpperCase();
+    const modo = (detalle.factura.MODO || "").trim().toUpperCase();
+    const todosEnBodega = items.length > 0 && items.every((it) => it.estadoActual === "EN BODEGA");
+    return ec === "EN BODEGA" || modo === "APARTADO" || todosEnBodega;
+  }, [detalle, items]);
+
   // Manejo de toggle de items seleccionados
   const toggleSeleccionItem = (index: number) => {
     setItems((prev) =>
       prev.map((it, i) =>
-        i === index ? { ...it, seleccionadoParaDevolver: !it.seleccionadoParaDevolver } : it
+        i === index && it.estadoActual !== "EN BODEGA" && !esEnBodega
+          ? { ...it, seleccionadoParaDevolver: !it.seleccionadoParaDevolver }
+          : it
       )
     );
   };
@@ -119,10 +131,14 @@ export function DevolucionTrajesModal({
 
   // Cálculos financieros en tiempo real
   const itemsSeleccionados = useMemo(() => {
+    if (esEnBodega) return [];
     return items.filter((it) => it.seleccionadoParaDevolver);
-  }, [items]);
+  }, [items, esEnBodega]);
 
   const totalDepositoSeleccionado = useMemo(() => {
+    // Si la factura está en bodega / apartado, NO se devuelven depósitos por este medio
+    if (esEnBodega) return 0;
+
     // Si la factura tiene prendas registradas en CAMPOFACTURA
     if (items.length > 0) {
       return itemsSeleccionados.reduce((acc, it) => acc + (it.valorDeposito * it.cantidad), 0);
@@ -132,7 +148,7 @@ export function DevolucionTrajesModal({
       return detalle.depositoDisponible;
     }
     return 0;
-  }, [items, itemsSeleccionados, detalle]);
+  }, [items, itemsSeleccionados, detalle, esEnBodega]);
 
   // Cálculo de retraso de 3 días y recargo de $15.000 / día
   const infoRetraso = useMemo(() => {
@@ -164,6 +180,12 @@ export function DevolucionTrajesModal({
   // Confirmar y procesar la devolución
   const handleConfirmarDevolucion = async () => {
     if (!detalle) return;
+
+    if (esEnBodega) {
+      toast.error("Esta factura está en BODEGA (Apartado). Las prendas no han salido en alquiler; no procede devolver depósito de prendas en bodega.");
+      return;
+    }
+
     if (items.length > 0 && itemsSeleccionados.length === 0) {
       toast.error("Selecciona al menos una prenda para devolver");
       return;
@@ -474,6 +496,24 @@ export function DevolucionTrajesModal({
                   </div>
                 </div>
 
+                {/* AVISO DE FACTURA EN BODEGA / APARTADO */}
+                {esEnBodega && (
+                  <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 flex items-start gap-3 shadow-2xs">
+                    <Info className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-black text-blue-950 text-xs uppercase tracking-wide">
+                        📦 Factura en Bodega / Apartado — Devolución de Prendas Bloqueada
+                      </h4>
+                      <p className="text-blue-900 text-xs mt-1 leading-relaxed">
+                        Esta factura corresponde a un <strong>Apartado o Reserva guardada en tienda</strong>. Las prendas nunca salieron en alquiler hacia el cliente, por lo que no es posible realizar una devolución de prendas ni reintegro de fianza.
+                      </p>
+                      <p className="text-blue-800 text-[11px] mt-1 font-semibold">
+                        💡 Si el cliente canceló el apartado y solicita la devolución de su dinero anticipado, utiliza la opción superior de <strong>Anular Factura / Reembolso</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* TABLA DE PRENDAS A DEVOLVER */}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
                   <div className="flex items-center justify-between bg-slate-100 px-4 py-2.5 border-b border-slate-200">
@@ -515,6 +555,7 @@ export function DevolucionTrajesModal({
                       )}
                       {items.map((item, idx) => {
                         const yaDevuelto = item.estadoActual === "DEVUELTO A TIENDA";
+                        const esBodegaItem = item.estadoActual === "EN BODEGA" || esEnBodega;
 
                         return (
                           <tr
@@ -524,6 +565,8 @@ export function DevolucionTrajesModal({
                                 ? "bg-rose-50/50 opacity-60 cursor-not-allowed"
                                 : yaDevuelto
                                 ? "bg-slate-50/70 opacity-60"
+                                : esBodegaItem
+                                ? "bg-blue-50/40 opacity-75"
                                 : item.seleccionadoParaDevolver
                                 ? "bg-teal-50/60 font-semibold"
                                 : "hover:bg-slate-50"
@@ -532,10 +575,10 @@ export function DevolucionTrajesModal({
                             <td className="p-2.5 text-center">
                               <input
                                 type="checkbox"
-                                disabled={yaDevuelto || detalle.esAnulada}
+                                disabled={yaDevuelto || detalle.esAnulada || esBodegaItem}
                                 checked={item.seleccionadoParaDevolver}
                                 onChange={() => toggleSeleccionItem(idx)}
-                                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:opacity-40"
                               />
                             </td>
                             <td className="p-2.5 font-mono text-[10px] text-slate-600 font-bold">{item.codigoBarras || "S/C"}</td>
@@ -554,10 +597,12 @@ export function DevolucionTrajesModal({
                                 className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${
                                   yaDevuelto
                                     ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                    : item.estadoActual === "EN BODEGA"
+                                    ? "bg-blue-100 text-blue-900 border border-blue-300"
                                     : "bg-amber-100 text-amber-800 border border-amber-300"
                                 }`}
                               >
-                                {item.estadoActual}
+                                {item.estadoActual === "EN BODEGA" ? "📦 En Bodega" : item.estadoActual}
                               </span>
                             </td>
                             <td className="p-2.5 text-center">
@@ -719,7 +764,7 @@ export function DevolucionTrajesModal({
 
                       <button
                         type="button"
-                        disabled={procesando || (items.length > 0 && itemsSeleccionados.length === 0) || (items.length === 0 && montoNetoReintegrar <= 0) || detalle.esAnulada}
+                        disabled={procesando || esEnBodega || (items.length > 0 && itemsSeleccionados.length === 0) || (items.length === 0 && montoNetoReintegrar <= 0) || detalle.esAnulada}
                         onClick={handleConfirmarDevolucion}
                         className="mt-4 w-full h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg transition-all active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
@@ -727,6 +772,8 @@ export function DevolucionTrajesModal({
                         <span>
                           {detalle.esAnulada
                             ? "Factura Anulada (No requiere devolución de prendas)"
+                            : esEnBodega
+                            ? "Prendas en Bodega (No aplica devolución)"
                             : "Confirmar Devolución & Reintegro"}
                         </span>
                       </button>

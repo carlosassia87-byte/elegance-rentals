@@ -396,14 +396,15 @@ export async function buscarFacturaParaDevolucion(
         valorDeposito: Number(c.VALORDEPOSITO || c.TOTALDEPOSITO || 0),
         total: Number(c.TOTAL || 0),
         estadoActual,
-        // Viene marcado por defecto para devolver si no ha sido devuelto aún a tienda
-        seleccionadoParaDevolver: esAnulada ? false : !yaDevuelto,
+        // Viene marcado por defecto para devolver si no ha sido devuelto aún a tienda y no está en bodega
+        seleccionadoParaDevolver: esAnulada || estadoActual === "EN BODEGA" ? false : !yaDevuelto,
         condicionPrenda: "BUENO",
       };
     });
 
     const totalAlquiler = Number(factura.FTOTALALQUILER || 0);
-    const depositoDisponible = esAnulada ? 0 : Math.max(0, totalDepFactura - totalYaDevuelto);
+    const esEnBodegaFactura = estadoCli === "EN BODEGA" || factura.MODO === "APARTADO";
+    const depositoDisponible = esAnulada || esEnBodegaFactura ? 0 : Math.max(0, totalDepFactura - totalYaDevuelto);
 
     return {
       factura,

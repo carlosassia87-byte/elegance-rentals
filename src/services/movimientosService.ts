@@ -401,7 +401,17 @@ export async function consultarMovimientos(
 
   // 3. Cargar Items de CAMPOFACTURA de Supabase únicamente para las facturas consultadas
   try {
-    const numFacts = Array.from(operacionesMap.keys()).filter(Boolean);
+    // Agrupar operaciones por NUMEROFACT para asociar prendas correctamente
+    const operacionesPorNum = new Map<string, OperacionClienteMovimiento[]>();
+    for (const op of operacionesMap.values()) {
+      if (op.numeroFact) {
+        const list = operacionesPorNum.get(op.numeroFact) || [];
+        list.push(op);
+        operacionesPorNum.set(op.numeroFact, list);
+      }
+    }
+
+    const numFacts = Array.from(operacionesPorNum.keys()).filter(Boolean);
     if (numFacts.length > 0) {
       const CHUNK_SIZE = 200;
       for (let i = 0; i < numFacts.length; i += CHUNK_SIZE) {
@@ -415,8 +425,9 @@ export async function consultarMovimientos(
 
         for (const c of camposRaw as any[]) {
           const numFact = c.NUMEROFACT;
-          if (numFact && operacionesMap.has(numFact)) {
-            const op = operacionesMap.get(numFact)!;
+          const matchingOps = numFact ? operacionesPorNum.get(numFact) : null;
+          if (matchingOps && matchingOps.length > 0) {
+            const op = matchingOps.find((o) => !c.IDFACTURA || o.idFactura === Number(c.IDFACTURA)) || matchingOps[0];
             const keyOverride = `${numFact}_${c.BARRAS || c.DESCRIPCION}`;
             const override = overrides[keyOverride];
 
@@ -471,9 +482,8 @@ export async function consultarMovimientos(
       const localList: any[] = JSON.parse(rawLocal);
       for (const f of localList) {
         const numFact = f.NUMEROFACT;
-        if (numFact && operacionesMap.has(numFact)) {
-          const op = operacionesMap.get(numFact)!;
-          if (op.items.length === 0 && f.items && Array.isArray(f.items)) {
+        for (const op of operacionesMap.values()) {
+          if (op.numeroFact === numFact && op.items.length === 0 && f.items && Array.isArray(f.items)) {
             f.items.forEach((item: any, idx: number) => {
               const keyOverride = `${numFact}_${item.BARRAS || item.DESCRIPCION}`;
               const override = overrides[keyOverride];

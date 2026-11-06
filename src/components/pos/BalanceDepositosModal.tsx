@@ -769,6 +769,14 @@ export function BalanceDepositosModal({
                               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
                                 Anulada
                               </span>
+                            ) : op.esVenta ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                                Venta Directa
+                              </span>
+                            ) : op.esBodegaActiva ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                                {op.prendasEnBodega || op.items.length} en bodega (Apartado)
+                              </span>
                             ) : op.esLiquidadaOEntregada ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                                 {op.prendasDevueltas || op.items.length} devuelta{op.prendasDevueltas === 1 ? "" : "s"} · Entregado
@@ -778,8 +786,8 @@ export function BalanceDepositosModal({
                                 {op.prendasEnAlquiler} en alquiler · {op.prendasDevueltas} devueltas
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                                {op.prendasEnBodega || op.items.length} en bodega (Apartado)
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                                {op.items.length} prenda{op.items.length === 1 ? "" : "s"}
                               </span>
                             )}
                           </td>
@@ -793,7 +801,15 @@ export function BalanceDepositosModal({
                             ${op.depDevuelto.toLocaleString("es-CO")}
                           </td>
                           <td className="p-2.5 text-right font-mono font-black">
-                            {op.depPendiente > 0 ? (
+                            {op.esVenta ? (
+                              <span className="text-slate-400 font-semibold text-[10px]">
+                                No Aplica
+                              </span>
+                            ) : op.esBodegaActiva ? (
+                              <span className="text-blue-700 font-bold text-[10px] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                En Bodega (Apartado)
+                              </span>
+                            ) : op.depPendiente > 0 ? (
                               <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300">
                                 ${op.depPendiente.toLocaleString("es-CO")}
                               </span>
@@ -804,7 +820,9 @@ export function BalanceDepositosModal({
                             )}
                           </td>
                           <td className="p-2.5 text-center">
-                            {op.depPendiente > 0 ? (
+                            {op.esBodegaActiva || op.esVenta || op.esAnulada ? (
+                              <span className="text-slate-400 text-[10px] font-semibold">—</span>
+                            ) : op.depPendiente > 0 ? (
                               <button
                                 type="button"
                                 onClick={() => abrirDevolucionFactura(op.numeroFact)}
