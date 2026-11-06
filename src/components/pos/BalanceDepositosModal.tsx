@@ -45,7 +45,7 @@ export function BalanceDepositosModal({
   const [fechaFin, setFechaFin] = useState(hoyStr);
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstadoDeposito, setFiltroEstadoDeposito] = useState<"TODOS" | "PENDIENTES" | "LIQUIDADOS">("TODOS");
-  const [filtroEstadoPrenda, setFiltroEstadoPrenda] = useState<"TODOS" | "EN_ALQUILER" | "EN_BODEGA" | "ENTREGADO" | "ANULADOS">("TODOS");
+  const [filtroEstadoPrenda, setFiltroEstadoPrenda] = useState<"TODOS" | "EN_ALQUILER" | "EN_BODEGA" | "ENTREGADO" | "VENTAS" | "ANULADOS">("TODOS");
   const [cargando, setCargando] = useState(false);
 
   // Modal de Devolución integrado
@@ -208,11 +208,14 @@ export function BalanceDepositosModal({
     let enAlquiler = 0;
     let enBodega = 0;
     let entregados = 0;
+    let ventas = 0;
     let anulados = 0;
 
     facturasProcesadas.forEach((f) => {
       if (f.esAnulada) {
         anulados++;
+      } else if (f.esVenta) {
+        ventas++;
       } else if (f.esLiquidadaOEntregada) {
         entregados++;
       } else if (f.esAlquilerActivo) {
@@ -226,6 +229,7 @@ export function BalanceDepositosModal({
       enAlquiler,
       enBodega,
       entregados,
+      ventas,
       anulados,
     };
   }, [facturasProcesadas]);
@@ -233,8 +237,8 @@ export function BalanceDepositosModal({
   // Filtrado según estado de depósito y estado de prenda/operación
   const facturasFiltradas = useMemo(() => {
     return facturasProcesadas.filter((f) => {
-      if (filtroEstadoDeposito === "PENDIENTES" && f.depPendiente <= 0) return false;
-      if (filtroEstadoDeposito === "LIQUIDADOS" && (f.depPendiente > 0 || f.depCobrado <= 0)) return false;
+      if (filtroEstadoDeposito === "PENDIENTES" && (f.depPendiente <= 0 || f.esVenta)) return false;
+      if (filtroEstadoDeposito === "LIQUIDADOS" && (f.depPendiente > 0 || f.depCobrado <= 0 || f.esVenta)) return false;
 
       if (filtroEstadoPrenda === "ANULADOS") {
         return f.esAnulada;
@@ -249,6 +253,9 @@ export function BalanceDepositosModal({
       }
       if (filtroEstadoPrenda === "ENTREGADO") {
         return f.esLiquidadaOEntregada;
+      }
+      if (filtroEstadoPrenda === "VENTAS") {
+        return f.esVenta;
       }
 
       return true;
@@ -640,6 +647,17 @@ export function BalanceDepositosModal({
                   }`}
                 >
                   ✅ Entregados ({conteosEstado.entregados})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoPrenda("VENTAS")}
+                  className={`px-2.5 py-0.5 rounded-lg font-bold text-xs transition-all ${
+                    filtroEstadoPrenda === "VENTAS"
+                      ? "bg-purple-700 text-white shadow-xs"
+                      : "bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100"
+                  }`}
+                >
+                  🛍️ Ventas ({conteosEstado.ventas})
                 </button>
                 <button
                   type="button"
