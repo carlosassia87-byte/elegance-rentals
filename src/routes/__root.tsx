@@ -41,6 +41,27 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: import("@tanstack/react-router").ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+
+  // Auto-recuperación si un archivo JS cambió de nombre tras un despliegue en Vercel
+  useEffect(() => {
+    const msg = String((error as any)?.message || "");
+    const isChunkError =
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("dynamically imported module") ||
+      msg.includes("Loading chunk") ||
+      msg.includes("ERR_ABORTED");
+
+    if (isChunkError && typeof window !== "undefined") {
+      const storageKey = "pos_chunk_reload_ts";
+      const lastReload = parseInt(sessionStorage.getItem(storageKey) || "0", 10);
+      const now = Date.now();
+      if (now - lastReload > 10000) {
+        sessionStorage.setItem(storageKey, String(now));
+        window.location.reload();
+      }
+    }
+  }, [error]);
+
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
