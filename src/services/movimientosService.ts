@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Articulo, Factura, CampoFactura } from "@/types/database.types";
+import { insertarDepositoEntregadoSeguro } from "./devolucionesService";
 
 export type EstadoPrenda =
   | "EN ALQUILER"
@@ -709,7 +710,7 @@ export async function marcarTrajeDevuelto(
 
     // Registrar en depositoentregado si corresponde
     try {
-      await supabase.from("depositoentregado" as any).insert({
+      await insertarDepositoEntregadoSeguro({
         NUMEROFACTURA: numeroFact,
         VALOR: 0,
         FECHA: new Date().toISOString().split("T")[0],

@@ -107,6 +107,55 @@ export function saveLocalDepositoEntregado(dep: DepositoEntregado) {
   }
 }
 
+// 0. Helper para inserción ultra segura en depositoentregado resistente a secuencias desincronizadas
+export async function insertarDepositoEntregadoSeguro(
+  depData: DepositoEntregado
+): Promise<{ ok: boolean; data?: any; error?: any }> {
+  try {
+    const { data, error } = await supabase
+      .from("depositoentregado" as any)
+      .insert(depData)
+      .select();
+
+    if (!error) {
+      return { ok: true, data: data?.[0] };
+    }
+
+    // Si falló por clave duplicada o secuencia desfasada (código 23505)
+    if (error.code === "23505" || String(error.message || "").includes("duplicate key")) {
+      console.warn("Secuencia de depositoentregado desfasada en Supabase. Calculando MAX ID...");
+      const { data: maxRows } = await supabase
+        .from("depositoentregado" as any)
+        .select("IDdepositoentregado")
+        .order("IDdepositoentregado", { ascending: false })
+        .limit(1);
+
+      const maxId = Number(maxRows?.[0]?.IDdepositoentregado) || 10800;
+      const nextId = maxId + 1;
+
+      const retryRes = await supabase
+        .from("depositoentregado" as any)
+        .insert({
+          ...depData,
+          IDdepositoentregado: nextId,
+        })
+        .select();
+
+      if (!retryRes.error) {
+        return { ok: true, data: retryRes.data?.[0] };
+      }
+      console.error("Error en reintento con ID explícito en depositoentregado:", retryRes.error);
+      return { ok: false, error: retryRes.error };
+    }
+
+    console.error("Error insertando en depositoentregado:", error);
+    return { ok: false, error };
+  } catch (err) {
+    console.error("Excepción en insertarDepositoEntregadoSeguro:", err);
+    return { ok: false, error: err };
+  }
+}
+
 // 1. Buscar factura con desglose detallado de prendas y depósitos
 export async function buscarFacturaParaDevolucion(
   termino: string
@@ -409,7 +458,7 @@ export async function registrarReembolsoAnulacion(params: {
 
     try {
       if (typeof navigator === "undefined" || navigator.onLine) {
-        await supabase.from("depositoentregado" as any).insert(depData);
+        await insertarDepositoEntregadoSeguro(depData);
       }
     } catch (e) {
       console.warn("Aviso insertando reembolso en depositoentregado Supabase:", e);
@@ -467,8 +516,8 @@ export async function registrarDevolucionCompleta(
     let guardadoEnSupabase = false;
     try {
       if (typeof navigator === "undefined" || navigator.onLine) {
-        const { error: errDep } = await supabase.from("depositoentregado" as any).insert(depData);
-        if (!errDep) guardadoEnSupabase = true;
+        const resDep = await insertarDepositoEntregadoSeguro(depData);
+        if (resDep.ok) guardadoEnSupabase = true;
       }
     } catch (e) {
       console.warn("Fallo guardando en tabla depositoentregado Supabase:", e);

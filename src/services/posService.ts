@@ -1728,13 +1728,10 @@ export async function registrarDevolucionVestido(params: {
     };
 
     try {
-      const { data, error } = await supabase
-        .from("depositoentregado" as any)
-        .insert(depData)
-        .select()
-        .single();
-      if (!error && data) {
-        return data as unknown as DepositoEntregado;
+      const { insertarDepositoEntregadoSeguro } = await import("./devolucionesService");
+      const res = await insertarDepositoEntregadoSeguro(depData);
+      if (res.ok && res.data) {
+        return res.data as unknown as DepositoEntregado;
       }
     } catch (e) {
       console.warn("Error guardando devolución en Supabase:", e);

@@ -24,6 +24,7 @@ import {
 } from "./offlineDbService";
 import { indexarArticulosEnMemoria, indexarClientesEnMemoria } from "./posService";
 import { saveLocalAccesorios } from "./accesoriosService";
+import { insertarDepositoEntregadoSeguro } from "./devolucionesService";
 
 export interface SyncState {
   isOnline: boolean;
@@ -800,7 +801,7 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
           // 1. Insertar egreso de reintegro en depositoentregado si hubo valor
           if (montoNetoDevuelto && Number(montoNetoDevuelto) > 0) {
             try {
-              await supabase.from("depositoentregado" as any).insert({
+              await insertarDepositoEntregadoSeguro({
                 NUMEROFACTURA: numeroFact,
                 VALOR: Number(montoNetoDevuelto),
                 FECHA: fecha || new Date().toISOString().split("T")[0],
