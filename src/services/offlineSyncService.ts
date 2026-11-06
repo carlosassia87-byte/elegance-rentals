@@ -22,7 +22,7 @@ import {
   SyncQueueItem,
   actualizarIdFacturaOffline,
 } from "./offlineDbService";
-import { indexarArticulosEnMemoria, indexarClientesEnMemoria } from "./posService";
+import { indexarArticulosEnMemoria, indexarClientesEnMemoria, generarNumeroFactura } from "./posService";
 import { saveLocalAccesorios } from "./accesoriosService";
 import { insertarDepositoEntregadoSeguro } from "./devolucionesService";
 
@@ -690,22 +690,47 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
           delete cleanFactura["AUTOMATIC"];
           delete cleanFactura["IDCAMPOSFACTURA"];
 
-          const numFact = cleanFactura["NUMEROFACT"] || (factura as any)?.NUMEROFACT;
+          let numFact = cleanFactura["NUMEROFACT"] || (factura as any)?.NUMEROFACT;
           const { data: factExistente } = await supabase
             .from("FACTURA" as any)
-            .select("IDFACTURA")
+            .select("IDFACTURA, CCLIENTE, FTOTALVENTADEPOSITO")
             .eq("NUMEROFACT", numFact)
             .maybeSingle();
 
           let realIdFactura: number | null = null;
 
           if (factExistente && (factExistente as any).IDFACTURA) {
-            realIdFactura = Number((factExistente as any).IDFACTURA);
-            const { error: errFact } = await supabase
-              .from("FACTURA" as any)
-              .update(cleanFactura)
-              .eq("IDFACTURA", realIdFactura);
-            if (errFact) throw errFact;
+            // Verificar si es exactamente la misma factura generada localmente que ya se había subido a medias
+            const mismoCliente = String((factExistente as any).CCLIENTE || "").trim().toUpperCase() === String(cleanFactura["CCLIENTE"] || "").trim().toUpperCase();
+            const mismoMonto = Math.abs(Number((factExistente as any).FTOTALVENTADEPOSITO || 0) - Number(cleanFactura["FTOTALVENTADEPOSITO"] || 0)) < 1;
+
+            if (mismoCliente && mismoMonto) {
+              realIdFactura = Number((factExistente as any).IDFACTURA);
+              const { error: errFact } = await supabase
+                .from("FACTURA" as any)
+                .update(cleanFactura)
+                .eq("IDFACTURA", realIdFactura);
+              if (errFact) throw errFact;
+            } else {
+              // COLISIÓN CONCURRENTE OFFLINE: El número ya fue tomado por otra factura diferente mientras no había internet.
+              // Reasignar un nuevo consecutivo único para no sobreescribir la factura ajena.
+              const prefijo = String(numFact).replace(/\d+$/, "") || "POS";
+              const nuevoNum = await generarNumeroFactura("SERVIDOR", prefijo);
+              console.warn(`[Sync Offline] Colisión detectada en factura ${numFact}. Reasignando a nuevo consecutivo: ${nuevoNum}`);
+              numFact = nuevoNum;
+              cleanFactura["NUMEROFACT"] = nuevoNum;
+              delete cleanFactura["IDFACTURA"];
+
+              const { data: factCreada, error: errFact } = await supabase
+                .from("FACTURA" as any)
+                .insert(cleanFactura)
+                .select("IDFACTURA")
+                .maybeSingle();
+
+              if (!errFact && factCreada) {
+                realIdFactura = Number((factCreada as any).IDFACTURA);
+              }
+            }
           } else {
             delete cleanFactura["IDFACTURA"];
             const { data: factCreada, error: errFact } = await supabase
@@ -733,11 +758,18 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
               return sanitized;
             });
 
-            // Limpiar duplicados previos del mismo número antes de reinsertar
-            await supabase
-              .from("CAMPOFACTURA" as any)
-              .delete()
-              .eq("NUMEROFACT", numFact);
+            // Limpiar duplicados previos de este IDFACTURA antes de reinsertar
+            if (realIdFactura) {
+              await supabase
+                .from("CAMPOFACTURA" as any)
+                .delete()
+                .eq("IDFACTURA", realIdFactura);
+            } else {
+              await supabase
+                .from("CAMPOFACTURA" as any)
+                .delete()
+                .eq("NUMEROFACT", numFact);
+            }
 
             const { error: errItems } = await supabase
               .from("CAMPOFACTURA" as any)
@@ -785,13 +817,13 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
 
           if (errAbono) throw errAbono;
 
-          // Actualizar saldo de la factura si aplica
+          // Actualizar saldo de la factura respetando el ESTADOCLIENTE (no sobreescribir bodega/alquiler)
           if (facturaNumero && nuevoSaldo !== undefined) {
             await supabase
               .from("FACTURA" as any)
               .update({
                 TOTAL_SALDO: Number(nuevoSaldo) || 0,
-                ESTADOCLIENTE: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
+                ESTADO: nuevoSaldo <= 0 ? "PAGADO" : "CON SALDO",
               })
               .eq("NUMEROFACT", facturaNumero);
           }
@@ -833,11 +865,21 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
             }
           }
 
-          // 2. Marcar factura como ENTREGADO
-          await supabase
+          // 2. Marcar factura como ENTREGADO únicamente si no estaba en bodega/apartado
+          const { data: fDb } = await supabase
             .from("FACTURA" as any)
-            .update({ ESTADOCLIENTE: "ENTREGADO" })
-            .eq("NUMEROFACT", numeroFact);
+            .select("ESTADOCLIENTE, MODO")
+            .eq("NUMEROFACT", numeroFact)
+            .maybeSingle();
+
+          const fDbModo = String((fDb as any)?.MODO || "").trim().toUpperCase();
+          const fDbEst = String((fDb as any)?.ESTADOCLIENTE || "").trim().toUpperCase();
+          if (fDbModo !== "APARTADO" && fDbEst !== "EN BODEGA") {
+            await supabase
+              .from("FACTURA" as any)
+              .update({ ESTADOCLIENTE: "ENTREGADO" })
+              .eq("NUMEROFACT", numeroFact);
+          }
 
           // 3. Devolver prendas / reponer stock
           if (itemsDevueltos && Array.isArray(itemsDevueltos)) {
