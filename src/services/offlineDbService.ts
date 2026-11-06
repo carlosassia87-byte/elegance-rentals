@@ -592,6 +592,55 @@ export async function descontarStockArticuloOffline(
 }
 
 /**
+ * Repone el stock localmente en IndexedDB para ARTICULO offline cuando se devuelve una prenda.
+ */
+export async function reponerStockArticuloOffline(
+  idArticulo?: number,
+  barras?: string,
+  cantidad = 1
+): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction("articulos", "readwrite");
+    const store = tx.objectStore("articulos");
+
+    if (idArticulo) {
+      const req = store.get(idArticulo);
+      req.onsuccess = () => {
+        const art = req.result;
+        if (art) {
+          const stockActual = Number(art.STOCK) || 0;
+          const nuevoStock = stockActual + cantidad;
+          store.put({
+            ...art,
+            STOCK: nuevoStock,
+            DISPONIBLE: nuevoStock > 0,
+          });
+        }
+      };
+    } else if (barras) {
+      const cleanBarras = (barras || "").trim().toUpperCase();
+      const index = store.index("by_barras");
+      const req = index.get(cleanBarras);
+      req.onsuccess = () => {
+        const art = req.result;
+        if (art) {
+          const stockActual = Number(art.STOCK) || 0;
+          const nuevoStock = stockActual + cantidad;
+          store.put({
+            ...art,
+            STOCK: nuevoStock,
+            DISPONIBLE: nuevoStock > 0,
+          });
+        }
+      };
+    }
+  } catch (err) {
+    console.warn("Aviso reponiendo stock offline:", err);
+  }
+}
+
+/**
  * Actualiza el IDFACTURA real devuelto por Supabase en IndexedDB.
  * BUG-05 fix: reemplaza el Date.now() temporal por el ID real de Supabase
  * tanto en la factura como en sus campos asociados.

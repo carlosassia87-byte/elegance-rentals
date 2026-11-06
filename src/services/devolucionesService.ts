@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Factura, CampoFactura, DepositoEntregado } from "@/types/database.types";
 import { guardarEstadoPrendaOverride, type EstadoPrenda } from "./movimientosService";
 import { emitirEventoRealtime, invalidarCacheArticulos } from "./posService";
+import { reponerStockArticuloOffline } from "./offlineDbService";
 
 export interface ItemDevolucionInfo {
   id: string | number;
@@ -529,6 +530,11 @@ export async function registrarDevolucionCompleta(
     guardarEstadoPrendaOverride(params.numeroFactura, "GENERAL", "GENERAL", "ENTREGADO");
     for (const item of params.itemsDevueltos) {
       guardarEstadoPrendaOverride(params.numeroFactura, item.codigoBarras, item.descripcion, "DEVUELTO A TIENDA");
+
+      // Reponer stock localmente en IndexedDB tanto online como offline
+      if (item.codigoBarras) {
+        reponerStockArticuloOffline(undefined, item.codigoBarras, item.cantidad).catch(() => {});
+      }
 
       // Reponer Stock en ACCESORIOS o ARTICULO en Supabase si hay red
       if (typeof navigator === "undefined" || navigator.onLine) {
