@@ -1009,6 +1009,52 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
               }
             }
           }
+        } else if (item.tipo === "NUEVO_GASTO") {
+          const { gasto } = item.datos;
+          const cleanGasto = { ...gasto };
+          delete cleanGasto.IDgastos;
+          let { error: errGasto } = await supabase
+            .from("gastos" as any)
+            .insert(cleanGasto);
+
+          if (
+            errGasto &&
+            (errGasto.code === "23505" ||
+              errGasto.message?.includes("gastos_pkey") ||
+              errGasto.message?.includes("duplicate key"))
+          ) {
+            const { data: maxRows } = await supabase
+              .from("gastos" as any)
+              .select("IDgastos")
+              .order("IDgastos", { ascending: false })
+              .limit(1);
+
+            const maxId = Number((maxRows as any[])?.[0]?.IDgastos) || 0;
+            await supabase
+              .from("gastos" as any)
+              .insert({ ...cleanGasto, IDgastos: maxId + 1 });
+          }
+        } else if (item.tipo === "ENTREGA_APARTADO") {
+          const { numeroFact, fechaSalida, fechaDevolucion } = item.datos;
+          await supabase
+            .from("FACTURA" as any)
+            .update({
+              ESTADOCLIENTE: "EN ALQUILER",
+              MODO: "ALQUILER",
+              FECHASALIDA: fechaSalida,
+              FECHAENTRADA: fechaDevolucion,
+            })
+            .eq("NUMEROFACT", numeroFact);
+        } else if (item.tipo === "ANULAR_FACTURA") {
+          const { numeroFact, motivo } = item.datos;
+          await supabase
+            .from("FACTURA" as any)
+            .update({
+              ESTADOCLIENTE: "ANULADO",
+              MODO: "ANULADO",
+              GASTOS: (motivo || "ANULACIÓN DE FACTURA").slice(0, 50),
+            })
+            .eq("NUMEROFACT", numeroFact);
         }
 
         // Si se sincronizó correctamente, eliminar de la cola

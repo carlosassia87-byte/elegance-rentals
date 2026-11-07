@@ -745,23 +745,44 @@ export async function anularFacturaOperacion(
   try {
     const numClean = String(numeroFact).trim();
 
+    let guardadoSupabase = false;
     // 1. Actualizar estado en Supabase
     try {
-      const { error: errUpdate } = await supabase
-        .from("FACTURA" as any)
-        .update({
-          ESTADO: "ANULADA",
-          ESTADOCLIENTE: "ANULADO",
-          MODO: "ANULADO",
-          GASTOS: motivo.slice(0, 50),
-        })
-        .eq("NUMEROFACT", numClean);
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        const { error: errUpdate } = await supabase
+          .from("FACTURA" as any)
+          .update({
+            ESTADOCLIENTE: "ANULADO",
+            MODO: "ANULADO",
+            GASTOS: motivo.slice(0, 50),
+          })
+          .eq("NUMEROFACT", numClean);
 
-      if (errUpdate) {
-        console.warn("Aviso actualizando FACTURA en Supabase:", errUpdate.message);
+        if (!errUpdate) {
+          guardadoSupabase = true;
+        } else {
+          console.warn("Aviso actualizando FACTURA en Supabase:", errUpdate.message);
+        }
       }
+    } catch (eDb) {
+      console.warn("Aviso actualizando anulación en Supabase:", eDb);
+    }
 
-      // 1.1 Reponer el stock de los artículos en Supabase
+    if (!guardadoSupabase) {
+      try {
+        const { encolarOperacionOffline } = await import("./offlineDbService");
+        await encolarOperacionOffline("ANULAR_FACTURA", {
+          numeroFact: numClean,
+          motivo: motivo.slice(0, 50),
+        });
+      } catch (eQ) {
+        console.warn("Aviso encolando anulación de factura offline:", eQ);
+      }
+    }
+
+    // 1.1 Reponer el stock de los artículos tanto en Supabase como offline
+    try {
+      const { reponerStockArticuloOffline } = await import("./offlineDbService");
       const { data: itemsDb } = (await supabase
         .from("CAMPOFACTURA" as any)
         .select("*")
@@ -804,6 +825,10 @@ export async function anularFacturaOperacion(
                   .eq("IDARTICULO", (art as any).IDARTICULO);
               }
             } catch {}
+          }
+
+          if (it.BARRAS) {
+            reponerStockArticuloOffline(undefined, it.BARRAS, cant).catch(() => {});
           }
         }
       }

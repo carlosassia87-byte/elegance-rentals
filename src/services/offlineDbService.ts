@@ -96,7 +96,14 @@ export interface OfflineAbono {
 
 export interface SyncQueueItem {
   id: string;
-  tipo: "NUEVA_FACTURA" | "NUEVO_ABONO" | "DEVOLUCION_TRAJE" | "NUEVO_CLIENTE";
+  tipo:
+    | "NUEVA_FACTURA"
+    | "NUEVO_ABONO"
+    | "DEVOLUCION_TRAJE"
+    | "NUEVO_CLIENTE"
+    | "NUEVO_GASTO"
+    | "ENTREGA_APARTADO"
+    | "ANULAR_FACTURA";
   timestamp: number;
   datos: any;
   intentos: number;

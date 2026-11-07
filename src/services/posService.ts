@@ -1885,19 +1885,49 @@ export async function registrarSalidaVestidoApartado(
       dDevolucion = d.toISOString().split("T")[0];
     }
 
+    let guardadoSupabase = false;
     try {
-      await supabase
-        .from("FACTURA" as any)
-        .update({
-          ESTADOCLIENTE: "EN ALQUILER",
-          MODO: "ALQUILER",
-          FECHASALIDA: hoy,
-          FECHAENTRADA: dDevolucion,
-        })
-        .eq("NUMEROFACT", numeroFactura);
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        const { error: errUpdate } = await supabase
+          .from("FACTURA" as any)
+          .update({
+            ESTADOCLIENTE: "EN ALQUILER",
+            MODO: "ALQUILER",
+            FECHASALIDA: hoy,
+            FECHAENTRADA: dDevolucion,
+          })
+          .eq("NUMEROFACT", numeroFactura);
+        if (!errUpdate) guardadoSupabase = true;
+      }
     } catch (e) {
       console.warn("Error actualizando salida en Supabase:", e);
     }
+
+    if (!guardadoSupabase) {
+      try {
+        await encolarOperacionOffline("ENTREGA_APARTADO", {
+          numeroFact: numeroFactura,
+          fechaSalida: hoy,
+          fechaDevolucion: dDevolucion,
+        });
+      } catch (eQ) {
+        console.warn("Aviso encolando entrega de apartado offline:", eQ);
+      }
+    }
+
+    // Actualizar en IndexedDB
+    try {
+      const { obtenerTodasLasFacturasOffline, guardarFacturasLote } = await import("./offlineDbService");
+      const factsOff = await obtenerTodasLasFacturasOffline();
+      const targetOff = factsOff.find((f) => f.NUMEROFACT === numeroFactura);
+      if (targetOff) {
+        targetOff.ESTADOCLIENTE = "EN ALQUILER";
+        targetOff.MODO = "ALQUILER";
+        targetOff.FECHASALIDA = hoy;
+        targetOff.FECHAENTRADA = dDevolucion;
+        await guardarFacturasLote([targetOff]);
+      }
+    } catch {}
 
     // Actualizar local
     const facts = getLocalFacturas();
@@ -2000,16 +2030,48 @@ export async function registrarGasto(params: {
   } catch {}
 
   try {
-    const { data, error } = await supabase
-      .from("GASTOS" as any)
+    let { data, error } = await supabase
+      .from("gastos" as any)
       .insert(gastoPayload)
       .select()
       .single();
+
+    // Auto-recuperación si falla por secuencia de clave primaria gastos_pkey
+    if (
+      error &&
+      (error.code === "23505" ||
+        error.message?.includes("gastos_pkey") ||
+        error.message?.includes("duplicate key"))
+    ) {
+      console.warn("⚠️ [gastos] Desincronización de secuencia detectada. Calculando MAX(IDgastos) + 1...");
+      const { data: maxRows } = await supabase
+        .from("gastos" as any)
+        .select("IDgastos")
+        .order("IDgastos", { ascending: false })
+        .limit(1);
+
+      const maxId = Number((maxRows as any[])?.[0]?.IDgastos) || 0;
+      const resRetry = await supabase
+        .from("gastos" as any)
+        .insert({ ...gastoPayload, IDgastos: maxId + 1 })
+        .select()
+        .single();
+
+      if (!resRetry.error && resRetry.data) {
+        data = resRetry.data;
+        error = null;
+      }
+    }
+
     if (error) throw error;
     return data as unknown as Gasto;
   } catch (err) {
-    // BUG-21 fix: Si Supabase falla (offline o error), encolar para sincronización posterior
     console.warn("Gasto guardado localmente, se sincronizará al volver la red:", err);
+    try {
+      await encolarOperacionOffline("NUEVO_GASTO", { gasto: gastoPayload });
+    } catch (eQ) {
+      console.warn("Aviso encolando gasto offline:", eQ);
+    }
     return gastoPayload as unknown as Gasto;
   }
 }
