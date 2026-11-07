@@ -507,6 +507,17 @@ export async function eliminarItemCola(id: string): Promise<void> {
   });
 }
 
+export async function actualizarItemCola(item: SyncQueueItem): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("sync_queue", "readwrite");
+    const store = tx.objectStore("sync_queue");
+    store.put(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function contarItemsPendientesSincronizar(): Promise<number> {
   const db = await openDB();
   return new Promise((resolve) => {

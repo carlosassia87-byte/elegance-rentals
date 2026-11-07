@@ -98,6 +98,7 @@ import { AlertasRetrasosModal } from "./AlertasRetrasosModal";
 import { MantenimientoMigracionModal } from "./MantenimientoMigracionModal";
 import { AsistenteRestauracionModal } from "./AsistenteRestauracionModal";
 import { GestionAccesoriosModal } from "./GestionAccesoriosModal";
+import { obtenerFechaActualColombia, sumarDiasAFecha } from "@/lib/fechaColombia";
 import { SeleccionAccesoriosPosModal } from "./SeleccionAccesoriosPosModal";
 import { extraerPiezasYNombreTraje } from "@/services/accesoriosService";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
@@ -121,15 +122,11 @@ const ARTICULOS_INICIALES: Articulo[] = [
 export function PuntoDeVenta() {
   // Formulario Superior
   const [estadoCli, setEstadoCli] = useState("ACTIVO");
-  const [fechaHoy, setFechaHoy] = useState(() => new Date().toISOString().split("T")[0]);
+  const [fechaHoy, setFechaHoy] = useState(() => obtenerFechaActualColombia());
   const [numeroRecibo, setNumeroRecibo] = useState("000124");
   const [cajero, setCajero] = useState("TODO EN MAYUSCULAS, LETRAS, DIGITOS Y SIMBOLOS");
-  const [fechaSalida, setFechaSalida] = useState(() => new Date().toISOString().split("T")[0]);
-  const [fechaEntrada, setFechaEntrada] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 3);
-    return d.toISOString().split("T")[0];
-  });
+  const [fechaSalida, setFechaSalida] = useState(() => obtenerFechaActualColombia());
+  const [fechaEntrada, setFechaEntrada] = useState(() => sumarDiasAFecha(obtenerFechaActualColombia(), 3));
   const [estadoTraje, setEstadoTraje] = useState("EN ALQUILER");
 
   // Estado del Cliente (Campos de la tabla CLIENTES)
@@ -467,10 +464,8 @@ export function PuntoDeVenta() {
         setModalSubAbonar(false);
 
         // Fechas de salida y devolución (3 días hábiles)
-        const hoy = new Date().toISOString().split("T")[0];
-        const dSalida = new Date(hoy + "T12:00:00");
-        const dEntrada = new Date(hoy + "T12:00:00");
-        dEntrada.setDate(dEntrada.getDate() + 3);
+        const hoy = obtenerFechaActualColombia();
+        const fechaDevApartado = sumarDiasAFecha(hoy, 3);
 
         let tipoAbono = "EN BODEGA";
         if (apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) {
@@ -529,15 +524,13 @@ export function PuntoDeVenta() {
     setModalPreguntaSalida(false);
 
     if (darSalida) {
-      const hoy = new Date().toISOString().split("T")[0];
-      const dEntrada = new Date(hoy + "T12:00:00");
-      dEntrada.setDate(dEntrada.getDate() + 3);
-      const fechaDev = dEntrada.toISOString().split("T")[0];
+      const hoy = obtenerFechaActualColombia();
+      const fechaDev = sumarDiasAFecha(hoy, 3);
 
       const res = await registrarSalidaVestidoApartado(apartadoFactura.NUMEROFACT, hoy, fechaDev);
       if (res.ok) {
         toast.success(
-          `👗 ¡PRENDA ENTREGADA AL CLIENTE! Pasa a EN ALQUILER. Comienzan 3 días de plazo hasta el ${dEntrada.toLocaleDateString("es-CO")}.`,
+          `👗 ¡PRENDA ENTREGADA AL CLIENTE! Pasa a EN ALQUILER. Comienzan 3 días de plazo hasta el ${fechaDev}.`,
           { duration: 6000 }
         );
       }
@@ -1510,12 +1503,10 @@ export function PuntoDeVenta() {
     setEstadoTraje("EN ALQUILER");
     setOperacionSeleccionada("ALQUILER");
 
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = obtenerFechaActualColombia();
     setFechaHoy(hoy);
     setFechaSalida(hoy);
-    const dEntrada = new Date();
-    dEntrada.setDate(dEntrada.getDate() + 3);
-    setFechaEntrada(dEntrada.toISOString().split("T")[0]);
+    setFechaEntrada(sumarDiasAFecha(hoy, 3));
 
     if (recargarArticulos) {
       cargarArticulos();
@@ -1580,8 +1571,8 @@ export function PuntoDeVenta() {
     try {
       const factura: Omit<Factura, "IDFACTURA"> = {
         NUMEROFACT: numeroRecibo,
-        FECHASALIDA: fechaSalida || new Date().toISOString().split("T")[0],
-        FECHAENTRADA: fechaEntrada || new Date().toISOString().split("T")[0],
+        FECHASALIDA: fechaSalida || obtenerFechaActualColombia(),
+        FECHAENTRADA: fechaEntrada || obtenerFechaActualColombia(),
         FORMAPAGO: tipoPagoEfectivo || "EFECTIVO",
         FPAGOTRANS: formaDePago || "DATAFONO",
         MODO: operacionSeleccionada,

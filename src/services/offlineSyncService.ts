@@ -11,6 +11,7 @@ import {
   guardarFacturasLote,
   obtenerColaSincronizacion,
   eliminarItemCola,
+  actualizarItemCola,
   contarItemsPendientesSincronizar,
   guardarReservaConsecutivo,
   obtenerReservaConsecutivo,
@@ -22,6 +23,7 @@ import {
   SyncQueueItem,
   actualizarIdFacturaOffline,
 } from "./offlineDbService";
+import { obtenerFechaActualColombia } from "@/lib/fechaColombia";
 import {
   indexarArticulosEnMemoria,
   indexarClientesEnMemoria,
@@ -562,7 +564,7 @@ function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
     } else if (BIGINT_FACTURA.has(key)) {
       clean[key] = val !== null ? Math.floor(Number(val) || 0) : 0;
     } else if (key.startsWith("FECHA")) {
-      clean[key] = val ? String(val).split("T")[0] : new Date().toISOString().split("T")[0];
+      clean[key] = val ? String(val).split("T")[0] : obtenerFechaActualColombia();
     } else {
       clean[key] = val;
     }
@@ -575,10 +577,10 @@ function sanitizarFacturaParaSupabase(factura: any): Record<string, any> {
   clean["FORMAPAGO"] = clean["FORMAPAGO"] || "EFECTIVO";
   clean["MODO"] = clean["MODO"] || "ALQUILER";
   clean["VENDEDOR"] = clean["VENDEDOR"] || "ADMINISTRADOR";
-  clean["FECHASALIDA"] = clean["FECHASALIDA"] || new Date().toISOString().split("T")[0];
-  clean["FECHAENTRADA"] = clean["FECHAENTRADA"] || new Date().toISOString().split("T")[0];
-  clean["FECHA_RECIBO"] = clean["FECHA_RECIBO"] || new Date().toISOString().split("T")[0];
-  clean["FECHAINGRESO"] = clean["FECHAINGRESO"] || new Date().toISOString().split("T")[0];
+  clean["FECHASALIDA"] = clean["FECHASALIDA"] || obtenerFechaActualColombia();
+  clean["FECHAENTRADA"] = clean["FECHAENTRADA"] || obtenerFechaActualColombia();
+  clean["FECHA_RECIBO"] = clean["FECHA_RECIBO"] || obtenerFechaActualColombia();
+  clean["FECHAINGRESO"] = clean["FECHAINGRESO"] || obtenerFechaActualColombia();
 
   if (!clean["ESTADOCLIENTE"]) {
     const modoUpper = String(clean["MODO"]).toUpperCase();
@@ -874,7 +876,7 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
               await insertarDepositoEntregadoSeguro({
                 NUMEROFACTURA: numeroFact,
                 VALOR: Number(montoNetoDevuelto),
-                FECHA: fecha || new Date().toISOString().split("T")[0],
+                FECHA: fecha || obtenerFechaActualColombia(),
               });
 
               // BUG-10 fix: marcar el depósito local como sincronizado para evitar doble-conteo
@@ -1067,6 +1069,25 @@ export async function procesarColaSincronizacion(forzarSinEspera = false): Promi
         fallidas++;
         item.intentos = (item.intentos || 0) + 1;
         item.ultimoError = err?.message || String(err);
+
+        try {
+          if (item.intentos >= 5) {
+            console.error(`🚨 [DLQ] El elemento de cola ${item.id} (${item.tipo}) superó el máximo de 5 intentos fallidos. Retirándolo de la cola para no bloquear el sistema. Causa: ${item.ultimoError}`);
+            // Guardar en log de fallos en localStorage para auditoría forense
+            try {
+              const KEY_DLQ = "elegance_sync_dead_letter_queue";
+              const rawDlq = localStorage.getItem(KEY_DLQ);
+              const listDlq = rawDlq ? JSON.parse(rawDlq) : [];
+              listDlq.unshift({ ...item, fechaFalloFinal: new Date().toISOString() });
+              localStorage.setItem(KEY_DLQ, JSON.stringify(listDlq.slice(0, 50)));
+            } catch {}
+            await eliminarItemCola(item.id);
+          } else {
+            await actualizarItemCola(item);
+          }
+        } catch (dbErr) {
+          console.error(`Error actualizando reintentos para item ${item.id}:`, dbErr);
+        }
       }
     }
   } finally {

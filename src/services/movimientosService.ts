@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Articulo, Factura, CampoFactura } from "@/types/database.types";
 import { insertarDepositoEntregadoSeguro } from "./devolucionesService";
+import { obtenerFechaActualColombia } from "@/lib/fechaColombia";
 
 export type EstadoPrenda =
   | "EN ALQUILER"
@@ -98,7 +99,7 @@ export function guardarEstadoPrendaOverride(
     const key = `${numeroFact}_${codigoBarras || descripcion}`;
     current[key] = {
       estado: nuevoEstado,
-      fechaDevolucion: nuevoEstado === "ENTREGADO" ? new Date().toISOString().split("T")[0] : undefined,
+      fechaDevolucion: nuevoEstado === "ENTREGADO" ? obtenerFechaActualColombia() : undefined,
     };
     localStorage.setItem(KEY_ESTADOS_PRENDAS, JSON.stringify(current));
   } catch {}
@@ -177,7 +178,7 @@ export async function consultarMovimientos(
         operacionesMap.set(keyUnica, {
           idFactura: idFact,
           numeroFact: numFact,
-          fechaSalida: f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0],
+          fechaSalida: f.FECHASALIDA || f.FECHA_RECIBO || obtenerFechaActualColombia(),
           fechaEntregaPactada: f.FECHAENTRADA || f.FECHAENTREGA || f.FECHASALIDA || "",
           hora: f.HORA || "",
           clienteNombre: (f.CCLIENTE || f.NOMBRE || "CLIENTE GENERAL").trim(),
@@ -224,7 +225,7 @@ export async function consultarMovimientos(
 
     for (const f of todasLocales) {
       const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
-      const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0];
+      const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || obtenerFechaActualColombia();
       const fechaRecibo = f.FECHA_RECIBO || fechaSalida;
 
       const coincideFecha =
@@ -327,7 +328,7 @@ export async function consultarMovimientos(
       const localList: any[] = JSON.parse(rawLocal);
       for (const f of localList) {
         const numFact = f.NUMEROFACT || `F-${f.IDFACTURA}`;
-        const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || new Date().toISOString().split("T")[0];
+        const fechaSalida = f.FECHASALIDA || f.FECHA_RECIBO || obtenerFechaActualColombia();
         const fechaRecibo = f.FECHA_RECIBO || fechaSalida;
 
         const coincideFecha =
@@ -723,7 +724,7 @@ export async function marcarTrajeDevuelto(
       await insertarDepositoEntregadoSeguro({
         NUMEROFACTURA: numeroFact,
         VALOR: 0,
-        FECHA: new Date().toISOString().split("T")[0],
+        FECHA: obtenerFechaActualColombia(),
       });
     } catch {}
 

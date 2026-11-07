@@ -10,8 +10,6 @@ import {
  * Autenticación: Header 'Authorization: Bearer <SECRET>', 'x-cron-auth: <SECRET>', o '?secret=<SECRET>'
  */
 
-const CRON_SECRET_DEFAULT = "elegance-cron-backup-secret-key-2026";
-
 export async function handleCronBackup(request: Request): Promise<Response> {
   // Solo permitir solicitudes POST o GET
   if (request.method !== "POST" && request.method !== "GET") {
@@ -27,14 +25,24 @@ export async function handleCronBackup(request: Request): Promise<Response> {
     const secretParam = url.searchParams.get("secret") || "";
 
     const secretConfigurado =
-      (typeof process !== "undefined" && process.env && process.env["CRON_BACKUP_SECRET"]) ||
-      CRON_SECRET_DEFAULT;
+      typeof process !== "undefined" && process.env ? process.env["CRON_BACKUP_SECRET"] : null;
+
+    if (!secretConfigurado || secretConfigurado.trim().length < 16) {
+      return new Response(
+        JSON.stringify({
+          error: "CRON_BACKUP_SECRET no está configurado en el servidor con una longitud mínima de 16 caracteres.",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const tokenLimpio = authHeader.replace(/^Bearer\s+/i, "").trim();
     const esAutorizado =
       tokenLimpio === secretConfigurado ||
-      secretParam.trim() === secretConfigurado ||
-      tokenLimpio === CRON_SECRET_DEFAULT;
+      secretParam.trim() === secretConfigurado;
 
     if (!esAutorizado) {
       return new Response(

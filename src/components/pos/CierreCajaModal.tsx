@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { obtenerTerminalConfig, obtenerConfiguracionEmpresa, type EmpresaConfig } from "@/services/empresaCajaService";
 import { imprimirReporte80mmHtml } from "./TicketFactura80mm";
 import { exportarCierreCajaExcel } from "@/services/excelExportService";
+import { obtenerFechaActualColombia } from "@/lib/fechaColombia";
 
 interface CierreCajaModalProps {
   open: boolean;
@@ -14,7 +15,7 @@ interface CierreCajaModalProps {
 }
 
 export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRINCIPAL" }: CierreCajaModalProps) {
-  const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
+  const [fecha, setFecha] = useState(() => obtenerFechaActualColombia());
   const [cargando, setCargando] = useState(false);
   const [empresa, setEmpresa] = useState<EmpresaConfig | null>(null);
   const terminal = obtenerTerminalConfig();

@@ -297,15 +297,10 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
   );
 
   if (match) {
-    // Si el usuario tiene password configurado, validar de manera flexible
-    if (match.password && match.password.trim() !== "" && inputPass !== "") {
-      if (
-        match.password !== inputPass &&
-        inputPass !== "123" &&
-        inputPass !== "1234" &&
-        inputPass !== "admin"
-      ) {
-        return null; // Contraseña incorrecta solo si se ingresó algo explícitamente erróneo
+    // Si el usuario tiene password configurado, validar estrictamente
+    if (match.password && match.password.trim() !== "") {
+      if (match.password !== inputPass) {
+        return null; // Contraseña incorrecta
       }
     }
     guardarSesionPos(match);
@@ -323,8 +318,8 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
 
     const userRaw = data as any;
     if (!error && userRaw) {
-      if (userRaw.PASSWORD && inputPass && userRaw.PASSWORD !== inputPass && inputPass !== "123" && inputPass !== "1234") {
-        return null;
+      if (userRaw.PASSWORD && userRaw.PASSWORD.trim() !== "" && userRaw.PASSWORD !== inputPass) {
+        return null; // Contraseña incorrecta en base de datos
       }
       const rol: RolUsuario = userRaw.TIPO ? "SUPER ADMIN" : "CAJERO";
       const user: UsuarioPos = {
@@ -332,7 +327,7 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
         nombre: userRaw.INOMBRE || queryUser,
         apellido: userRaw.IAPELLIDO || "",
         codigoUsuario: String(userRaw.ILOGIN || userRaw.INOMBRE || queryUser),
-        password: userRaw.PASSWORD || inputPass || "123",
+        password: userRaw.PASSWORD || inputPass || "",
         rol,
         accesoMenu: userRaw.ACCESOALMENU !== false,
         permisos: obtenerPermisosPorDefecto(rol),
@@ -342,16 +337,17 @@ export async function loginPos(codigoUsuario: string, password?: string): Promis
     }
   } catch (e) {}
 
-  // 3. Si es el primer acceso con credenciales maestras (ADMIN/SUPERADMIN) o correo oficial, permitir acceso
-  const esAdminBootstrap = queryUser === "ADMIN" || queryUser === "SUPERADMIN" || queryUser === "SUPER" || queryUser.includes("@");
+  // 3. Si no existen usuarios registrados en el sistema, permitir creación inicial del primer administrador
+  const usuariosExistentes = await listarUsuariosPos();
+  const esSistemaSinUsuarios = !usuariosExistentes || usuariosExistentes.length === 0;
+  const esAdminBootstrap = esSistemaSinUsuarios && (queryUser === "ADMIN" || queryUser === "SUPERADMIN");
   if (esAdminBootstrap) {
-    const nombreLimpio = queryUser.includes("@") ? queryUser.split("@")[0] : queryUser;
     const nuevoAdmin: UsuarioPos = {
-      id: Math.floor(1000 + Math.random() * 9000),
-      nombre: nombreLimpio,
-      apellido: "ADMIN",
-      codigoUsuario: queryUser,
-      password: inputPass || "123",
+      id: 1,
+      nombre: "ADMINISTRADOR",
+      apellido: "SISTEMA",
+      codigoUsuario: "ADMIN",
+      password: inputPass || "admin",
       rol: "SUPER ADMIN",
       accesoMenu: true,
       permisos: PERMISOS_SUPER_ADMIN,

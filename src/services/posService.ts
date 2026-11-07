@@ -27,6 +27,7 @@ import {
   type OfflineAbono,
 } from "./offlineDbService";
 import { renovarBloqueConsecutivosOffline } from "./offlineSyncService";
+import { obtenerFechaActualColombia, sumarDiasAFecha } from "@/lib/fechaColombia";
 
 // ==========================================
 // CACHÉ EN MEMORIA ULTRA-RÁPIDO (SWR & O(1) LOOKUPS)
@@ -942,10 +943,10 @@ export async function insertarFacturaSegura(
       NUMEROFACT: truncate(facturaData.NUMEROFACT || "F-0", 50),
       FECHASALIDA: facturaData.FECHASALIDA
         ? String(facturaData.FECHASALIDA).split("T")[0]
-        : new Date().toISOString().split("T")[0],
+        : obtenerFechaActualColombia(),
       FECHAENTRADA: facturaData.FECHAENTRADA
         ? String(facturaData.FECHAENTRADA).split("T")[0]
-        : new Date().toISOString().split("T")[0],
+        : obtenerFechaActualColombia(),
       FTOTALDEPOSITO: Number(facturaData.FTOTALDEPOSITO) || 0,
       FTOTALVENTADEPOSITO: Number(facturaData.FTOTALVENTADEPOSITO) || 0,
       FORMAPAGO: truncate(facturaData.FORMAPAGO || "EFECTIVO", 50),
@@ -974,11 +975,11 @@ export async function insertarFacturaSegura(
       TOTAL_SALDO: Number(facturaData.TOTAL_SALDO) || 0,
       FECHA_RECIBO: facturaData.FECHA_RECIBO
         ? String(facturaData.FECHA_RECIBO).split("T")[0]
-        : new Date().toISOString().split("T")[0],
+        : obtenerFechaActualColombia(),
       SALDOA_BONADO: Number(facturaData.SALDOA_BONADO) || 0,
       FECHAINGRESO: facturaData.FECHAINGRESO
         ? String(facturaData.FECHAINGRESO).split("T")[0]
-        : new Date().toISOString().split("T")[0],
+        : obtenerFechaActualColombia(),
     };
 
     if (facturaData.IDFACTURA && Number(facturaData.IDFACTURA) > 0) {
@@ -1175,8 +1176,8 @@ export async function registrarAlquilerFactura(
 
     const cleanFacturaData: Record<string, any> = {
       NUMEROFACT: truncate(sNumeroFactura, 50),
-      FECHASALIDA: facturaData.FECHASALIDA ? String(facturaData.FECHASALIDA).split("T")[0] : new Date().toISOString().split("T")[0],
-      FECHAENTRADA: facturaData.FECHAENTRADA ? String(facturaData.FECHAENTRADA).split("T")[0] : new Date().toISOString().split("T")[0],
+      FECHASALIDA: facturaData.FECHASALIDA ? String(facturaData.FECHASALIDA).split("T")[0] : obtenerFechaActualColombia(),
+      FECHAENTRADA: facturaData.FECHAENTRADA ? String(facturaData.FECHAENTRADA).split("T")[0] : obtenerFechaActualColombia(),
       FTOTALDEPOSITO: Number(facturaData.FTOTALDEPOSITO) || 0,
       FTOTALVENTADEPOSITO: Number(facturaData.FTOTALVENTADEPOSITO) || 0,
       FORMAPAGO: truncate(facturaData.FORMAPAGO || "EFECTIVO", 50),
@@ -1197,7 +1198,7 @@ export async function registrarAlquilerFactura(
       FPAGOTRANS: truncate(facturaData.FPAGOTRANS || "", 50),
       DESCUENTO: Number(facturaData.DESCUENTO) || 0,
       TOTAL_SALDO: Number(facturaData.TOTAL_SALDO) || 0,
-      FECHA_RECIBO: facturaData.FECHA_RECIBO ? String(facturaData.FECHA_RECIBO).split("T")[0] : new Date().toISOString().split("T")[0],
+      FECHA_RECIBO: facturaData.FECHA_RECIBO ? String(facturaData.FECHA_RECIBO).split("T")[0] : obtenerFechaActualColombia(),
     };
 
     let facturaInsertada: Factura | null = null;
@@ -1676,7 +1677,7 @@ export async function registrarAbonoCliente(params: {
 
   try {
     const numeroAbono = `AB-${Date.now().toString().slice(-4)}`;
-    const fecha = params.fecha || new Date().toISOString().split("T")[0];
+    const fecha = params.fecha || obtenerFechaActualColombia();
     const totalAbono = Number(params.totalAbono) || 0;
     const nuevoSaldo = Math.max(0, Number(params.saldoDeber) || 0);
 
@@ -1915,15 +1916,10 @@ export async function registrarSalidaVestidoApartado(
   fechaDevolucionPersonalizada?: string
 ): Promise<{ ok: boolean; fechaSalida: string; fechaDevolucion: string }> {
   try {
-    const hoy = fechaSalidaPersonalizada || new Date().toISOString().split("T")[0];
+    const hoy = fechaSalidaPersonalizada || obtenerFechaActualColombia();
     
     // Si no se pasa fecha de devolución, se cuentan automáticamente los 3 días hábiles/reglamentarios
-    let dDevolucion = fechaDevolucionPersonalizada;
-    if (!dDevolucion) {
-      const d = new Date(hoy + "T12:00:00");
-      d.setDate(d.getDate() + 3);
-      dDevolucion = d.toISOString().split("T")[0];
-    }
+    const dDevolucion = fechaDevolucionPersonalizada || sumarDiasAFecha(hoy, 3);
 
     let guardadoSupabase = false;
     try {
@@ -2020,7 +2016,7 @@ export async function registrarDevolucionVestido(params: {
   observaciones?: string | undefined;
 }): Promise<DepositoEntregado | null> {
   try {
-    const fecha = params.fecha || new Date().toISOString().split("T")[0];
+    const fecha = params.fecha || obtenerFechaActualColombia();
     const depData: DepositoEntregado = {
       NUMEROFACTURA: params.numeroFactura,
       VALOR: params.montoDevuelto,
@@ -2057,7 +2053,7 @@ export async function registrarGasto(params: {
     DESCRIPCIONSALIDA: params.DESCRIPCIONSALIDA,
     VALORSALIDA: String(params.VALORSALIDA),
     NUMEROGASTO: params.NUMEROGASTO || `GA-${Date.now()}`,
-    FECHA: params.FECHA || new Date().toISOString().split("T")[0],
+    FECHA: params.FECHA || obtenerFechaActualColombia(),
   };
 
   // BUG-21 fix: Siempre guardar en localStorage primero (persiste offline)

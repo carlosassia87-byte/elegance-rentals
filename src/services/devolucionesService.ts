@@ -3,6 +3,7 @@ import type { Factura, CampoFactura, DepositoEntregado } from "@/types/database.
 import { guardarEstadoPrendaOverride, type EstadoPrenda } from "./movimientosService";
 import { emitirEventoRealtime, invalidarCacheArticulos } from "./posService";
 import { reponerStockArticuloOffline } from "./offlineDbService";
+import { obtenerFechaActualColombia } from "@/lib/fechaColombia";
 
 export interface ItemDevolucionInfo {
   id: string | number;
@@ -441,7 +442,7 @@ export async function buscarFacturaParaDevolucion(
       clienteCedula: String(factura.CCEDULA || factura.CEDULA || "—"),
       clienteTelefono: factura.CTELEFONO || factura.CTELEFONO1 || factura.TELEFONO || "—",
       clienteDireccion: factura.CDIRECCION || factura.DIRECCION || "—",
-      fechaSalida: factura.FECHASALIDA || new Date().toISOString().split("T")[0],
+      fechaSalida: factura.FECHASALIDA || obtenerFechaActualColombia(),
       fechaEntregaPactada: factura.FECHAENTRADA || factura.FECHAENTREGA || factura.FECHASALIDA || "",
       esAnulada,
       motivoAnulacion: factura.GASTOS || "ANULACIÓN DE FACTURA / APARTADO",
@@ -470,7 +471,7 @@ export async function registrarReembolsoAnulacion(params: {
   cajero: string;
 }): Promise<{ ok: boolean; comprobante: ComprobanteDevolucionData | null; mensaje: string }> {
   try {
-    const fechaHoy = new Date().toISOString().split("T")[0];
+    const fechaHoy = obtenerFechaActualColombia();
     const horaActual = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
     const numComprobante = `REM-${Date.now().toString().slice(-6)}`;
 
@@ -527,7 +528,7 @@ export async function registrarDevolucionCompleta(
   params: ParamsRegistroDevolucion
 ): Promise<{ ok: boolean; comprobante: ComprobanteDevolucionData | null }> {
   try {
-    const fechaHoy = params.fecha || new Date().toISOString().split("T")[0];
+    const fechaHoy = params.fecha || obtenerFechaActualColombia();
     const horaActual = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
     const numComprobante = `DEV-${Date.now().toString().slice(-6)}`;
 
@@ -946,7 +947,7 @@ export async function consultarAlquileresActivosCliente(
       }
 
       if (prendasActivas.length > 0) {
-        const fSalidaStr = f.FECHASALIDA || new Date().toISOString().split("T")[0];
+        const fSalidaStr = f.FECHASALIDA || obtenerFechaActualColombia();
         const fEntradaStr = f.FECHAENTRADA || f.FECHAENTREGA || fSalidaStr;
 
         const dSalida = new Date(fSalidaStr);
