@@ -1616,8 +1616,8 @@ export function PuntoDeVenta() {
         TOTALALQUILER: g.totalAlquiler,
         TOTALDEPOSITO: g.totalDeposito,
         ES_ACCESORIO: Boolean(g.esAccesorio),
-        ID_TRAJE_PADRE: g.idTrajePadre || "",
-        PIEZAS_INCLUIDAS: g.piezasIncluidas ? g.piezasIncluidas.join(", ") : "",
+        ID_TRAJE_PADRE: g.idTrajePadre && !isNaN(Number(g.idTrajePadre)) ? Number(g.idTrajePadre) : null,
+        PIEZAS_INCLUIDAS: g.piezasIncluidas && g.piezasIncluidas.length > 0 ? g.piezasIncluidas.join(", ") : null,
       }));
 
       await guardarCliente(clienteForm);

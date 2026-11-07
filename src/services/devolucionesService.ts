@@ -283,6 +283,29 @@ export async function buscarFacturaParaDevolucion(
       camposRaw = factura.items;
     }
 
+    // Fallback de resiliencia: si la factura existe pero sus campos no se guardaron o están vacíos,
+    // generar un item representativo con el total de alquiler y depósito de la cabecera
+    if (camposRaw.length === 0) {
+      const depFact = Number(factura.FTOTALDEPOSITO || 0);
+      const alqFact = Number(factura.FTOTALALQUILER || 0);
+      camposRaw = [
+        {
+          AUTOMATIC: Number(factura.IDFACTURA) || Date.now(),
+          NUMEROFACT: numFact,
+          IDFACTURA: Number(factura.IDFACTURA) || Date.now(),
+          DESCRIPCION: `PRENDA / TRAJE EN CONTRATO (${numFact})`,
+          CANTIDAD: 1,
+          VALOR: alqFact,
+          TOTAL: alqFact + depFact,
+          VALORDEPOSITO: depFact,
+          TOTALALQUILER: alqFact,
+          TOTALDEPOSITO: depFact,
+          BARRAS: "0",
+          TALLA: "U",
+        },
+      ];
+    }
+
     // 3. Consultar depósitos ya devueltos
     let totalYaDevuelto = 0;
     try {

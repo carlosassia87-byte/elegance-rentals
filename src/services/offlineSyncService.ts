@@ -604,7 +604,7 @@ const COLUMNAS_CAMPOFACTURA = new Set([
   "PIEZAS_INCLUIDAS",
 ]);
 
-const VARCHAR_50_CAMPOFACTURA = new Set(["BARRAS", "NUMEROFACT", "ID_TRAJE_PADRE"]);
+const VARCHAR_50_CAMPOFACTURA = new Set(["BARRAS", "NUMEROFACT"]);
 
 function sanitizarItemCampoFactura(item: any): Record<string, any> {
   if (!item || typeof item !== "object") return {};
@@ -615,7 +615,9 @@ function sanitizarItemCampoFactura(item: any): Record<string, any> {
     if (key === "DESCRIPCION") {
       clean[key] = val !== null ? String(val).trim().slice(0, 300) : "PRENDA DE VESTIR / TRAJE";
     } else if (key === "PIEZAS_INCLUIDAS") {
-      clean[key] = val !== null ? String(val).trim().slice(0, 500) : "";
+      clean[key] = val !== null ? String(val).trim().slice(0, 500) : null;
+    } else if (key === "ID_TRAJE_PADRE") {
+      clean[key] = val && !isNaN(Number(val)) ? Number(val) : null;
     } else if (VARCHAR_50_CAMPOFACTURA.has(key)) {
       clean[key] = val !== null ? String(val).trim().slice(0, 50) : "";
     } else if (["CANTIDAD", "VALOR", "TOTAL", "VALORDEPOSITO", "TOTALALQUILER", "TOTALDEPOSITO"].includes(key)) {

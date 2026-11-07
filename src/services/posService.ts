@@ -1052,8 +1052,8 @@ export async function insertarCamposFacturaSeguro(
       TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
       TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
       ES_ACCESORIO: Boolean((item as any).ES_ACCESORIO),
-      ID_TRAJE_PADRE: truncate((item as any).ID_TRAJE_PADRE || "", 50),
-      PIEZAS_INCLUIDAS: truncate((item as any).PIEZAS_INCLUIDAS || "", 500),
+      ID_TRAJE_PADRE: (item as any).ID_TRAJE_PADRE && !isNaN(Number((item as any).ID_TRAJE_PADRE)) ? Number((item as any).ID_TRAJE_PADRE) : null,
+      PIEZAS_INCLUIDAS: (item as any).PIEZAS_INCLUIDAS ? truncate((item as any).PIEZAS_INCLUIDAS, 500) : null,
     }));
 
     let { data, error } = await supabase
@@ -1258,8 +1258,8 @@ export async function registrarAlquilerFactura(
       TOTALALQUILER: Number(item.TOTALALQUILER) || 0,
       TOTALDEPOSITO: Number(item.TOTALDEPOSITO) || 0,
       ES_ACCESORIO: Boolean((item as any).ES_ACCESORIO),
-      ID_TRAJE_PADRE: truncate((item as any).ID_TRAJE_PADRE || "", 50),
-      PIEZAS_INCLUIDAS: truncate((item as any).PIEZAS_INCLUIDAS || "", 500),
+      ID_TRAJE_PADRE: (item as any).ID_TRAJE_PADRE && !isNaN(Number((item as any).ID_TRAJE_PADRE)) ? Number((item as any).ID_TRAJE_PADRE) : null,
+      PIEZAS_INCLUIDAS: (item as any).PIEZAS_INCLUIDAS ? truncate((item as any).PIEZAS_INCLUIDAS, 500) : null,
     }));
 
     try {
@@ -1551,6 +1551,29 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
 
     if (!facturaEncontrada) {
       return { factura: null, items: [], abonos: [], yaDevuelto: false, totalDevuelto: 0 };
+    }
+
+    // Fallback de resiliencia: si la factura no tiene items asociados en CAMPOFACTURA,
+    // generar un item representativo con los valores de la factura para que el usuario pueda visualizarlo y gestionarlo
+    if (itemsEncontrados.length === 0) {
+      const depFact = Number(facturaEncontrada.FTOTALDEPOSITO || 0);
+      const alqFact = Number(facturaEncontrada.FTOTALALQUILER || 0);
+      itemsEncontrados = [
+        {
+          AUTOMATIC: Number(facturaEncontrada.IDFACTURA) || Date.now(),
+          NUMEROFACT: facturaEncontrada.NUMEROFACT,
+          IDFACTURA: Number(facturaEncontrada.IDFACTURA) || Date.now(),
+          DESCRIPCION: `PRENDA / TRAJE EN CONTRATO (${facturaEncontrada.NUMEROFACT})`,
+          CANTIDAD: 1,
+          VALOR: alqFact,
+          TOTAL: alqFact + depFact,
+          VALORDEPOSITO: depFact,
+          TOTALALQUILER: alqFact,
+          TOTALDEPOSITO: depFact,
+          BARRAS: "0",
+          TALLA: "U",
+        },
+      ];
     }
 
     // 3. Consultar si ya tiene devoluciones / reintegros registrados
