@@ -442,6 +442,10 @@ export function PuntoDeVenta() {
       toast.error("Coloque el monto del abono a pagar");
       return;
     }
+    if (abonoTotalActual > apartadoSaldoRestante) {
+      toast.error(`El abono ($${abonoTotalActual.toLocaleString("es-CO")}) no puede ser mayor al saldo adeudado ($${apartadoSaldoRestante.toLocaleString("es-CO")}).`);
+      return;
+    }
 
     setGuardandoAbono(true);
     try {
@@ -1538,6 +1542,10 @@ export function PuntoDeVenta() {
     }
     if (!fechaEntrada || fechaEntrada.trim() === "") {
       toast.error("DEBE SELECCIONAR FECHA DE ENTRADA");
+      return;
+    }
+    if (operacionSeleccionada !== "VENTA" && fechaEntrada < fechaSalida) {
+      toast.error("LA FECHA DE DEVOLUCIÓN NO PUEDE SER ANTERIOR A LA FECHA DE SALIDA");
       return;
     }
     if (gridItems.length === 0) {
