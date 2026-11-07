@@ -331,6 +331,21 @@ export async function obtenerTodasLasFacturasOffline(): Promise<OfflineFactura[]
   }
 }
 
+export async function obtenerTodosLosAbonosOffline(): Promise<OfflineAbono[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction("abonos", "readonly");
+      const store = tx.objectStore("abonos");
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
 // =========================================================================
 // BÚSQUEDAS INDEXADAS OFFLINE RÁPIDAS
 // =========================================================================

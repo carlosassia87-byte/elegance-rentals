@@ -75,14 +75,18 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       }
 
       // Facturas de IndexedDB y cola offline
+      let colaItems: any[] = [];
       try {
-        const { obtenerTodasLasFacturasOffline, obtenerColaSincronizacion } = await import("@/services/offlineDbService");
-        const [offlineFacts, cola] = await Promise.all([
+        const { obtenerTodasLasFacturasOffline, obtenerTodosLosAbonosOffline, obtenerColaSincronizacion } = await import("@/services/offlineDbService");
+        const [offlineFacts, offlineAbs, cola] = await Promise.all([
           obtenerTodasLasFacturasOffline().catch(() => []),
+          obtenerTodosLosAbonosOffline().catch(() => []),
           obtenerColaSincronizacion().catch(() => []),
         ]);
 
-        const itemsCola = (cola || [])
+        colaItems = cola || [];
+
+        const itemsCola = colaItems
           .filter((it) => it.tipo === "NUEVA_FACTURA" && it.datos?.factura)
           .map((it) => it.datos.factura);
 
@@ -94,6 +98,17 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
             facturasMap.set(numFact, f);
           }
         });
+
+        // Cargar abonos desde IndexedDB
+        if (offlineAbs && offlineAbs.length > 0) {
+          offlineAbs.forEach((ab: any) => {
+            const fAb = ab.FECHAABONO || ab.FECHA || ab.AFECHA;
+            const idAb = String(ab.IDABONO_CLIENTE || ab.ID || `${ab.AFACTURA}_${ab.AVALOR}`);
+            if (fAb === fecha && !abonosMap.has(idAb)) {
+              abonosMap.set(idAb, ab);
+            }
+          });
+        }
       } catch {}
 
       // Facturas locales de respaldo
@@ -121,7 +136,6 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       });
 
       // 1.1 Abonos recibidos en el día (ABONO_CLIENTE)
-      const abonosMap = new Map<string, any>();
       try {
         const { data: abonos } = await supabase
           .from("ABONO_CLIENTE" as any)
@@ -140,7 +154,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         console.warn("Fallo lectura de abonos en Supabase:", e);
       }
 
-      // Abonos locales
+      // Abonos locales en localStorage
       try {
         const rawAb = localStorage.getItem("elegance_local_abonos");
         const localAbonos = rawAb ? JSON.parse(rawAb) : [];
@@ -155,6 +169,20 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         }
       } catch {}
 
+      // Abonos pendientes en cola de sincronización offline
+      if (colaItems && colaItems.length > 0) {
+        colaItems
+          .filter((it) => it.tipo === "NUEVO_ABONO" && it.datos?.abono)
+          .map((it) => it.datos.abono)
+          .forEach((ab: any) => {
+            const fAb = ab.FECHAABONO || ab.FECHA || ab.AFECHA;
+            const idAb = String(ab.IDABONO_CLIENTE || ab.ID || `${ab.AFACTURA}_${ab.AVALOR}`);
+            if (fAb === fecha && !abonosMap.has(idAb)) {
+              abonosMap.set(idAb, ab);
+            }
+          });
+      }
+
       allAbonos = Array.from(abonosMap.values());
       allAbonos.forEach((ab: any) => {
         // BUG fix: Si el abono tiene desglose explícito de pagos (efectivo vs transferencia),
@@ -167,30 +195,30 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         alqTrans += pTrans;
       });
 
-      // 2. Gastos de hoy (Supabase + localStorage offline)
+      // 2. Gastos de hoy (Supabase + localStorage offline + cola de sincronización)
       const gastosMap = new Map<string, any>();
       try {
         const { data: gastos } = await supabase
-          .from("GASTOS" as any)
+          .from("gastos" as any)
           .select("*")
           .eq("FECHA", fecha);
 
         if (gastos && gastos.length > 0) {
           gastos.forEach((g: any) => {
-            const key = String(g.IDGASTO || `${g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
+            const key = String(g.IDgastos || g.IDGASTO || `${g.DESCRIPCIONSALIDA || g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
             gastosMap.set(key, g);
           });
         }
       } catch (e) {}
 
-      // Gastos locales (BUG-21 fix)
+      // Gastos locales (localStorage)
       try {
         const rawGastos = localStorage.getItem("elegance_local_gastos");
         const localGastos = rawGastos ? JSON.parse(rawGastos) : [];
         if (Array.isArray(localGastos)) {
           localGastos.forEach((g: any) => {
             if (g.FECHA === fecha) {
-              const key = String(g.IDGASTO || `${g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
+              const key = String(g.IDgastos || g.IDGASTO || `${g.DESCRIPCIONSALIDA || g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
               if (!gastosMap.has(key)) {
                 gastosMap.set(key, g);
               }
@@ -199,13 +227,28 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         }
       } catch {}
 
+      // Gastos en cola de sincronización offline
+      if (colaItems && colaItems.length > 0) {
+        colaItems
+          .filter((it) => it.tipo === "NUEVO_GASTO" && it.datos)
+          .map((it) => it.datos)
+          .forEach((g: any) => {
+            if (g.FECHA === fecha) {
+              const key = String(g.IDgastos || g.IDGASTO || `${g.DESCRIPCIONSALIDA || g.DESCRIPCION}_${g.VALORSALIDA}_${g.FECHA}`);
+              if (!gastosMap.has(key)) {
+                gastosMap.set(key, g);
+              }
+            }
+          });
+      }
+
       allGastos = Array.from(gastosMap.values());
       let gastosTotal = 0;
       allGastos.forEach((g: any) => {
         gastosTotal += Number(g.VALORSALIDA || 0);
       });
 
-      // 3. Depósitos devueltos (Supabase + localStorage offline)
+      // 3. Depósitos devueltos (Supabase + localStorage offline + cola de sincronización)
       const depsMap = new Map<string, any>();
       try {
         const { data: deps } = await supabase
@@ -221,7 +264,7 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
         }
       } catch (e) {}
 
-      // Depósitos devueltos locales
+      // Depósitos devueltos locales (localStorage)
       try {
         const rawDeps = localStorage.getItem("elegance_local_depositos_entregados");
         const localDeps = rawDeps ? JSON.parse(rawDeps) : [];
@@ -237,6 +280,22 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
           });
         }
       } catch {}
+
+      // Depósitos devueltos en cola de sincronización offline
+      if (colaItems && colaItems.length > 0) {
+        colaItems
+          .filter((it) => it.tipo === "REGISTRAR_DEVOLUCION" && it.datos?.deposito)
+          .map((it) => it.datos.deposito)
+          .forEach((d: any) => {
+            const dFecha = d.FECHA ? String(d.FECHA).split("T")[0] : "";
+            if (dFecha === fecha) {
+              const key = String(d.IDdepositoentregado || `${d.NUMEROFACTURA}_${d.VALOR}_${d.FECHA}`);
+              if (!depsMap.has(key)) {
+                depsMap.set(key, d);
+              }
+            }
+          });
+      }
 
       allDeposDev = Array.from(depsMap.values());
       let depDevueltos = 0;
