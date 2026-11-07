@@ -55,8 +55,9 @@ export function CierreCajaModal({ open, onOpenChange, cajeroNombre = "CAJERO PRI
       let allGastos: any[] = [];
       let allDeposDev: any[] = [];
 
-      // 1. Facturas del día exacto (por FECHASALIDA, FECHA_RECIBO o FECHAINGRESO)
+      // 1. Facturas y Abonos del día exacto
       const facturasMap = new Map<string, any>();
+      const abonosMap = new Map<string, any>();
       try {
         const { data: facts } = await supabase
           .from("FACTURA" as any)

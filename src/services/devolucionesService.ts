@@ -3,7 +3,7 @@ import type { Factura, CampoFactura, DepositoEntregado } from "@/types/database.
 import { guardarEstadoPrendaOverride, type EstadoPrenda } from "./movimientosService";
 import { emitirEventoRealtime, invalidarCacheArticulos } from "./posService";
 import { reponerStockArticuloOffline } from "./offlineDbService";
-import { obtenerFechaActualColombia } from "@/lib/fechaColombia";
+import { obtenerFechaActualColombia, calcularDiasTranscurridos } from "@/lib/fechaColombia";
 
 export interface ItemDevolucionInfo {
   id: string | number;
@@ -950,12 +950,8 @@ export async function consultarAlquileresActivosCliente(
         const fSalidaStr = f.FECHASALIDA || obtenerFechaActualColombia();
         const fEntradaStr = f.FECHAENTRADA || f.FECHAENTREGA || fSalidaStr;
 
-        const dSalida = new Date(fSalidaStr);
-        dSalida.setHours(0, 0, 0, 0);
-
-        // Calcular días transcurridos
-        const diffTime = Math.max(0, hoy.getTime() - dSalida.getTime());
-        const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        // Calcular días transcurridos con exactitud matemática UTC
+        const diasTranscurridos = calcularDiasTranscurridos(fSalidaStr);
         const diasPermitidos = 3;
         const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
         const costoPorDia = 15000;

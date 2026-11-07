@@ -61,3 +61,29 @@ export function sumarDiasAFecha(fechaBaseStr: string, dias: number): string {
     return obtenerFechaActualColombia();
   }
 }
+
+/**
+ * Calcula con precisión matemática los días calendario transcurridos entre dos fechas
+ * en formato "YYYY-MM-DD", evitando desfases de huso horario generados por `new Date(string)`.
+ */
+export function calcularDiasTranscurridos(fechaInicioStr: string, fechaFinStr?: string): number {
+  try {
+    if (!fechaInicioStr) return 0;
+    const fInicio = fechaInicioStr.split("T")[0];
+    const fFin = (fechaFinStr || obtenerFechaActualColombia()).split("T")[0];
+
+    const [y1, m1, d1] = fInicio.split("-").map(Number);
+    const [y2, m2, d2] = fFin.split("-").map(Number);
+
+    if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return 0;
+
+    const utc1 = Date.UTC(y1, m1 - 1, d1);
+    const utc2 = Date.UTC(y2, m2 - 1, d2);
+
+    const diffMs = utc2 - utc1;
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  } catch {
+    return 0;
+  }
+}
+

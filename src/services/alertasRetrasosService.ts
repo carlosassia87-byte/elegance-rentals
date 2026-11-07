@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Factura } from "@/types/database.types";
 import { type PrendaActivaAlquiler } from "./devolucionesService";
+import { obtenerFechaActualColombia, calcularDiasTranscurridos } from "@/lib/fechaColombia";
 
 export interface ItemRetrasoAlquiler {
   idFactura: number;
@@ -240,15 +241,11 @@ export async function consultarTodosLosRetrasosYAlertas(): Promise<{
 
     // Si tiene prendas que aún NO han devuelto a la tienda
     if (prendasActivas.length > 0) {
-      const fSalidaStr = f.FECHASALIDA || new Date().toISOString().split("T")[0];
+      const fSalidaStr = f.FECHASALIDA || obtenerFechaActualColombia();
       const fEntradaStr = f.FECHAENTRADA || f.FECHAENTREGA || fSalidaStr;
 
-      const dSalida = new Date(fSalidaStr);
-      dSalida.setHours(0, 0, 0, 0);
-
-      // Días transcurridos desde que salió de la tienda
-      const diffTime = Math.max(0, hoy.getTime() - dSalida.getTime());
-      const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // Días transcurridos con cálculo matemático UTC exacto
+      const diasTranscurridos = calcularDiasTranscurridos(fSalidaStr);
       const diasPermitidos = 3;
       const diasRetraso = Math.max(0, diasTranscurridos - diasPermitidos);
       const costoPorDia = 15000;

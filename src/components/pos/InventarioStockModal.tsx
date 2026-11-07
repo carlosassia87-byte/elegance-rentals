@@ -43,6 +43,7 @@ import {
   type TipoMovimientoInventario,
 } from "@/services/inventarioService";
 import { subirFotoArticulo } from "@/services/storageService";
+import { obtenerFechaActualColombia, sumarDiasAFecha } from "@/lib/fechaColombia";
 
 interface InventarioStockModalProps {
   isOpen: boolean;
@@ -73,12 +74,8 @@ export function InventarioStockModal({
   // Filtros Movimientos / Kardex
   const [busquedaMov, setBusquedaMov] = useState("");
   const [filtroTipoMov, setFiltroTipoMov] = useState<string>("TODOS");
-  const [fechaDesde, setFechaDesde] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split("T")[0];
-  });
-  const [fechaHasta, setFechaHasta] = useState(() => new Date().toISOString().split("T")[0]);
+  const [fechaDesde, setFechaDesde] = useState(() => sumarDiasAFecha(obtenerFechaActualColombia(), -30));
+  const [fechaHasta, setFechaHasta] = useState(() => obtenerFechaActualColombia());
 
   // Formulario de Alimentación de Inventario
   const [modoAlimentar, setModoAlimentar] = useState<"nuevo" | "existente">("nuevo");
