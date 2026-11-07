@@ -346,6 +346,26 @@ export async function obtenerTodosLosAbonosOffline(): Promise<OfflineAbono[]> {
   }
 }
 
+export async function eliminarAbonoOffline(numeroAbono: string): Promise<void> {
+  try {
+    const clean = (numeroAbono || "").trim().toUpperCase();
+    if (!clean) return;
+    const db = await openDB();
+    const tx = db.transaction("abonos", "readwrite");
+    const store = tx.objectStore("abonos");
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items = req.result || [];
+      const match = items.find((a: any) => String(a.NUMEROABONO || "").trim().toUpperCase() === clean);
+      if (match && match.IDABONO_CLIENTE) {
+        store.delete(match.IDABONO_CLIENTE);
+      }
+    };
+  } catch (err) {
+    console.warn("Aviso eliminando abono de IndexedDB:", err);
+  }
+}
+
 // =========================================================================
 // BÚSQUEDAS INDEXADAS OFFLINE RÁPIDAS
 // =========================================================================

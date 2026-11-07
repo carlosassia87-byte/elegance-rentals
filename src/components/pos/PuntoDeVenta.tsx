@@ -271,6 +271,7 @@ export function PuntoDeVenta() {
   const [apartadoYaDevuelto, setApartadoYaDevuelto] = useState(false);
   const [apartadoTotalDevuelto, setApartadoTotalDevuelto] = useState(0);
   const [modalSubAbonar, setModalSubAbonar] = useState(false);
+  const [guardandoAbono, setGuardandoAbono] = useState(false);
   const [modalSaldoPendienteAlerta, setModalSaldoPendienteAlerta] = useState(false);
   const [montoAlertaSaldo, setMontoAlertaSaldo] = useState(0);
 
@@ -434,80 +435,91 @@ export function PuntoDeVenta() {
   // BOTÓN PAGAR EN VENTANA ABONO_CLIENTE (EXACTO A WINDEV)
   async function handleGuardarAbono() {
     if (!apartadoFactura) return;
+    if (guardandoAbono) return;
+
+    if (apartadoSaldoRestante <= 0) {
+      toast.warning("Esta cuenta ya se encuentra totalmente liquidada (Saldo $0). No requiere más abonos.");
+      return;
+    }
     if (abonoTotalActual <= 0) {
       toast.error("Coloque el monto del abono a pagar");
       return;
     }
 
-    const nuevoSaldo = abonoTotalSaldoRestante;
+    setGuardandoAbono(true);
+    try {
+      const nuevoSaldo = abonoTotalSaldoRestante;
 
-    const abonoGuardado = await registrarAbonoCliente({
-      numeroFactura: apartadoFactura.NUMEROFACT,
-      cliente: apartadoFactura.CCLIENTE,
-      pagoEfectivo: abonoEfecNum,
-      pagoTransferencia: abonoTransNum,
-      saldoAnterior: apartadoSaldoRestante,
-      saldoDeber: nuevoSaldo,
-      totalAbono: abonoTotalActual,
-      fecha: abonoFecha,
-    });
-
-    if (abonoGuardado) {
-      toast.success("Abono Realizado");
-      setApartadoAbonos((prev) => [...prev, abonoGuardado]);
-      setModalSubAbonar(false);
-
-      // Fechas de salida y devolución (3 días hábiles)
-      const hoy = new Date().toISOString().split("T")[0];
-      const dSalida = new Date(hoy + "T12:00:00");
-      const dEntrada = new Date(hoy + "T12:00:00");
-      dEntrada.setDate(dEntrada.getDate() + 3);
-
-      let tipoAbono = "EN BODEGA";
-      if (apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) {
-        tipoAbono = "EN ALQUILER";
-      } else if (apartadoFactura.MODO === "VENTA" || apartadoFactura.ESTADOCLIENTE === "VENTA") {
-        tipoAbono = "VENTA";
-      } else {
-        tipoAbono = "EN BODEGA";
-      }
-
-      const ticket = {
-        caja: terminalConfig.nombreCaja || "SERVIDOR",
+      const abonoGuardado = await registrarAbonoCliente({
+        numeroFactura: apartadoFactura.NUMEROFACT,
         cliente: apartadoFactura.CCLIENTE,
-        cedula: apartadoFactura.CCEDULA || "",
-        direccion: apartadoFactura.CDIRECCION || "cra 23",
-        telefono1: apartadoFactura.CTELEFONO || "1",
-        telefono2: apartadoFactura.CTELEFONO1 || "1",
-        formaPago: abonoTransNum > 0 ? abonoOtrasForma : "EFECTIVO",
-        tipo: tipoAbono,
-        cajero: cajero,
-        recibo: apartadoFactura.NUMEROFACT,
-        fecha: abonoFecha,
-        items: apartadoItems,
-        valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
-        deposito: apartadoFactura.FTOTALDEPOSITO || 0,
-        totalAlqDep: apartadoTotalOperacion,
+        pagoEfectivo: abonoEfecNum,
+        pagoTransferencia: abonoTransNum,
         saldoAnterior: apartadoSaldoRestante,
-        recibiAbono: abonoTotalActual,
-        saldo: nuevoSaldo,
-        fechaSalida: dSalida.toLocaleDateString("es-CO"),
-        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
-      };
-      setTicketAbonoData(ticket);
+        saldoDeber: nuevoSaldo,
+        totalAbono: abonoTotalActual,
+        fecha: abonoFecha,
+      });
 
-      // Si el saldo restante es cero, preguntar automáticamente si entregar al cliente o sigue en bodega
-      if (nuevoSaldo === 0) {
-        setModalPreguntaSalida(true);
+      if (abonoGuardado) {
+        toast.success("Abono Realizado");
+        setApartadoAbonos((prev) => [...prev, abonoGuardado]);
+        setModalSubAbonar(false);
+
+        // Fechas de salida y devolución (3 días hábiles)
+        const hoy = new Date().toISOString().split("T")[0];
+        const dSalida = new Date(hoy + "T12:00:00");
+        const dEntrada = new Date(hoy + "T12:00:00");
+        dEntrada.setDate(dEntrada.getDate() + 3);
+
+        let tipoAbono = "EN BODEGA";
+        if (apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) {
+          tipoAbono = "EN ALQUILER";
+        } else if (apartadoFactura.MODO === "VENTA" || apartadoFactura.ESTADOCLIENTE === "VENTA") {
+          tipoAbono = "VENTA";
+        } else {
+          tipoAbono = "EN BODEGA";
+        }
+
+        const ticket = {
+          caja: terminalConfig.nombreCaja || "SERVIDOR",
+          cliente: apartadoFactura.CCLIENTE,
+          cedula: apartadoFactura.CCEDULA || "",
+          direccion: apartadoFactura.CDIRECCION || "cra 23",
+          telefono1: apartadoFactura.CTELEFONO || "1",
+          telefono2: apartadoFactura.CTELEFONO1 || "1",
+          formaPago: abonoTransNum > 0 ? abonoOtrasForma : "EFECTIVO",
+          tipo: tipoAbono,
+          cajero: cajero,
+          recibo: apartadoFactura.NUMEROFACT,
+          fecha: abonoFecha,
+          items: apartadoItems,
+          valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
+          deposito: apartadoFactura.FTOTALDEPOSITO || 0,
+          totalAlqDep: apartadoTotalOperacion,
+          saldoAnterior: apartadoSaldoRestante,
+          recibiAbono: abonoTotalActual,
+          saldo: nuevoSaldo,
+          fechaSalida: dSalida.toLocaleDateString("es-CO"),
+          fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+        };
+        setTicketAbonoData(ticket);
+
+        // Si el saldo restante es cero, preguntar automáticamente si entregar al cliente o sigue en bodega
+        if (nuevoSaldo === 0) {
+          setModalPreguntaSalida(true);
+        } else {
+          await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+          setModalImprimirAbono80mm(true);
+        }
+
+        setAbonoPagoEfec("0");
+        setAbonoPagoTrans("0");
       } else {
-        await handleConsultarApartado(apartadoFactura.NUMEROFACT);
-        setModalImprimirAbono80mm(true);
+        toast.error("Error al registrar el abono o solicitud duplicada");
       }
-
-      setAbonoPagoEfec("0");
-      setAbonoPagoTrans("0");
-    } else {
-      toast.error("Error al registrar el abono");
+    } finally {
+      setGuardandoAbono(false);
     }
   }
 
@@ -4193,9 +4205,17 @@ export function PuntoDeVenta() {
                 <button
                   type="button"
                   onClick={handleGuardarAbono}
-                  className="rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 text-xs font-extrabold text-white shadow-sm active:scale-95 uppercase tracking-wider transition-all"
+                  disabled={guardandoAbono || abonoTotalActual <= 0 || apartadoSaldoRestante <= 0}
+                  className="rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-6 py-2 text-xs font-extrabold text-white shadow-sm active:scale-95 uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Registrar Abono
+                  {guardandoAbono ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Registrando Abono...</span>
+                    </>
+                  ) : (
+                    "Registrar Abono"
+                  )}
                 </button>
               </div>
             </div>

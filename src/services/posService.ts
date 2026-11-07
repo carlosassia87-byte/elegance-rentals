@@ -1629,6 +1629,9 @@ export async function buscarFacturaApartado(numeroFact: string): Promise<{
   }
 }
 
+// Candado en memoria para evitar registros duplicados por doble/triple clic rápido
+const abonosEnProceso = new Set<string>();
+
 export async function registrarAbonoCliente(params: {
   numeroFactura: string;
   cliente: string;
@@ -1639,8 +1642,16 @@ export async function registrarAbonoCliente(params: {
   totalAbono: number;
   fecha?: string | undefined;
 }): Promise<AbonoCliente | null> {
+  const numFact = (params.numeroFactura || "").trim();
+  if (!numFact) return null;
+
+  if (abonosEnProceso.has(numFact)) {
+    console.warn(`⚠️ [ABONO] Ya hay un abono en proceso para la factura ${numFact}. Bloqueando solicitud duplicada.`);
+    return null;
+  }
+  abonosEnProceso.add(numFact);
+
   try {
-    const numFact = (params.numeroFactura || "").trim();
     const numeroAbono = `AB-${Date.now().toString().slice(-4)}`;
     const fecha = params.fecha || new Date().toISOString().split("T")[0];
     const totalAbono = Number(params.totalAbono) || 0;
@@ -1755,6 +1766,10 @@ export async function registrarAbonoCliente(params: {
   } catch (err) {
     console.error("Error registrando abono cliente:", err);
     return null;
+  } finally {
+    setTimeout(() => {
+      abonosEnProceso.delete(numFact);
+    }, 1500);
   }
 }
 
@@ -1802,10 +1817,12 @@ export async function eliminarAbonoCliente(
       console.warn("Aviso eliminando abono en Supabase:", e);
     }
 
-    // 3. Eliminar de LocalStorage
+    // 3. Eliminar de LocalStorage e IndexedDB
     try {
       const abonosLocales = getLocalAbonos().filter((a) => a.NUMEROABONO !== numAbonoClean);
       localStorage.setItem(KEY_LOCAL_ABONOS, JSON.stringify(abonosLocales));
+      const { eliminarAbonoOffline } = await import("./offlineDbService");
+      await eliminarAbonoOffline(numAbonoClean);
     } catch {}
 
     // 4. Consultar los abonos restantes de esta factura para recalcular el saldo real exacto
