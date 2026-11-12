@@ -276,9 +276,9 @@ export function PuntoDeVenta() {
   const [abonoNumero, setAbonoNumero] = useState(`AB-${Date.now().toString().slice(-4)}`);
   const [abonoFecha, setAbonoFecha] = useState(fechaHoy);
   const [abonoTipoEfec, setAbonoTipoEfec] = useState("EFECTIVO");
-  const [abonoPagoEfec, setAbonoPagoEfec] = useState("0");
+  const [abonoPagoEfec, setAbonoPagoEfec] = useState("");
   const [abonoOtrasForma, setAbonoOtrasForma] = useState("DATAFONO");
-  const [abonoPagoTrans, setAbonoPagoTrans] = useState("0");
+  const [abonoPagoTrans, setAbonoPagoTrans] = useState("");
   
   // Modal de confirmación de salida de bodega & Tira 80mm
   const [modalPreguntaSalida, setModalPreguntaSalida] = useState(false);
@@ -512,8 +512,8 @@ export function PuntoDeVenta() {
           setModalImprimirAbono80mm(true);
         }
 
-        setAbonoPagoEfec("0");
-        setAbonoPagoTrans("0");
+        setAbonoPagoEfec("");
+        setAbonoPagoTrans("");
       } else {
         toast.error("Error al registrar el abono o solicitud duplicada");
       }
@@ -3837,6 +3837,8 @@ export function PuntoDeVenta() {
                         toast.info("Esta factura ya tiene saldo $0");
                         return;
                       }
+                      setAbonoPagoEfec("");
+                      setAbonoPagoTrans("");
                       setModalSubAbonar(true);
                     }}
                     className={`h-9 rounded-xl px-5 text-xs font-extrabold shadow-sm active:scale-95 uppercase tracking-wider transition-all ${
@@ -3850,7 +3852,51 @@ export function PuntoDeVenta() {
 
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => {
+                      if (!apartadoFactura) {
+                        toast.error("Busca primero una factura");
+                        return;
+                      }
+
+                      const hoy = obtenerFechaActualColombia();
+                      let tipoAbono = "EN BODEGA";
+                      if (apartadoFactura.ESTADOCLIENTE === "ENTREGADO" || apartadoItems.some((i) => i.estadoPrenda === "EN ALQUILER")) {
+                        tipoAbono = "EN ALQUILER";
+                      } else if (apartadoFactura.MODO === "VENTA" || apartadoFactura.ESTADOCLIENTE === "VENTA") {
+                        tipoAbono = "VENTA";
+                      } else {
+                        tipoAbono = "EN BODEGA";
+                      }
+
+                      // Tomar último abono registrado si existe
+                      const ultimoAbono = apartadoAbonos && apartadoAbonos.length > 0 ? apartadoAbonos[apartadoAbonos.length - 1] : null;
+
+                      const ticket = {
+                        caja: terminalConfig.nombreCaja || "SERVIDOR",
+                        cliente: apartadoFactura.CCLIENTE,
+                        cedula: apartadoFactura.CCEDULA || "",
+                        direccion: apartadoFactura.CDIRECCION || "cra 23",
+                        telefono1: apartadoFactura.CTELEFONO || "1",
+                        telefono2: apartadoFactura.CTELEFONO1 || "1",
+                        formaPago: ultimoAbono ? (Number(ultimoAbono.PAGOTRANFE || 0) > 0 ? "TRANSFERENCIA" : "EFECTIVO") : (apartadoFactura.FORMAPAGO || "EFECTIVO"),
+                        tipo: tipoAbono,
+                        cajero: cajero,
+                        recibo: apartadoFactura.NUMEROFACT,
+                        fecha: ultimoAbono?.FECHAABONO || hoy,
+                        items: apartadoItems,
+                        valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
+                        deposito: apartadoFactura.FTOTALDEPOSITO || 0,
+                        totalAlqDep: apartadoTotalOperacion,
+                        saldoAnterior: ultimoAbono ? Number(ultimoAbono.SALDOANTERIOR || 0) : apartadoSaldoRestante,
+                        recibiAbono: ultimoAbono ? Number(ultimoAbono.TOTAL_ABONO || 0) : Number(apartadoFactura.PAGACON || 0),
+                        saldo: apartadoSaldoRestante,
+                        fechaSalida: dSalida.toLocaleDateString("es-CO"),
+                        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+                      };
+
+                      setTicketAbonoData(ticket);
+                      setModalImprimirAbono80mm(true);
+                    }}
                     className="flex items-center gap-1.5 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-4 text-xs font-bold active:scale-95 uppercase tracking-wider transition-all"
                   >
                     <Printer className="h-3.5 w-3.5" /> Imprimir
@@ -4142,6 +4188,7 @@ export function PuntoDeVenta() {
                 <input
                   type="number"
                   min={0}
+                  placeholder="0"
                   value={abonoPagoEfec}
                   onChange={(e) => setAbonoPagoEfec(e.target.value)}
                   className="col-span-9 h-9 rounded-xl border border-slate-300 bg-slate-50 px-3 text-right font-mono text-base font-black text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none shadow-2xs"
