@@ -383,7 +383,7 @@ export function PuntoDeVenta() {
   const abonoTotalActual = abonoEfecNum + abonoTransNum;
   const abonoTotalSaldoRestante = Math.max(0, apartadoSaldoRestante - abonoTotalActual);
 
-  async function handleConsultarApartado(factNum?: string) {
+  async function handleConsultarApartado(factNum?: string, ignorarAlertaSaldo = false) {
     const query = (factNum ?? apartadoBusqFactura).trim();
     if (!query) {
       toast.error("Ingresa el número de factura a consultar");
@@ -421,7 +421,7 @@ export function PuntoDeVenta() {
 
     if (res.yaDevuelto) {
       toast.info(`ℹ️ Factura #${res.factura.NUMEROFACT}: ¡Prenda ya fue devuelta a tienda y depósito reintegrado!`, { duration: 5000 });
-    } else if (sRestante > 0) {
+    } else if (sRestante > 0 && !ignorarAlertaSaldo) {
       setMontoAlertaSaldo(sRestante);
       setModalSaldoPendienteAlerta(true);
     } else {
@@ -508,7 +508,7 @@ export function PuntoDeVenta() {
         if (nuevoSaldo === 0) {
           setModalPreguntaSalida(true);
         } else {
-          await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+          await handleConsultarApartado(apartadoFactura.NUMEROFACT, true);
           setModalImprimirAbono80mm(true);
         }
 
@@ -542,8 +542,8 @@ export function PuntoDeVenta() {
       toast.info(`📦 Prenda guardada en bodega. Permanecerá hasta que el cliente venga a retirarla.`);
     }
 
-    // Refrescar inmediatamente los datos del apartado
-    await handleConsultarApartado(apartadoFactura.NUMEROFACT);
+    // Refrescar inmediatamente los datos del apartado sin disparar alerta de saldo
+    await handleConsultarApartado(apartadoFactura.NUMEROFACT, true);
     setModalImprimirAbono80mm(true);
   }
 
@@ -4333,7 +4333,7 @@ export function PuntoDeVenta() {
           MODAL: TIRA DE ABONO 80mm (MODELO OFICIAL POS 80MM)
       ========================================================= */}
       <Dialog open={modalImprimirAbono80mm} onOpenChange={setModalImprimirAbono80mm}>
-        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh]">
+        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] z-[999999]">
           {ticketAbonoData && (
             <div className="space-y-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 border border-slate-200 overflow-y-auto max-h-[65vh] flex justify-center">
