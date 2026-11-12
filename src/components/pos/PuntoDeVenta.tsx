@@ -544,6 +544,36 @@ export function PuntoDeVenta() {
 
     // Refrescar inmediatamente los datos del apartado sin disparar alerta de saldo
     await handleConsultarApartado(apartadoFactura.NUMEROFACT, true);
+
+    // Asegurar que ticketAbonoData tenga los datos listos para el tiquete
+    if (!ticketAbonoData) {
+      const hoy = obtenerFechaActualColombia();
+      const ultimoAbono = apartadoAbonos && apartadoAbonos.length > 0 ? apartadoAbonos[apartadoAbonos.length - 1] : null;
+      const ticket = {
+        caja: terminalConfig.nombreCaja || "SERVIDOR",
+        cliente: apartadoFactura.CCLIENTE,
+        cedula: apartadoFactura.CCEDULA || "",
+        direccion: apartadoFactura.CDIRECCION || "cra 23",
+        telefono1: apartadoFactura.CTELEFONO || "1",
+        telefono2: apartadoFactura.CTELEFONO1 || "1",
+        formaPago: ultimoAbono ? (Number(ultimoAbono.PAGOTRANFE || 0) > 0 ? "TRANSFERENCIA" : "EFECTIVO") : (apartadoFactura.FORMAPAGO || "EFECTIVO"),
+        tipo: darSalida ? "EN ALQUILER" : "EN BODEGA",
+        cajero: cajero,
+        recibo: apartadoFactura.NUMEROFACT,
+        fecha: ultimoAbono?.FECHAABONO || hoy,
+        items: apartadoItems,
+        valorAlquiler: apartadoFactura.FTOTALALQUILER || 0,
+        deposito: apartadoFactura.FTOTALDEPOSITO || 0,
+        totalAlqDep: apartadoTotalOperacion,
+        saldoAnterior: ultimoAbono ? Number(ultimoAbono.SALDOANTERIOR || 0) : apartadoSaldoRestante,
+        recibiAbono: ultimoAbono ? Number(ultimoAbono.TOTAL_ABONO || 0) : Number(apartadoFactura.PAGACON || 0),
+        saldo: 0,
+        fechaSalida: dSalida.toLocaleDateString("es-CO"),
+        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+      };
+      setTicketAbonoData(ticket);
+    }
+
     setModalImprimirAbono80mm(true);
   }
 
@@ -4333,8 +4363,8 @@ export function PuntoDeVenta() {
           MODAL: TIRA DE ABONO 80mm (MODELO OFICIAL POS 80MM)
       ========================================================= */}
       <Dialog open={modalImprimirAbono80mm} onOpenChange={setModalImprimirAbono80mm}>
-        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] z-[999999]">
-          {ticketAbonoData && (
+        <DialogContent className="max-w-md bg-white p-5 border-2 border-slate-800 shadow-2xl overflow-y-auto max-h-[92vh] min-h-[450px] z-[999999]">
+          {ticketAbonoData ? (
             <div className="space-y-4">
               <div className="rounded-xl bg-slate-100/70 p-2.5 border border-slate-200 overflow-y-auto max-h-[65vh] flex justify-center">
                 <div className="bg-white p-2 shadow-sm rounded border border-slate-200">
@@ -4399,6 +4429,11 @@ export function PuntoDeVenta() {
                   <Printer className="h-4 w-4 text-emerald-400" /> Imprimir 80mm
                 </button>
               </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-slate-500 font-semibold text-xs space-y-2">
+              <RefreshCw className="h-6 w-6 animate-spin mx-auto text-emerald-600" />
+              <p>Generando tiquete de abono 80mm...</p>
             </div>
           )}
         </DialogContent>
