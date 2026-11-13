@@ -4389,6 +4389,7 @@ export function PuntoDeVenta() {
                     descuento={ticketAbonoData.descuento || 0}
                     recibi={ticketAbonoData.recibiAbono || 0}
                     saldo={ticketAbonoData.saldo || 0}
+                    saldoAnterior={ticketAbonoData.saldoAnterior}
                     esAbono={true}
                     items={(ticketAbonoData.items || []).map((it: any) => ({
                       descripcion: it.DESCRIPCION || it.descripcion || "PRENDA",

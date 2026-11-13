@@ -27,6 +27,7 @@ export interface TicketFacturaProps {
   descuento?: number;
   recibi?: number;
   saldo?: number;
+  saldoAnterior?: number;
   fechaSalida?: string;
   fechaDevolucion?: string;
   esAbono?: boolean;
@@ -79,6 +80,7 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
       descuento = 0,
       recibi = 0,
       saldo = 0,
+      saldoAnterior,
       fechaSalida,
       fechaDevolucion,
       esAbono = false,
@@ -419,6 +421,12 @@ export const TicketFactura80mm = forwardRef<HTMLDivElement, TicketFacturaProps>(
               <span style={{ fontWeight: 900 }}>{formatMonedaPOS(descuento)}</span>
             </div>
           ) : null}
+          {esAbono && saldoAnterior !== undefined && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px", fontSize: "14px" }}>
+              <span style={{ fontWeight: 700 }}>SALDO ANTERIOR:</span>
+              <span style={{ fontWeight: 900 }}>{formatMonedaPOS(saldoAnterior)}</span>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px", fontSize: "14.5px" }}>
             <span style={{ fontWeight: 800 }}>{etiquetaRecibi || (esAbono ? "RECIBÍ ABONO:" : "RECIBÍ:")}</span>
             <span style={{ fontWeight: 900 }}>{formatMonedaPOS(recibi)}</span>
