@@ -25,6 +25,7 @@ import {
   consultarMovimientos,
   type OperacionClienteMovimiento,
 } from "@/services/movimientosService";
+import { buscarFacturaApartado } from "@/services/posService";
 import { TicketFactura80mm, imprimirTicketPOS80mm } from "./TicketFactura80mm";
 
 interface ReimpresionFacturasModalProps {
@@ -50,8 +51,78 @@ export function ReimpresionFacturasModal({
   const [operaciones, setOperaciones] = useState<OperacionClienteMovimiento[]>([]);
   const [cargando, setCargando] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<OperacionClienteMovimiento | null>(null);
+  const [datosDetalleFactura, setDatosDetalleFactura] = useState<{
+    saldoReal: number;
+    saldoAnterior: number;
+    totalAbonado: number;
+    ultimoAbono: any | null;
+    fechaSalidaReal: string;
+    fechaDevolucionReal: string;
+    itemsReales: any[];
+  } | null>(null);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   const ticketRef = useRef<HTMLDivElement>(null);
+
+  // Sincronizar en tiempo real el detalle exacto de abonos y fechas de salida de la factura seleccionada
+  useEffect(() => {
+    if (!facturaSeleccionada) {
+      setDatosDetalleFactura(null);
+      return;
+    }
+
+    let cancelado = false;
+    setCargandoDetalle(true);
+
+    buscarFacturaApartado(facturaSeleccionada.numeroFact).then((res) => {
+      if (cancelado) return;
+      setCargandoDetalle(false);
+      if (res && res.factura) {
+        const fact = res.factura;
+        const alq = Number(fact.FTOTALALQUILER || 0);
+        const dep = Number(fact.FTOTALDEPOSITO || 0);
+        let totalOperacion = Number(fact.FTOTALVENTADEPOSITO || 0);
+        if (totalOperacion <= 0 || (totalOperacion === alq && dep > 0)) {
+          totalOperacion = alq + dep;
+        }
+
+        const pagoInicial = Number(fact.PAGACON || 0) > 0
+          ? Number(fact.PAGACON)
+          : (Number(fact.PAGOCONEFECTIVO || 0) + Number(fact.PAGOCONTRANFERENCIA || 0));
+
+        const saldoInicial = Math.max(0, totalOperacion - pagoInicial);
+        const abonosList = res.abonos || [];
+        const totAbonado = abonosList.reduce((acc, a) => acc + (Number(a.TOTAL_ABONO) || 0), 0);
+        const saldoCalculado = Math.max(0, saldoInicial - totAbonado);
+        const ultimoAb = abonosList.length > 0 ? abonosList[abonosList.length - 1] : null;
+
+        const fSalida = fact.FECHASALIDA
+          ? String(fact.FECHASALIDA).split("T")[0]
+          : facturaSeleccionada.fechaSalida;
+        const fDevolucion = fact.FECHAENTRADA
+          ? String(fact.FECHAENTRADA).split("T")[0]
+          : facturaSeleccionada.fechaEntregaPactada;
+
+        setDatosDetalleFactura({
+          saldoReal: saldoCalculado,
+          saldoAnterior: ultimoAb ? Number(ultimoAb.SALDOANTERIOR || 0) : saldoInicial,
+          totalAbonado: totAbonado,
+          ultimoAbono: ultimoAb,
+          fechaSalidaReal: fSalida,
+          fechaDevolucionReal: fDevolucion,
+          itemsReales: res.items && res.items.length > 0 ? res.items : [],
+        });
+      } else {
+        setDatosDetalleFactura(null);
+      }
+    }).catch(() => {
+      if (!cancelado) setCargandoDetalle(false);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [facturaSeleccionada]);
 
   // Cargar facturas
   const cargarFacturas = async () => {
@@ -478,28 +549,56 @@ export function ReimpresionFacturasModal({
                       direccion={facturaSeleccionada.clienteDireccion || "DG 17"}
                       telefono1={facturaSeleccionada.clienteTelefono || "1"}
                       telefono2="1"
-                      formaPago={facturaSeleccionada.pagoTransferencia > 0 && facturaSeleccionada.pagoEfectivo > 0 ? "MIXTO" : facturaSeleccionada.pagoTransferencia > 0 ? "TRANSFERENCIA" : "EFECTIVO"}
+                      formaPago={
+                        datosDetalleFactura?.ultimoAbono
+                          ? (Number(datosDetalleFactura.ultimoAbono.PAGOTRANFE || 0) > 0 ? "TRANSFERENCIA" : "EFECTIVO")
+                          : (facturaSeleccionada.pagoTransferencia > 0 && facturaSeleccionada.pagoEfectivo > 0 ? "MIXTO" : facturaSeleccionada.pagoTransferencia > 0 ? "TRANSFERENCIA" : "EFECTIVO")
+                      }
                       tipo={facturaSeleccionada.tipoOperacion || "ALQUILER"}
                       cajero={facturaSeleccionada.vendedor || cajeroNombre || "SUPERVISOR"}
                       recibo={facturaSeleccionada.numeroFact}
-                      fechaSalida={facturaSeleccionada.fechaSalida}
-                      fechaDevolucion={facturaSeleccionada.fechaEntregaPactada}
+                      fechaSalida={datosDetalleFactura?.fechaSalidaReal || facturaSeleccionada.fechaSalida}
+                      fechaDevolucion={datosDetalleFactura?.fechaDevolucionReal || facturaSeleccionada.fechaEntregaPactada}
                       valorAlquiler={facturaSeleccionada.totalAlquiler}
                       deposito={facturaSeleccionada.totalDeposito}
                       totalAlqDep={facturaSeleccionada.totalVentaDeposito}
                       descuento={0}
-                      recibi={facturaSeleccionada.pagoEfectivo + facturaSeleccionada.pagoTransferencia}
-                      saldo={facturaSeleccionada.saldoPendiente || 0}
-                      esAbono={facturaSeleccionada.tipoOperacion === "APARTADO / ABONO"}
+                      recibi={
+                        datosDetalleFactura?.ultimoAbono
+                          ? Number(datosDetalleFactura.ultimoAbono.TOTAL_ABONO || 0)
+                          : (facturaSeleccionada.pagoEfectivo + facturaSeleccionada.pagoTransferencia)
+                      }
+                      saldo={
+                        datosDetalleFactura !== null
+                          ? datosDetalleFactura.saldoReal
+                          : (facturaSeleccionada.saldoPendiente || 0)
+                      }
+                      saldoAnterior={
+                        datosDetalleFactura?.ultimoAbono
+                          ? datosDetalleFactura.saldoAnterior
+                          : undefined
+                      }
+                      esAbono={
+                        facturaSeleccionada.tipoOperacion === "APARTADO / ABONO" ||
+                        Boolean(datosDetalleFactura?.ultimoAbono)
+                      }
                       direccionEmpresa={empresa.direccion || "CRA 23 #15- 34"}
                       ciudadEmpresa="BUCARAMANGA -SANTANDER"
                       telefonosEmpresa={empresa.telefono1 ? `${empresa.telefono1} - ${empresa.telefono2 || "3202375610"}` : "6076963959 - 3202375610"}
-                      items={facturaSeleccionada.items.map((it) => ({
-                        descripcion: `${it.descripcion}${it.talla ? ` (${it.talla})` : ""}`,
-                        cantidad: it.cantidad,
-                        valor: it.valorAlquiler,
-                        total: it.valorAlquiler * it.cantidad + (it.valorDeposito || 0) * it.cantidad,
-                      }))}
+                      items={(datosDetalleFactura && datosDetalleFactura.itemsReales.length > 0
+                        ? datosDetalleFactura.itemsReales.map((it: any) => ({
+                            descripcion: it.DESCRIPCION || it.descripcion || "PRENDA",
+                            cantidad: it.CANTIDAD || it.cantidad || 1,
+                            valor: it.VALOR || it.valor || it.VALORALQUILER || 0,
+                            total: it.TOTAL || it.total || it.TOTALALQUILER || 0,
+                          }))
+                        : facturaSeleccionada.items.map((it) => ({
+                            descripcion: `${it.descripcion}${it.talla ? ` (${it.talla})` : ""}`,
+                            cantidad: it.cantidad,
+                            valor: it.valorAlquiler,
+                            total: it.valorAlquiler * it.cantidad + (it.valorDeposito || 0) * it.cantidad,
+                          }))
+                      )}
                     />
                   </div>
                 </div>
