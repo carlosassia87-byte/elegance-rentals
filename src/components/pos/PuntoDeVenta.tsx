@@ -499,8 +499,8 @@ export function PuntoDeVenta() {
           saldoAnterior: apartadoSaldoRestante,
           recibiAbono: abonoTotalActual,
           saldo: nuevoSaldo,
-          fechaSalida: dSalida.toLocaleDateString("es-CO"),
-          fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+          fechaSalida: (apartadoFactura.FECHASALIDA ? String(apartadoFactura.FECHASALIDA).split("T")[0] : hoy),
+          fechaDevolucion: (apartadoFactura.FECHAENTRADA ? String(apartadoFactura.FECHAENTRADA).split("T")[0] : fechaDevApartado),
         };
         setTicketAbonoData(ticket);
 
@@ -548,6 +548,7 @@ export function PuntoDeVenta() {
     // Asegurar que ticketAbonoData tenga los datos listos para el tiquete
     if (!ticketAbonoData) {
       const hoy = obtenerFechaActualColombia();
+      const fechaDevApartado = sumarDiasAFecha(hoy, 3);
       const ultimoAbono = apartadoAbonos && apartadoAbonos.length > 0 ? apartadoAbonos[apartadoAbonos.length - 1] : null;
       const ticket = {
         caja: terminalConfig.nombreCaja || "SERVIDOR",
@@ -568,8 +569,8 @@ export function PuntoDeVenta() {
         saldoAnterior: ultimoAbono ? Number(ultimoAbono.SALDOANTERIOR || 0) : apartadoSaldoRestante,
         recibiAbono: ultimoAbono ? Number(ultimoAbono.TOTAL_ABONO || 0) : Number(apartadoFactura.PAGACON || 0),
         saldo: 0,
-        fechaSalida: dSalida.toLocaleDateString("es-CO"),
-        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+        fechaSalida: (apartadoFactura.FECHASALIDA ? String(apartadoFactura.FECHASALIDA).split("T")[0] : hoy),
+        fechaDevolucion: (apartadoFactura.FECHAENTRADA ? String(apartadoFactura.FECHAENTRADA).split("T")[0] : fechaDevApartado),
       };
       setTicketAbonoData(ticket);
     }
@@ -3920,8 +3921,8 @@ export function PuntoDeVenta() {
                         saldoAnterior: ultimoAbono ? Number(ultimoAbono.SALDOANTERIOR || 0) : apartadoSaldoRestante,
                         recibiAbono: ultimoAbono ? Number(ultimoAbono.TOTAL_ABONO || 0) : Number(apartadoFactura.PAGACON || 0),
                         saldo: apartadoSaldoRestante,
-                        fechaSalida: dSalida.toLocaleDateString("es-CO"),
-                        fechaDevolucion: dEntrada.toLocaleDateString("es-CO"),
+                        fechaSalida: (apartadoFactura.FECHASALIDA ? String(apartadoFactura.FECHASALIDA).split("T")[0] : hoy),
+                        fechaDevolucion: (apartadoFactura.FECHAENTRADA ? String(apartadoFactura.FECHAENTRADA).split("T")[0] : fechaDevApartado),
                       };
 
                       setTicketAbonoData(ticket);
